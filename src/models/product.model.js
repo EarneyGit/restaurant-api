@@ -27,6 +27,11 @@ const productSchema = new mongoose.Schema(
       ref: 'Category',
       required: [true, 'Please select a category']
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      required: [true, 'Please select a branch']
+    },
     image: {
       type: String,
       default: 'default-product.jpg'

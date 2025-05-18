@@ -8,23 +8,21 @@ const {
   getCategoryProducts
 } = require('../controllers/category.controller');
 
-const { protect, admin } = require('../middleware/auth.middleware');
+const { protect, admin, manager, staff } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// Get all categories and create category
-router.route('/')
-  .get(getCategories)
-  .post(protect, admin, createCategory);
+// Public routes (accessible to all)
+router.get('/', getCategories);
+router.get('/:id', getCategory);
+
+// Protected routes (require authentication and proper role)
+router.post('/', protect, staff, createCategory); // Staff, Manager, Admin can create
+router.put('/:id', protect, staff, updateCategory); // Staff, Manager, Admin can update
+router.delete('/:id', protect, manager, deleteCategory); // Only Manager and Admin can delete
 
 // Get category products
 router.route('/:id/products')
   .get(getCategoryProducts);
-
-// Get, update and delete category
-router.route('/:id')
-  .get(getCategory)
-  .put(protect, admin, updateCategory)
-  .delete(protect, admin, deleteCategory);
 
 module.exports = router; 

@@ -1,79 +1,47 @@
 const Product = require('../models/product.model');
+const Category = require('../models/category.model');
+const Branch = require('../models/branch.model');
 
 // @desc    Get all products
 // @route   GET /api/products
-// @access  Public
+// @access  Public (with role-based filtering)
 exports.getProducts = async (req, res, next) => {
   try {
-    // Build query with filters, sorting, pagination
-    let query;
+    let query = { isAvailable: true };
     
-    // Copy req.query
-    const reqQuery = { ...req.query };
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
-    // Fields to exclude
-    const removeFields = ['select', 'sort', 'page', 'limit'];
-    
-    // Loop over removeFields and delete them from reqQuery
-    removeFields.forEach(param => delete reqQuery[param]);
-    
-    // Create query string
-    let queryStr = JSON.stringify(reqQuery);
-    
-    // Create operators ($gt, $gte, etc)
-    queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
-    
-    // Finding resource
-    query = Product.find(JSON.parse(queryStr)).populate('category', 'name');
-    
-    // Select Fields
-    if (req.query.select) {
-      const fields = req.query.select.split(',').join(' ');
-      query = query.select(fields);
+    // Apply filters if provided
+    if (req.query.category) {
+      query.category = req.query.category;
     }
     
-    // Sort
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(',').join(' ');
-      query = query.sort(sortBy);
-    } else {
-      query = query.sort('-createdAt');
+    if (req.query.branch) {
+      query.branchId = req.query.branch;
+    }
+
+    // For manager/staff, only show products from their branch
+    if (userRole === 'manager' || userRole === 'staff') {
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      query.branchId = req.user.branchId;
     }
     
-    // Pagination
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    const total = await Product.countDocuments(JSON.parse(queryStr));
-    
-    query = query.skip(startIndex).limit(limit);
-    
-    // Executing query
-    const products = await query;
-    
-    // Pagination result
-    const pagination = {};
-    
-    if (endIndex < total) {
-      pagination.next = {
-        page: page + 1,
-        limit
-      };
-    }
-    
-    if (startIndex > 0) {
-      pagination.prev = {
-        page: page - 1,
-        limit
-      };
-    }
-    
+    // For admin, show all products unless filtered
+    // For public users, show all available products
+
+    const products = await Product.find(query)
+      .populate('category', 'name slug')
+      .populate('branchId', 'name address');
+
     res.status(200).json({
       success: true,
       count: products.length,
-      pagination,
-      totalPages: Math.ceil(total / limit),
       data: products
     });
   } catch (error) {
@@ -83,15 +51,31 @@ exports.getProducts = async (req, res, next) => {
 
 // @desc    Get single product
 // @route   GET /api/products/:id
-// @access  Public
+// @access  Public (with role-based access control)
 exports.getProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id).populate('category', 'name');
+    const product = await Product.findById(req.params.id)
+      .populate('category', 'name slug')
+      .populate('branchId', 'name address');
 
     if (!product) {
       return res.status(404).json({
         success: false,
         message: `Product not found with id of ${req.params.id}`
+      });
+    }
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // For manager/staff, check if product belongs to their branch
+    if ((userRole === 'manager' || userRole === 'staff') && 
+        product.branchId && 
+        req.user.branchId && 
+        product.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this product'
       });
     }
 
@@ -106,9 +90,61 @@ exports.getProduct = async (req, res, next) => {
 
 // @desc    Create new product
 // @route   POST /api/products
-// @access  Private/Admin
+// @access  Private/Admin/Manager/Staff
 exports.createProduct = async (req, res, next) => {
   try {
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Default to user's branch if not specified
+    if (!req.body.branchId && (userRole === 'manager' || userRole === 'staff')) {
+      req.body.branchId = req.user.branchId;
+    }
+    
+    // Validate branch assignment
+    if (!req.body.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
+    
+    // Verify branch exists
+    const branch = await Branch.findById(req.body.branchId);
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
+      });
+    }
+    
+    // For manager/staff, ensure they're creating for their branch
+    if ((userRole === 'manager' || userRole === 'staff') && 
+        req.body.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to create products for other branches'
+      });
+    }
+    
+    // Validate category exists and belongs to the same branch
+    if (req.body.category) {
+      const category = await Category.findById(req.body.category);
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: 'Category not found'
+        });
+      }
+      
+      if (category.branchId.toString() !== req.body.branchId.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Category must belong to the same branch as the product'
+        });
+      }
+    }
+
     const product = await Product.create(req.body);
 
     res.status(201).json({
@@ -122,7 +158,7 @@ exports.createProduct = async (req, res, next) => {
 
 // @desc    Update product
 // @route   PUT /api/products/:id
-// @access  Private/Admin
+// @access  Private/Admin/Manager/Staff
 exports.updateProduct = async (req, res, next) => {
   try {
     let product = await Product.findById(req.params.id);
@@ -133,11 +169,54 @@ exports.updateProduct = async (req, res, next) => {
         message: `Product not found with id of ${req.params.id}`
       });
     }
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // For manager/staff, check if product belongs to their branch
+    if ((userRole === 'manager' || userRole === 'staff') && 
+        product.branchId && 
+        req.user.branchId && 
+        product.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this product'
+      });
+    }
+    
+    // Prevent changing branchId for manager/staff
+    if (req.body.branchId && 
+        (userRole === 'manager' || userRole === 'staff') && 
+        req.body.branchId.toString() !== product.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to change branch assignment'
+      });
+    }
+    
+    // If category is being changed, validate it belongs to the same branch
+    if (req.body.category && req.body.category !== product.category.toString()) {
+      const category = await Category.findById(req.body.category);
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: 'Category not found'
+        });
+      }
+      
+      const branchToCheck = req.body.branchId || product.branchId;
+      if (category.branchId.toString() !== branchToCheck.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Category must belong to the same branch as the product'
+        });
+      }
+    }
 
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
-    }).populate('category', 'name');
+    }).populate('category', 'name slug').populate('branchId', 'name address');
 
     res.status(200).json({
       success: true,
@@ -150,7 +229,7 @@ exports.updateProduct = async (req, res, next) => {
 
 // @desc    Delete product
 // @route   DELETE /api/products/:id
-// @access  Private/Admin
+// @access  Private/Admin/Manager
 exports.deleteProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -159,6 +238,28 @@ exports.deleteProduct = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: `Product not found with id of ${req.params.id}`
+      });
+    }
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Staff cannot delete products
+    if (userRole === 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Staff are not authorized to delete products'
+      });
+    }
+    
+    // For manager, check if product belongs to their branch
+    if (userRole === 'manager' && 
+        product.branchId && 
+        req.user.branchId && 
+        product.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this product'
       });
     }
 

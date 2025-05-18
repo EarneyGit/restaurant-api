@@ -2,11 +2,33 @@ const Branch = require('../models/branch.model');
 
 // @desc    Get all branches
 // @route   GET /api/branches
-// @access  Public
+// @access  Public (with role-based filtering)
 exports.getBranches = async (req, res, next) => {
   try {
-    const branches = await Branch.find()
-      .populate('manager', 'name email');
+    let query = { isActive: true };
+    
+    // For public access, we only show active branches
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // For manager/staff, only show their branch
+    if (userRole === 'manager' || userRole === 'staff') {
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      query._id = req.user.branchId;
+    }
+    
+    // For admin, show all branches (including inactive if queried)
+    if (userRole === 'admin' && req.query.showAll === 'true') {
+      delete query.isActive;
+    }
+
+    const branches = await Branch.find(query);
 
     res.status(200).json({
       success: true,
@@ -20,16 +42,36 @@ exports.getBranches = async (req, res, next) => {
 
 // @desc    Get single branch
 // @route   GET /api/branches/:id
-// @access  Public
+// @access  Public (with role-based control)
 exports.getBranch = async (req, res, next) => {
   try {
-    const branch = await Branch.findById(req.params.id)
-      .populate('manager', 'name email');
+    const branch = await Branch.findById(req.params.id);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
         message: `Branch not found with id of ${req.params.id}`
+      });
+    }
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // For manager/staff, only allow access to their branch
+    if ((userRole === 'manager' || userRole === 'staff') && 
+        req.user.branchId && 
+        branch._id.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this branch'
+      });
+    }
+    
+    // For regular users, only show active branches
+    if (!userRole && !branch.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
       });
     }
 
@@ -47,6 +89,17 @@ exports.getBranch = async (req, res, next) => {
 // @access  Private/Admin
 exports.createBranch = async (req, res, next) => {
   try {
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Only admin can create branches
+    if (userRole !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to create branches'
+      });
+    }
+
     const branch = await Branch.create(req.body);
 
     res.status(201).json({
@@ -60,7 +113,7 @@ exports.createBranch = async (req, res, next) => {
 
 // @desc    Update branch
 // @route   PUT /api/branches/:id
-// @access  Private/Admin
+// @access  Private/Admin/Manager
 exports.updateBranch = async (req, res, next) => {
   try {
     let branch = await Branch.findById(req.params.id);
@@ -71,11 +124,43 @@ exports.updateBranch = async (req, res, next) => {
         message: `Branch not found with id of ${req.params.id}`
       });
     }
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Staff cannot update branches
+    if (userRole === 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Staff are not authorized to update branches'
+      });
+    }
+    
+    // For manager, allow updates only to their branch, and restrict certain fields
+    if (userRole === 'manager') {
+      if (branch._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update other branches'
+        });
+      }
+      
+      // Managers cannot change critical branch properties like isActive
+      const restrictedFields = ['isActive', 'isDefault'];
+      for (const field of restrictedFields) {
+        if (req.body[field] !== undefined && req.body[field] !== branch[field]) {
+          return res.status(403).json({
+            success: false,
+            message: `Managers cannot modify the ${field} property`
+          });
+        }
+      }
+    }
 
     branch = await Branch.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
-    }).populate('manager', 'name email');
+    });
 
     res.status(200).json({
       success: true,
@@ -99,37 +184,52 @@ exports.deleteBranch = async (req, res, next) => {
         message: `Branch not found with id of ${req.params.id}`
       });
     }
-
-    // Check if branch has associated users
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Only admin can delete branches
+    if (userRole !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete branches'
+      });
+    }
+    
+    // Prevent deletion if branch is default
+    if (branch.isDefault) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete default branch'
+      });
+    }
+    
+    // Check if branch has associated products, categories, or staff
+    const Product = require('../models/product.model');
+    const Category = require('../models/category.model');
     const User = require('../models/user.model');
-    const users = await User.find({ branchId: req.params.id });
     
-    if (users.length > 0) {
+    const products = await Product.countDocuments({ branchId: req.params.id });
+    if (products > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete branch with associated users'
+        message: `Cannot delete branch with ${products} associated products`
       });
     }
-
-    // Check if branch has orders
-    const Order = require('../models/order.model');
-    const orders = await Order.find({ branch: req.params.id });
     
-    if (orders.length > 0) {
+    const categories = await Category.countDocuments({ branchId: req.params.id });
+    if (categories > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete branch with associated orders'
+        message: `Cannot delete branch with ${categories} associated categories`
       });
     }
-
-    // Check if branch has reservations
-    const Reservation = require('../models/reservation.model');
-    const reservations = await Reservation.find({ branch: req.params.id });
     
-    if (reservations.length > 0) {
+    const users = await User.countDocuments({ branchId: req.params.id });
+    if (users > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete branch with associated reservations'
+        message: `Cannot delete branch with ${users} associated staff/managers`
       });
     }
 
@@ -171,6 +271,63 @@ exports.getBranchesInRadius = async (req, res, next) => {
       success: true,
       count: branches.length,
       data: branches
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update branch settings
+// @route   PATCH /api/branches/:id/settings
+// @access  Private/Admin
+exports.updateBranchSettings = async (req, res, next) => {
+  try {
+    const { isCollectionEnabled, isDeliveryEnabled, isTableOrderingEnabled } = req.body;
+
+    // Validate at least one setting is provided
+    if (isCollectionEnabled === undefined && 
+        isDeliveryEnabled === undefined && 
+        isTableOrderingEnabled === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least one setting to update'
+      });
+    }
+
+    let branch = await Branch.findById(req.params.id);
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: `Branch not found with id of ${req.params.id}`
+      });
+    }
+
+    // Build settings object with only the provided settings
+    const updateSettings = {};
+    
+    if (isCollectionEnabled !== undefined) {
+      updateSettings.isCollectionEnabled = isCollectionEnabled;
+    }
+    
+    if (isDeliveryEnabled !== undefined) {
+      updateSettings.isDeliveryEnabled = isDeliveryEnabled;
+    }
+    
+    if (isTableOrderingEnabled !== undefined) {
+      updateSettings.isTableOrderingEnabled = isTableOrderingEnabled;
+    }
+
+    // Update only the settings fields
+    branch = await Branch.findByIdAndUpdate(
+      req.params.id, 
+      { $set: updateSettings },
+      { new: true, runValidators: true }
+    ).populate('manager', 'name email');
+
+    res.status(200).json({
+      success: true,
+      data: branch
     });
   } catch (error) {
     next(error);

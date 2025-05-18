@@ -9,7 +9,7 @@ const {
   getRecommendedProducts
 } = require('../controllers/product.controller');
 
-const { protect, admin } = require('../middleware/auth.middleware');
+const { protect, admin, manager, staff } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -17,14 +17,13 @@ const router = express.Router();
 router.get('/popular', getPopularProducts);
 router.get('/recommended', getRecommendedProducts);
 
-// Standard routes
-router.route('/')
-  .get(getProducts)
-  .post(protect, admin, createProduct);
+// Public routes (accessible to all)
+router.get('/', getProducts);
+router.get('/:id', getProduct);
 
-router.route('/:id')
-  .get(getProduct)
-  .put(protect, admin, updateProduct)
-  .delete(protect, admin, deleteProduct);
+// Protected routes (require authentication and proper role)
+router.post('/', protect, staff, createProduct); // Staff, Manager, Admin can create
+router.put('/:id', protect, staff, updateProduct); // Staff, Manager, Admin can update
+router.delete('/:id', protect, manager, deleteProduct); // Only Manager and Admin can delete
 
 module.exports = router; 

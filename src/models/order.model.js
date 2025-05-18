@@ -4,130 +4,143 @@ const orderSchema = new mongoose.Schema(
   {
     orderNumber: {
       type: String,
-      required: true,
+      // required: true,
       unique: true
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: [true, 'User is required']
     },
-    items: [
+    products: [
       {
         product: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Product',
-          required: true
+          required: [true, 'Product is required']
         },
-        name: String,
         quantity: {
           type: Number,
-          required: true,
-          min: [1, 'Quantity can not be less than 1']
+          required: [true, 'Quantity is required'],
+          min: [1, 'Quantity must be at least 1']
         },
         price: {
           type: Number,
-          required: true
+          required: [true, 'Price is required']
         },
-        variant: {
-          name: String,
-          price: Number
-        },
-        addons: [
-          {
-            name: String,
-            price: Number
-          }
-        ],
         notes: String
       }
     ],
-    totalAmount: {
-      type: Number,
-      required: true,
-      min: [0, 'Total amount must be at least 0']
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      required: [true, 'Branch is required']
+    },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     },
     status: {
       type: String,
-      enum: ['pending', 'preparing', 'ready', 'completed', 'cancelled'],
+      enum: ['pending', 'processing', 'completed', 'canceled'],
       default: 'pending'
+    },
+    totalAmount: {
+      type: Number,
+      required: true
     },
     paymentMethod: {
       type: String,
       enum: ['cash', 'card', 'online'],
-      required: true
+      default: 'cash'
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'failed'],
+      enum: ['pending', 'paid', 'refunded'],
       default: 'pending'
     },
     deliveryMethod: {
       type: String,
-      enum: ['pickup', 'dine-in', 'delivery'],
-      required: true
+      enum: ['pickup', 'delivery', 'dine_in'],
+      default: 'pickup'
     },
     deliveryAddress: {
       street: String,
       city: String,
       state: String,
       postalCode: String,
-      country: String
+      country: String,
+      notes: String
     },
-    deliveryFee: {
-      type: Number,
-      default: 0
-    },
-    tax: {
-      type: Number,
-      default: 0
-    },
-    discount: {
-      type: Number,
-      default: 0
-    },
-    notes: String,
-    branch: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Branch'
-    },
-    staff: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    estimatedDeliveryTime: Date
+    estimatedDeliveryTime: Date,
+    actualDeliveryTime: Date,
+    customerNotes: String,
+    internalNotes: String
   },
   {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
 
 // Generate order number before saving
 orderSchema.pre('save', async function(next) {
-  // Only generate number for new orders
-  if (this.isNew) {
-    const date = new Date();
-    const year = date.getFullYear().toString().substr(-2);
-    const month = ('0' + (date.getMonth() + 1)).slice(-2);
-    const day = ('0' + date.getDate()).slice(-2);
-    
-    // Get count of orders today and increment
-    const Order = this.constructor;
-    const todayStart = new Date(date.setHours(0, 0, 0, 0));
-    const todayEnd = new Date(date.setHours(23, 59, 59, 999));
-    
-    const orderCount = await Order.countDocuments({
-      createdAt: {
-        $gte: todayStart,
-        $lte: todayEnd
+  try {
+    // Only generate orderNumber for new records
+    if (!this.orderNumber) {
+      // Get the branch code or use a default
+      let branchCode = 'BR';
+      
+      if (this.branchId) {
+        const Branch = mongoose.model('Branch');
+        const branch = await Branch.findById(this.branchId);
+        if (branch && branch.code) {
+          branchCode = branch.code;
+        }
       }
-    });
+      
+      // Generate today's date in YYMMDD format
+      const date = new Date();
+      const year = date.getFullYear().toString().slice(-2);
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}${month}${day}`;
+      
+      // Find the last order for today to increment the counter
+      const Order = this.constructor;
+      const orderNumberPrefix = `${branchCode}-${dateStr}`;
+      const lastOrder = await Order.findOne(
+        { orderNumber: new RegExp(`^${orderNumberPrefix}`) },
+        { orderNumber: 1 }
+      ).sort({ orderNumber: -1 });
+      
+      let counter = 1;
+      if (lastOrder && lastOrder.orderNumber) {
+        // Extract the counter from the last order number
+        const lastCounter = parseInt(lastOrder.orderNumber.split('-')[2], 10);
+        if (!isNaN(lastCounter)) {
+          counter = lastCounter + 1;
+        }
+      }
+      
+      // Create the new order number with padded counter
+      this.orderNumber = `${orderNumberPrefix}-${String(counter).padStart(4, '0')}`;
+    }
     
-    // Format: YY-MM-DD-XXXX (where XXXX is the sequential number)
-    const sequentialNumber = ('000' + (orderCount + 1)).slice(-4);
-    this.orderNumber = `${year}${month}${day}${sequentialNumber}`;
+    next();
+  } catch (error) {
+    next(error);
   }
-  
+});
+
+// Calculate total amount before saving
+orderSchema.pre('save', function(next) {
+  if (this.products && this.products.length > 0) {
+    this.totalAmount = this.products.reduce((total, item) => {
+      return total + (item.price * item.quantity);
+    }, 0);
+  }
   next();
 });
 

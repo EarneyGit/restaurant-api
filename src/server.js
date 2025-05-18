@@ -18,6 +18,7 @@ const orderRoutes = require('./routes/order.routes');
 const reservationRoutes = require('./routes/reservation.routes');
 const branchRoutes = require('./routes/branch.routes');
 const reportRoutes = require('./routes/report.routes');
+const roleRoutes = require('./routes/role.routes');
 
 // Initialize Express
 const app = express();
@@ -40,6 +41,11 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/roles', roleRoutes);
+
+// Call initRoles to create default roles if they don't exist
+const initRoles = require('./utils/initRoles');
+initRoles();
 
 // Root route
 app.get('/', (req, res) => {

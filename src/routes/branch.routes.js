@@ -5,10 +5,11 @@ const {
   createBranch,
   updateBranch,
   deleteBranch,
-  getBranchesInRadius
+  getBranchesInRadius,
+  updateBranchSettings
 } = require('../controllers/branch.controller');
 
-const { protect, admin } = require('../middleware/auth.middleware');
+const { protect, admin, manager } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -16,15 +17,17 @@ const router = express.Router();
 router.route('/radius/:zipcode/:distance')
   .get(getBranchesInRadius);
 
-// Get all branches and create new branch
-router.route('/')
-  .get(getBranches)
-  .post(protect, admin, createBranch);
+// Public routes (accessible to all)
+router.get('/', getBranches);
+router.get('/:id', getBranch);
 
-// Get, update and delete branch
-router.route('/:id')
-  .get(getBranch)
-  .put(protect, admin, updateBranch)
-  .delete(protect, admin, deleteBranch);
+// Protected routes (require authentication and proper role)
+router.post('/', protect, admin, createBranch); // Only Admin can create
+router.put('/:id', protect, manager, updateBranch); // Manager and Admin can update
+router.delete('/:id', protect, admin, deleteBranch); // Only Admin can delete
+
+// Update branch settings
+router.route('/:id/settings')
+  .patch(protect, admin, updateBranchSettings);
 
 module.exports = router; 

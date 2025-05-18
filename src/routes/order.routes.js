@@ -3,34 +3,39 @@ const {
   getOrders,
   getOrder,
   createOrder,
-  updateOrderStatus,
-  updatePaymentStatus,
-  getMyOrders
+  updateOrder,
+  deleteOrder,
+  getMyOrders,
+  getTodayOrders
 } = require('../controllers/order.controller');
 
-const { protect, admin, manager } = require('../middleware/auth.middleware');
+const { protect, admin, manager, staff } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
 // Apply protect middleware to all routes
 router.use(protect);
 
-// Get my orders
+// Define specific routes first (before parameter routes)
+// Get my orders - accessible by all authenticated users
 router.get('/myorders', getMyOrders);
 
-// Get all orders (admin/manager only)
-router.route('/')
-  .get(getOrders)
-  .post(createOrder);
+// Get today's orders - accessible by admin, manager, staff
+router.get('/today', staff, getTodayOrders);
 
-// Get, update order status and update payment status
-router.route('/:id')
-  .get(getOrder);
+// Get all orders
+router.get('/', getOrders);
 
-router.route('/:id/status')
-  .put(updateOrderStatus);
+// Create order - accessible by all authenticated users
+router.post('/', createOrder);
 
-router.route('/:id/payment')
-  .put(manager, updatePaymentStatus);
+// Get single order
+router.get('/:id', getOrder);
+
+// Update order - accessible by staff, manager, admin
+router.put('/:id', staff, updateOrder);
+
+// Delete order - accessible by manager, admin only
+router.delete('/:id', manager, deleteOrder);
 
 module.exports = router; 

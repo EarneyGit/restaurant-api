@@ -34,6 +34,11 @@ const categorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
       default: null
+    },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      required: [true, 'Please select a branch']
     }
   },
   {
@@ -48,7 +53,11 @@ categorySchema.virtual('products', {
   ref: 'Product',
   localField: '_id',
   foreignField: 'category',
-  justOne: false
+  justOne: false,
+  match: function() {
+    // If viewing products in category, filter by same branch
+    return { branchId: this.branchId };
+  }
 });
 
 // Create slug from the name
