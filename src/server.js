@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 
 // Load environment variables if dotenv is available
@@ -23,6 +24,7 @@ const roleRoutes = require('./routes/role.routes');
 // Initialize Express
 const app = express();
 const PORT = process.env.PORT || 5000;
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 // Connect to MongoDB
 connectDB();
@@ -31,6 +33,15 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+// Add BACKEND_URL to res.locals for use in responses
+app.use((req, res, next) => {
+  res.locals.backendUrl = BACKEND_URL;
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -63,8 +74,11 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Backend URL: ${BACKEND_URL}`);
+  });
+}
 
 module.exports = app; 

@@ -48,6 +48,7 @@ exports.getCategories = async (req, res, next) => {
       name: category.name,
       displayOrder: category.displayOrder,
       hidden: category.hidden,
+      imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
       items: category.items.map(item => ({
@@ -114,6 +115,7 @@ exports.getCategory = async (req, res, next) => {
       name: category.name,
       displayOrder: category.displayOrder,
       hidden: category.hidden,
+      imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
       items: category.items.map(item => ({
@@ -195,6 +197,7 @@ exports.createCategory = async (req, res, next) => {
       name: category.name,
       displayOrder: category.displayOrder,
       hidden: category.hidden,
+      imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
       items: []
@@ -271,6 +274,7 @@ exports.updateCategory = async (req, res, next) => {
       name: category.name,
       displayOrder: category.displayOrder,
       hidden: category.hidden,
+      imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
       items: category.items.map(item => ({
