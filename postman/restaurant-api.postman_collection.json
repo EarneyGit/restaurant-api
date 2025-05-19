@@ -1,0 +1,232 @@
+{
+  "info": {
+    "_postman_id": "your-collection-id",
+    "name": "Restaurant API - Products",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "Get Single Product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "product_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Chicken Tikka Masala",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Tender chicken pieces in a rich, creamy tomato sauce",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "12.99",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "category_id_here",
+                  "type": "text"
+                },
+                {
+                  "key": "branchId",
+                  "value": "branch_id_here",
+                  "type": "text"
+                },
+                {
+                  "key": "weight",
+                  "value": "450",
+                  "type": "text"
+                },
+                {
+                  "key": "calorificValue",
+                  "value": "650 kcal",
+                  "type": "text"
+                },
+                {
+                  "key": "calorieDetails",
+                  "value": "Protein: 35g, Carbs: 75g, Fat: 22g",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "availability",
+                  "value": "{\"monday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"tuesday\":{\"isAvailable\":true,\"type\":\"Specific Times\",\"times\":[{\"start\":\"09:00\",\"end\":\"17:00\"}]},\"wednesday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"thursday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"friday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"saturday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"sunday\":{\"isAvailable\":false,\"type\":\"Not Available\",\"times\":[]}}",
+                  "type": "text"
+                },
+                {
+                  "key": "allergens",
+                  "value": "{\"contains\":[\"milk\",\"nuts\"],\"mayContain\":[\"soya\"]}",
+                  "type": "text"
+                },
+                {
+                  "key": "priceChanges",
+                  "value": "[{\"id\":\"pc1\",\"name\":\"Happy Hour\",\"type\":\"decrease\",\"value\":20,\"startDate\":\"2024-03-17\",\"endDate\":\"2024-12-31\",\"daysOfWeek\":[\"monday\",\"tuesday\"],\"timeStart\":\"14:00\",\"timeEnd\":\"17:00\",\"active\":true}]",
+                  "type": "text"
+                },
+                {
+                  "key": "hideItem",
+                  "value": "false",
+                  "type": "text"
+                },
+                {
+                  "key": "delivery",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "collection",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "dineIn",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Chicken Tikka Masala - Updated",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "13.99",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "availability",
+                  "value": "{\"monday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"tuesday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"wednesday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"thursday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"friday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"saturday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]},\"sunday\":{\"isAvailable\":true,\"type\":\"All Day\",\"times\":[]}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "product_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "product_id_here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Popular Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/popular",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "popular"]
+            }
+          }
+        },
+        {
+          "name": "Get Recommended Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/recommended",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "recommended"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    }
+  ]
+} 

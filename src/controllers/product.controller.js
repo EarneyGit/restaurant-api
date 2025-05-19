@@ -1,16 +1,14 @@
 const Product = require('../models/product.model');
 const Category = require('../models/category.model');
 const Branch = require('../models/branch.model');
+const { saveSingleFile, saveMultipleFiles, deleteFile } = require('../utils/fileUpload');
 
 // @desc    Get all products
 // @route   GET /api/products
-// @access  Public (with role-based filtering)
+// @access  Public
 exports.getProducts = async (req, res, next) => {
   try {
-    let query = { isAvailable: true };
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    let query = {};
     
     // Apply filters if provided
     if (req.query.category) {
@@ -20,20 +18,6 @@ exports.getProducts = async (req, res, next) => {
     if (req.query.branch) {
       query.branchId = req.query.branch;
     }
-
-    // For manager/staff, only show products from their branch
-    if (userRole === 'manager' || userRole === 'staff') {
-      if (!req.user.branchId) {
-        return res.status(400).json({
-          success: false,
-          message: `${userRole} must be assigned to a branch`
-        });
-      }
-      query.branchId = req.user.branchId;
-    }
-    
-    // For admin, show all products unless filtered
-    // For public users, show all available products
 
     const products = await Product.find(query)
       .populate('category', 'name slug')
@@ -51,7 +35,7 @@ exports.getProducts = async (req, res, next) => {
 
 // @desc    Get single product
 // @route   GET /api/products/:id
-// @access  Public (with role-based access control)
+// @access  Public
 exports.getProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id)
@@ -62,20 +46,6 @@ exports.getProduct = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: `Product not found with id of ${req.params.id}`
-      });
-    }
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // For manager/staff, check if product belongs to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        product.branchId && 
-        req.user.branchId && 
-        product.branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this product'
       });
     }
 
@@ -90,44 +60,21 @@ exports.getProduct = async (req, res, next) => {
 
 // @desc    Create new product
 // @route   POST /api/products
-// @access  Private/Admin/Manager/Staff
+// @access  Public
 exports.createProduct = async (req, res, next) => {
   try {
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Default to user's branch if not specified
-    if (!req.body.branchId && (userRole === 'manager' || userRole === 'staff')) {
-      req.body.branchId = req.user.branchId;
-    }
-    
-    // Validate branch assignment
-    if (!req.body.branchId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Branch ID is required'
-      });
-    }
-    
     // Verify branch exists
-    const branch = await Branch.findById(req.body.branchId);
-    if (!branch) {
-      return res.status(404).json({
-        success: false,
-        message: 'Branch not found'
-      });
+    if (req.body.branchId) {
+      const branch = await Branch.findById(req.body.branchId);
+      if (!branch) {
+        return res.status(404).json({
+          success: false,
+          message: 'Branch not found'
+        });
+      }
     }
     
-    // For manager/staff, ensure they're creating for their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        req.body.branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to create products for other branches'
-      });
-    }
-    
-    // Validate category exists and belongs to the same branch
+    // Validate category exists
     if (req.body.category) {
       const category = await Category.findById(req.body.category);
       if (!category) {
@@ -136,13 +83,24 @@ exports.createProduct = async (req, res, next) => {
           message: 'Category not found'
         });
       }
-      
-      if (category.branchId.toString() !== req.body.branchId.toString()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Category must belong to the same branch as the product'
-        });
-      }
+    }
+
+    // Handle image uploads if present
+    if (req.files && req.files.length > 0) {
+      const imagePaths = await saveMultipleFiles(req.files, 'products');
+      // Store only the relative paths without BACKEND_URL
+      req.body.images = imagePaths;
+    }
+
+    // Parse JSON strings if they exist
+    if (typeof req.body.availability === 'string') {
+      req.body.availability = JSON.parse(req.body.availability);
+    }
+    if (typeof req.body.allergens === 'string') {
+      req.body.allergens = JSON.parse(req.body.allergens);
+    }
+    if (typeof req.body.priceChanges === 'string') {
+      req.body.priceChanges = JSON.parse(req.body.priceChanges);
     }
 
     const product = await Product.create(req.body);
@@ -158,7 +116,7 @@ exports.createProduct = async (req, res, next) => {
 
 // @desc    Update product
 // @route   PUT /api/products/:id
-// @access  Private/Admin/Manager/Staff
+// @access  Public
 exports.updateProduct = async (req, res, next) => {
   try {
     let product = await Product.findById(req.params.id);
@@ -170,32 +128,19 @@ exports.updateProduct = async (req, res, next) => {
       });
     }
     
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // For manager/staff, check if product belongs to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        product.branchId && 
-        req.user.branchId && 
-        product.branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this product'
-      });
+    // Validate branch exists
+    if (req.body.branchId) {
+      const branch = await Branch.findById(req.body.branchId);
+      if (!branch) {
+        return res.status(404).json({
+          success: false,
+          message: 'Branch not found'
+        });
+      }
     }
     
-    // Prevent changing branchId for manager/staff
-    if (req.body.branchId && 
-        (userRole === 'manager' || userRole === 'staff') && 
-        req.body.branchId.toString() !== product.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to change branch assignment'
-      });
-    }
-    
-    // If category is being changed, validate it belongs to the same branch
-    if (req.body.category && req.body.category !== product.category.toString()) {
+    // Validate category exists
+    if (req.body.category) {
       const category = await Category.findById(req.body.category);
       if (!category) {
         return res.status(404).json({
@@ -203,20 +148,38 @@ exports.updateProduct = async (req, res, next) => {
           message: 'Category not found'
         });
       }
-      
-      const branchToCheck = req.body.branchId || product.branchId;
-      if (category.branchId.toString() !== branchToCheck.toString()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Category must belong to the same branch as the product'
-        });
+    }
+
+    // Handle image uploads if present
+    if (req.files && req.files.length > 0) {
+      // Delete old images
+      if (product.images && product.images.length > 0) {
+        for (const imagePath of product.images) {
+          await deleteFile(imagePath);
+        }
       }
+
+      // Save new images
+      const imagePaths = await saveMultipleFiles(req.files, 'products');
+      // Store only the relative paths without BACKEND_URL
+      req.body.images = imagePaths;
+    }
+
+    // Parse JSON strings if they exist
+    if (typeof req.body.availability === 'string') {
+      req.body.availability = JSON.parse(req.body.availability);
+    }
+    if (typeof req.body.allergens === 'string') {
+      req.body.allergens = JSON.parse(req.body.allergens);
+    }
+    if (typeof req.body.priceChanges === 'string') {
+      req.body.priceChanges = JSON.parse(req.body.priceChanges);
     }
 
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
-    }).populate('category', 'name slug').populate('branchId', 'name address');
+    });
 
     res.status(200).json({
       success: true,
@@ -229,7 +192,7 @@ exports.updateProduct = async (req, res, next) => {
 
 // @desc    Delete product
 // @route   DELETE /api/products/:id
-// @access  Private/Admin/Manager
+// @access  Public
 exports.deleteProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -240,30 +203,15 @@ exports.deleteProduct = async (req, res, next) => {
         message: `Product not found with id of ${req.params.id}`
       });
     }
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Staff cannot delete products
-    if (userRole === 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff are not authorized to delete products'
-      });
-    }
-    
-    // For manager, check if product belongs to their branch
-    if (userRole === 'manager' && 
-        product.branchId && 
-        req.user.branchId && 
-        product.branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this product'
-      });
+
+    // Delete associated images
+    if (product.images && product.images.length > 0) {
+      for (const imagePath of product.images) {
+        await deleteFile(imagePath);
+      }
     }
 
-    await product.deleteOne();
+    await Product.deleteOne({ _id: req.params.id });
 
     res.status(200).json({
       success: true,

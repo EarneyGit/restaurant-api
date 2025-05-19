@@ -1,31 +1,19 @@
 const Category = require('../models/category.model');
 const Branch = require('../models/branch.model');
+const Product = require('../models/product.model');
 const { saveSingleFile } = require('../utils/fileUpload');
+const mongoose = require('mongoose');
 
 // @desc    Get all categories
 // @route   GET /api/categories
-// @access  Public (with role-based filtering)
+// @access  Public
 exports.getCategories = async (req, res, next) => {
   try {
     let query = {};
     
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
     // Filter by branch if specified
     if (req.query.branch) {
       query.branchId = req.query.branch;
-    }
-    
-    // For manager/staff, only show categories from their branch
-    if (userRole === 'manager' || userRole === 'staff') {
-      if (!req.user.branchId) {
-        return res.status(400).json({
-          success: false,
-          message: `${userRole} must be assigned to a branch`
-        });
-      }
-      query.branchId = req.user.branchId;
     }
 
     // Search functionality
@@ -36,40 +24,51 @@ exports.getCategories = async (req, res, next) => {
     // Get categories with their items
     const categories = await Category.find(query)
       .populate({
-        path: 'items',
-        select: 'name price hideItem delivery collection dineIn description weight calorificValue calorieDetails'
+        path: 'branchId',
+        select: 'name address'
       })
-      .populate('branchId', 'name address')
-      .sort('displayOrder');
+      .sort('displayOrder')
+      .lean();
 
-    // Transform data to match frontend structure
-    const transformedCategories = categories.map(category => ({
-      id: category._id,
-      name: category.name,
-      displayOrder: category.displayOrder,
-      hidden: category.hidden,
-      imageUrl: category.imageUrl || '',
-      availability: category.availability,
-      printers: category.printers || [],
-      items: category.items.map(item => ({
-        id: item._id,
-        name: item.name,
-        price: item.price,
-        hideItem: item.hideItem || false,
-        delivery: item.delivery || true,
-        collection: item.collection || true,
-        dineIn: item.dineIn || true,
-        description: item.description,
-        weight: item.weight,
-        calorificValue: item.calorificValue,
-        calorieDetails: item.calorieDetails
-      }))
+    // Get products for each category
+    const categoriesWithProducts = await Promise.all(categories.map(async (category) => {
+      const products = await Product.find({
+        category: category._id,
+        branchId: category.branchId._id
+      }).select('name price hideItem delivery collection dineIn description weight calorificValue calorieDetails images availability allergens priceChanges').lean();
+
+      return {
+        id: category._id,
+        name: category.name,
+        displayOrder: category.displayOrder,
+        hidden: category.hidden,
+        imageUrl: category.imageUrl || '',
+        availability: category.availability,
+        printers: category.printers || [],
+        items: products.map(item => ({
+          id: item._id,
+          name: item.name,
+          price: item.price,
+          hideItem: item.hideItem || false,
+          delivery: item.delivery || true,
+          collection: item.collection || true,
+          dineIn: item.dineIn || true,
+          description: item.description,
+          weight: item.weight,
+          calorificValue: item.calorificValue,
+          calorieDetails: item.calorieDetails,
+          images: item.images || [],
+          availability: item.availability || {},
+          allergens: item.allergens || { contains: [], mayContain: [] },
+          priceChanges: item.priceChanges || []
+        }))
+      };
     }));
 
     res.status(200).json({
       success: true,
-      count: transformedCategories.length,
-      data: transformedCategories
+      count: categoriesWithProducts.length,
+      data: categoriesWithProducts
     });
   } catch (error) {
     next(error);
@@ -78,15 +77,15 @@ exports.getCategories = async (req, res, next) => {
 
 // @desc    Get single category
 // @route   GET /api/categories/:id
-// @access  Public (with role-based access control)
+// @access  Public
 exports.getCategory = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id)
       .populate({
-        path: 'items',
-        select: 'name price hideItem delivery collection dineIn description weight calorificValue calorieDetails'
+        path: 'branchId',
+        select: 'name address'
       })
-      .populate('branchId', 'name address');
+      .lean();
 
     if (!category) {
       return res.status(404).json({
@@ -94,20 +93,12 @@ exports.getCategory = async (req, res, next) => {
         message: `Category not found with id of ${req.params.id}`
       });
     }
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // For manager/staff, check if category belongs to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        category.branchId && 
-        req.user.branchId && 
-        category.branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this category'
-      });
-    }
+
+    // Get products for this category
+    const products = await Product.find({
+      category: category._id,
+      branchId: category.branchId._id
+    }).select('name price hideItem delivery collection dineIn description weight calorificValue calorieDetails images availability allergens priceChanges').lean();
 
     // Transform data to match frontend structure
     const transformedCategory = {
@@ -118,7 +109,7 @@ exports.getCategory = async (req, res, next) => {
       imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
-      items: category.items.map(item => ({
+      items: products.map(item => ({
         id: item._id,
         name: item.name,
         price: item.price,
@@ -129,7 +120,11 @@ exports.getCategory = async (req, res, next) => {
         description: item.description,
         weight: item.weight,
         calorificValue: item.calorificValue,
-        calorieDetails: item.calorieDetails
+        calorieDetails: item.calorieDetails,
+        images: item.images || [],
+        availability: item.availability || {},
+        allergens: item.allergens || { contains: [], mayContain: [] },
+        priceChanges: item.priceChanges || []
       }))
     };
 

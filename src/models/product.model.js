@@ -1,5 +1,61 @@
 const mongoose = require('mongoose');
 
+const timeSlotSchema = new mongoose.Schema({
+  start: String,
+  end: String
+}, { _id: false });
+
+const dayAvailabilitySchema = new mongoose.Schema({
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
+  type: {
+    type: String,
+    enum: ['All Day', 'Specific Times', 'Not Available'],
+    default: 'All Day'
+  },
+  times: [timeSlotSchema]
+}, { _id: false });
+
+const priceChangeSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    required: true
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  type: {
+    type: String,
+    enum: ['increase', 'decrease', 'fixed'],
+    required: true
+  },
+  value: {
+    type: Number,
+    required: true
+  },
+  startDate: {
+    type: String,
+    required: true
+  },
+  endDate: {
+    type: String,
+    required: true
+  },
+  daysOfWeek: [{
+    type: String,
+    enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  }],
+  timeStart: String,
+  timeEnd: String,
+  active: {
+    type: Boolean,
+    default: true
+  }
+}, { _id: false });
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -51,7 +107,30 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Branch',
       required: [true, 'Please select a branch']
-    }
+    },
+    images: [{
+      type: String
+    }],
+    availability: {
+      monday: dayAvailabilitySchema,
+      tuesday: dayAvailabilitySchema,
+      wednesday: dayAvailabilitySchema,
+      thursday: dayAvailabilitySchema,
+      friday: dayAvailabilitySchema,
+      saturday: dayAvailabilitySchema,
+      sunday: dayAvailabilitySchema
+    },
+    allergens: {
+      contains: [{
+        type: String,
+        enum: ['celery', 'crustaceans', 'eggs', 'fish', 'gluten', 'lupin', 'milk', 'molluscs', 'mustard', 'nuts', 'peanuts', 'sesame', 'soya', 'sulphites']
+      }],
+      mayContain: [{
+        type: String,
+        enum: ['celery', 'crustaceans', 'eggs', 'fish', 'gluten', 'lupin', 'milk', 'molluscs', 'mustard', 'nuts', 'peanuts', 'sesame', 'soya', 'sulphites']
+      }]
+    },
+    priceChanges: [priceChangeSchema]
   },
   {
     timestamps: true,
