@@ -7,14 +7,9 @@ const {
   deleteUser
 } = require('../controllers/user.controller');
 
-const { protect, admin } = require('../middleware/auth.middleware');
-
 const router = express.Router();
 
-// Apply protect and admin middleware to all routes
-router.use(protect, admin);
-
-// Routes
+// All routes are now public
 router.route('/')
   .get(getUsers)
   .post(createUser);

@@ -4,22 +4,19 @@ const User = require('../models/user.model');
 
 // @desc    Get all orders
 // @route   GET /api/orders
-// @access  Private (with role-based filtering)
+// @access  Public (temporarily)
 exports.getOrders = async (req, res, next) => {
   try {
     let query = {};
     
+    // Temporarily removed role-based filtering
+    /*
     // Get user role from roleId
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // Regular users can only see their own orders
     if (!userRole || userRole === 'user') {
       query.user = req.user._id;
-    }
-    
-    // Filter by branch if specified
-    if (req.query.branch) {
-      query.branchId = req.query.branch;
     }
     
     // For manager/staff, only show orders from their branch
@@ -32,9 +29,55 @@ exports.getOrders = async (req, res, next) => {
       }
       query.branchId = req.user.branchId;
     }
+    */
     
-    // For admin, show all orders unless filtered
+    // Filter by branch if specified
+    if (req.query.branch) {
+      query.branchId = req.query.branch;
+    }
 
+    // Filter today's orders if today=true
+    if (req.query.today === 'true') {
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+      
+      query.createdAt = {
+        $gte: startOfDay,
+        $lte: endOfDay
+      };
+    }
+
+    // Search functionality
+    if (req.query.searchText) {
+      // First, find users matching the search criteria
+      const users = await User.find({
+        $or: [
+          { name: { $regex: req.query.searchText, $options: 'i' } },
+          { phone: { $regex: req.query.searchText, $options: 'i' } }
+        ]
+      }).select('_id');
+
+      const userIds = users.map(user => user._id);
+
+      // Add search conditions to the query
+      const searchQuery = {
+        $or: [
+          { orderNumber: { $regex: req.query.searchText, $options: 'i' } },
+          { user: { $in: userIds } },
+          { 'deliveryAddress.postalCode': { $regex: req.query.searchText, $options: 'i' } }
+        ]
+      };
+
+      // Combine with existing query using $and to maintain other filters
+      query = {
+        $and: [
+          query,
+          searchQuery
+        ]
+      };
+    }
+    
     // Other filters
     if (req.query.status) {
       query.status = req.query.status;
@@ -48,7 +91,7 @@ exports.getOrders = async (req, res, next) => {
     }
 
     const orders = await Order.find(query)
-      .populate('user', 'name email')
+      .populate('user', 'name email phone')  // Added phone to user population
       .populate('branchId', 'name address')
       .populate('products.product', 'name price')
       .populate('assignedTo', 'name email')
@@ -66,7 +109,7 @@ exports.getOrders = async (req, res, next) => {
 
 // @desc    Get single order
 // @route   GET /api/orders/:id
-// @access  Private (with role-based access control)
+// @access  Public (temporarily)
 exports.getOrder = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -82,6 +125,8 @@ exports.getOrder = async (req, res, next) => {
       });
     }
     
+    // Temporarily removed role-based access control
+    /*
     // Get user role from roleId
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
@@ -103,6 +148,7 @@ exports.getOrder = async (req, res, next) => {
         message: 'Not authorized to view this order'
       });
     }
+    */
 
     res.status(200).json({
       success: true,
@@ -115,11 +161,11 @@ exports.getOrder = async (req, res, next) => {
 
 // @desc    Create new order
 // @route   POST /api/orders
-// @access  Private
+// @access  Public (temporarily)
 exports.createOrder = async (req, res, next) => {
   try {
-    // Add user to request body
-    req.body.user = req.user._id;
+    // Temporarily removed user assignment
+    // req.body.user = req.user._id;
     
     // Validate branch assignment
     if (!req.body.branchId) {
@@ -173,16 +219,6 @@ exports.createOrder = async (req, res, next) => {
       // Add product price to order item
       req.body.products[i].price = product.price;
     }
-    
-    // Auto-assign based on branch
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // If staff or manager is creating the order, auto-assign to them
-    if ((userRole === 'staff' || userRole === 'manager') && 
-        req.user.branchId && 
-        req.user.branchId.toString() === req.body.branchId.toString()) {
-      req.body.assignedTo = req.user._id;
-    }
 
     const order = await Order.create(req.body);
 
@@ -197,7 +233,7 @@ exports.createOrder = async (req, res, next) => {
 
 // @desc    Update order
 // @route   PUT /api/orders/:id
-// @access  Private/Admin/Manager/Staff
+// @access  Public (temporarily)
 exports.updateOrder = async (req, res, next) => {
   try {
     let order = await Order.findById(req.params.id);
@@ -208,86 +244,15 @@ exports.updateOrder = async (req, res, next) => {
         message: `Order not found with id of ${req.params.id}`
       });
     }
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Regular users can't update orders
-    if (!userRole || userRole === 'user') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update orders'
-      });
-    }
-    
-    // For manager/staff, check if order belongs to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        order.branchId && 
-        req.user.branchId && 
-        order.branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this order'
-      });
-    }
-    
-    // Prevent changing branchId for all users
-    if (req.body.branchId && req.body.branchId.toString() !== order.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to change branch assignment'
-      });
-    }
-    
-    // Staff can only update status and assignedTo fields
-    if (userRole === 'staff') {
-      // Create a filtered body with only allowed fields
-      const allowedFields = ['status', 'assignedTo'];
-      const filteredBody = {};
-      
-      for (const field of allowedFields) {
-        if (req.body[field] !== undefined) {
-          filteredBody[field] = req.body[field];
-        }
-      }
-      
-      // Validate assignment to same branch
-      if (filteredBody.assignedTo) {
-        const assignee = await User.findById(filteredBody.assignedTo);
-        if (!assignee) {
-          return res.status(404).json({
-            success: false,
-            message: 'Assignee not found'
-          });
-        }
-        
-        // Check if assignee belongs to the same branch
-        if (!assignee.branchId || assignee.branchId.toString() !== req.user.branchId.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: 'Can only assign to staff in the same branch'
-          });
-        }
-      }
-      
-      // Update with filtered body
-      order = await Order.findByIdAndUpdate(req.params.id, filteredBody, {
-        new: true,
-        runValidators: true
-      }).populate('user', 'name email')
-        .populate('branchId', 'name address')
-        .populate('products.product', 'name price')
-        .populate('assignedTo', 'name email');
-    } else {
-      // For admin/manager - allow full update
-      order = await Order.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true
-      }).populate('user', 'name email')
-        .populate('branchId', 'name address')
-        .populate('products.product', 'name price')
-        .populate('assignedTo', 'name email');
-    }
+
+    // Update with full body
+    order = await Order.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    }).populate('user', 'name email')
+      .populate('branchId', 'name address')
+      .populate('products.product', 'name price')
+      .populate('assignedTo', 'name email');
 
     res.status(200).json({
       success: true,
@@ -300,7 +265,7 @@ exports.updateOrder = async (req, res, next) => {
 
 // @desc    Delete order
 // @route   DELETE /api/orders/:id
-// @access  Private/Admin/Manager
+// @access  Public (temporarily)
 exports.deleteOrder = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -309,28 +274,6 @@ exports.deleteOrder = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: `Order not found with id of ${req.params.id}`
-      });
-    }
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Staff cannot delete orders
-    if (!userRole || userRole === 'user' || userRole === 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete orders'
-      });
-    }
-    
-    // For manager, check if order belongs to their branch
-    if (userRole === 'manager' && 
-        order.branchId && 
-        req.user.branchId && 
-        order.branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this order'
       });
     }
 
@@ -347,10 +290,11 @@ exports.deleteOrder = async (req, res, next) => {
 
 // @desc    Get user orders
 // @route   GET /api/orders/myorders
-// @access  Private
+// @access  Public (temporarily)
 exports.getMyOrders = async (req, res, next) => {
   try {
-    const orders = await Order.find({ user: req.user._id })
+    // Temporarily removed user filtering
+    const orders = await Order.find()
       .populate('branchId', 'name address')
       .sort('-createdAt');
     
@@ -366,20 +310,9 @@ exports.getMyOrders = async (req, res, next) => {
 
 // @desc    Get today's orders
 // @route   GET /api/orders/today
-// @access  Private/Admin/Manager/Staff
+// @access  Public (temporarily)
 exports.getTodayOrders = async (req, res, next) => {
   try {
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Regular users can't access this endpoint
-    if (!userRole || userRole === 'user') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access today\'s orders'
-      });
-    }
-    
     // Get today's date range
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
@@ -392,17 +325,6 @@ exports.getTodayOrders = async (req, res, next) => {
         $lte: endOfDay
       }
     };
-    
-    // For manager/staff, only show orders from their branch
-    if (userRole === 'manager' || userRole === 'staff') {
-      if (!req.user.branchId) {
-        return res.status(400).json({
-          success: false,
-          message: `${userRole} must be assigned to a branch`
-        });
-      }
-      query.branchId = req.user.branchId;
-    }
     
     // Apply status filter if provided
     if (req.query.status) {

@@ -10,7 +10,6 @@ const productSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: [true, 'Please add a description'],
       maxlength: [1000, 'Description cannot be more than 1000 characters']
     },
     price: {
@@ -18,9 +17,30 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Please add a price'],
       min: [0, 'Price must be at least 0']
     },
-    discountedPrice: {
-      type: Number,
-      default: 0
+    hideItem: {
+      type: Boolean,
+      default: false
+    },
+    delivery: {
+      type: Boolean,
+      default: true
+    },
+    collection: {
+      type: Boolean,
+      default: true
+    },
+    dineIn: {
+      type: Boolean,
+      default: true
+    },
+    weight: {
+      type: Number
+    },
+    calorificValue: {
+      type: String
+    },
+    calorieDetails: {
+      type: String
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
@@ -31,49 +51,7 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Branch',
       required: [true, 'Please select a branch']
-    },
-    image: {
-      type: String,
-      default: 'default-product.jpg'
-    },
-    images: [{
-      type: String
-    }],
-    isAvailable: {
-      type: Boolean,
-      default: true
-    },
-    isPopular: {
-      type: Boolean,
-      default: false
-    },
-    isRecommended: {
-      type: Boolean,
-      default: false
-    },
-    preparationTime: {
-      type: Number,
-      default: 15,  // minutes
-      min: [1, 'Preparation time must be at least 1 minute']
-    },
-    ingredients: [String],
-    nutritionalInfo: {
-      calories: Number,
-      fat: Number,
-      carbs: Number,
-      protein: Number,
-      allergens: [String]
-    },
-    tags: [String],
-    variants: [{
-      name: String,
-      price: Number,
-      isDefault: Boolean
-    }],
-    addons: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Addon'
-    }]
+    }
   },
   {
     timestamps: true,

@@ -8,14 +8,7 @@ const {
   getMyReservations
 } = require('../controllers/reservation.controller');
 
-const { protect, admin, manager } = require('../middleware/auth.middleware');
-
-const router = express.Router();
-
-// Apply protect middleware to all routes
-router.use(protect);
-
-// Get my reservations
+const router = express.Router();// All routes are now public
 router.get('/myreservations', getMyReservations);
 
 // Get all reservations
@@ -29,7 +22,7 @@ router.route('/:id')
 
 // Update reservation status
 router.route('/:id/status')
-  .put(manager, updateReservationStatus);
+  .put(updateReservationStatus);
 
 // Cancel reservation
 router.route('/:id/cancel')

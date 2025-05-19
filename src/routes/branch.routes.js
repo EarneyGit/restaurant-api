@@ -9,25 +9,19 @@ const {
   updateBranchSettings
 } = require('../controllers/branch.controller');
 
-const { protect, admin, manager } = require('../middleware/auth.middleware');
-
 const router = express.Router();
 
-// Get branches in radius
+// All routes are now public
 router.route('/radius/:zipcode/:distance')
   .get(getBranchesInRadius);
 
-// Public routes (accessible to all)
 router.get('/', getBranches);
 router.get('/:id', getBranch);
+router.post('/', createBranch);
+router.put('/:id', updateBranch);
+router.delete('/:id', deleteBranch);
 
-// Protected routes (require authentication and proper role)
-router.post('/', protect, admin, createBranch); // Only Admin can create
-router.put('/:id', protect, manager, updateBranch); // Manager and Admin can update
-router.delete('/:id', protect, admin, deleteBranch); // Only Admin can delete
-
-// Update branch settings
 router.route('/:id/settings')
-  .patch(protect, admin, updateBranchSettings);
+  .patch(updateBranchSettings);
 
 module.exports = router; 

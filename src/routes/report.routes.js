@@ -6,23 +6,12 @@ const {
   getReservationStats
 } = require('../controllers/report.controller');
 
-const { protect, admin, manager } = require('../middleware/auth.middleware');
-
 const router = express.Router();
 
-// Apply protect middleware to all routes
-router.use(protect);
-
-// Sales reports (admin/manager only)
-router.get('/sales', manager, getSalesReport);
-
-// Product reports (admin/manager only)
-router.get('/products/top', manager, getTopProducts);
-
-// Customer reports (admin only)
-router.get('/customers', admin, getCustomerStats);
-
-// Reservation reports (admin/manager only)
-router.get('/reservations', manager, getReservationStats);
+// All routes are now public
+router.get('/sales', getSalesReport);
+router.get('/products/top', getTopProducts);
+router.get('/customers', getCustomerStats);
+router.get('/reservations', getReservationStats);
 
 module.exports = router; 

@@ -7,23 +7,18 @@ const {
   deleteRole
 } = require('../controllers/role.controller');
 
-const { protect, admin } = require('../middleware/auth.middleware');
-
 const router = express.Router();
 
-// Protect all routes
-router.use(protect);
-
-// Role management routes - admin only
+// All routes are now public
 router
   .route('/')
-  .get(admin, getRoles)
-  .post(admin, createRole);
+  .get(getRoles)
+  .post(createRole);
 
 router
   .route('/:id')
-  .get(admin, getRole)
-  .put(admin, updateRole)
-  .delete(admin, deleteRole);
+  .get(getRole)
+  .put(updateRole)
+  .delete(deleteRole);
 
 module.exports = router; 

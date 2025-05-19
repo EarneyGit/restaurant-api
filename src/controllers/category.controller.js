@@ -1,12 +1,13 @@
 const Category = require('../models/category.model');
 const Branch = require('../models/branch.model');
+const { saveSingleFile } = require('../utils/fileUpload');
 
 // @desc    Get all categories
 // @route   GET /api/categories
 // @access  Public (with role-based filtering)
 exports.getCategories = async (req, res, next) => {
   try {
-    let query = { isActive: true };
+    let query = {};
     
     // Get user role from roleId
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
@@ -26,18 +27,48 @@ exports.getCategories = async (req, res, next) => {
       }
       query.branchId = req.user.branchId;
     }
-    
-    // For admin, show all categories unless filtered
-    // For public users, show all active categories
 
+    // Search functionality
+    if (req.query.searchText) {
+      query.name = { $regex: req.query.searchText, $options: 'i' };
+    }
+
+    // Get categories with their items
     const categories = await Category.find(query)
+      .populate({
+        path: 'items',
+        select: 'name price hideItem delivery collection dineIn description weight calorificValue calorieDetails'
+      })
       .populate('branchId', 'name address')
-      .populate('parentCategory', 'name slug');
+      .sort('displayOrder');
+
+    // Transform data to match frontend structure
+    const transformedCategories = categories.map(category => ({
+      id: category._id,
+      name: category.name,
+      displayOrder: category.displayOrder,
+      hidden: category.hidden,
+      availability: category.availability,
+      printers: category.printers || [],
+      items: category.items.map(item => ({
+        id: item._id,
+        name: item.name,
+        price: item.price,
+        hideItem: item.hideItem || false,
+        delivery: item.delivery || true,
+        collection: item.collection || true,
+        dineIn: item.dineIn || true,
+        description: item.description,
+        weight: item.weight,
+        calorificValue: item.calorificValue,
+        calorieDetails: item.calorieDetails
+      }))
+    }));
 
     res.status(200).json({
       success: true,
-      count: categories.length,
-      data: categories
+      count: transformedCategories.length,
+      data: transformedCategories
     });
   } catch (error) {
     next(error);
@@ -50,8 +81,11 @@ exports.getCategories = async (req, res, next) => {
 exports.getCategory = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id)
-      .populate('branchId', 'name address')
-      .populate('parentCategory', 'name slug');
+      .populate({
+        path: 'items',
+        select: 'name price hideItem delivery collection dineIn description weight calorificValue calorieDetails'
+      })
+      .populate('branchId', 'name address');
 
     if (!category) {
       return res.status(404).json({
@@ -74,9 +108,32 @@ exports.getCategory = async (req, res, next) => {
       });
     }
 
+    // Transform data to match frontend structure
+    const transformedCategory = {
+      id: category._id,
+      name: category.name,
+      displayOrder: category.displayOrder,
+      hidden: category.hidden,
+      availability: category.availability,
+      printers: category.printers || [],
+      items: category.items.map(item => ({
+        id: item._id,
+        name: item.name,
+        price: item.price,
+        hideItem: item.hideItem || false,
+        delivery: item.delivery || true,
+        collection: item.collection || true,
+        dineIn: item.dineIn || true,
+        description: item.description,
+        weight: item.weight,
+        calorificValue: item.calorificValue,
+        calorieDetails: item.calorieDetails
+      }))
+    };
+
     res.status(200).json({
       success: true,
-      data: category
+      data: transformedCategory
     });
   } catch (error) {
     next(error);
@@ -88,6 +145,14 @@ exports.getCategory = async (req, res, next) => {
 // @access  Private/Admin/Manager/Staff
 exports.createCategory = async (req, res, next) => {
   try {
+    const categoryData = req.body;
+
+    // Handle file upload if present
+    if (req.file) {
+      const imagePath = await saveSingleFile(req.file, 'categories');
+      categoryData.imageUrl = imagePath;
+    }
+
     // Get user role from roleId
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
@@ -121,30 +186,23 @@ exports.createCategory = async (req, res, next) => {
         message: 'Not authorized to create categories for other branches'
       });
     }
-    
-    // If parentCategory is provided, ensure it exists and belongs to same branch
-    if (req.body.parentCategory) {
-      const parentCategory = await Category.findById(req.body.parentCategory);
-      if (!parentCategory) {
-        return res.status(404).json({
-          success: false,
-          message: 'Parent category not found'
-        });
-      }
-      
-      if (parentCategory.branchId.toString() !== req.body.branchId.toString()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Parent category must belong to the same branch'
-        });
-      }
-    }
 
-    const category = await Category.create(req.body);
+    const category = await Category.create(categoryData);
+
+    // Transform response to match frontend structure
+    const transformedCategory = {
+      id: category._id,
+      name: category.name,
+      displayOrder: category.displayOrder,
+      hidden: category.hidden,
+      availability: category.availability,
+      printers: category.printers || [],
+      items: []
+    };
 
     res.status(201).json({
       success: true,
-      data: category
+      data: transformedCategory
     });
   } catch (error) {
     next(error);
@@ -156,6 +214,14 @@ exports.createCategory = async (req, res, next) => {
 // @access  Private/Admin/Manager/Staff
 exports.updateCategory = async (req, res, next) => {
   try {
+    const updateData = req.body;
+
+    // Handle file upload if present
+    if (req.file) {
+      const imagePath = await saveSingleFile(req.file, 'categories');
+      updateData.imageUrl = imagePath;
+    }
+
     let category = await Category.findById(req.params.id);
 
     if (!category) {
@@ -188,34 +254,43 @@ exports.updateCategory = async (req, res, next) => {
         message: 'Not authorized to change branch assignment'
       });
     }
-    
-    // If parentCategory is provided, ensure it exists and belongs to same branch
-    if (req.body.parentCategory) {
-      const parentCategory = await Category.findById(req.body.parentCategory);
-      if (!parentCategory) {
-        return res.status(404).json({
-          success: false,
-          message: 'Parent category not found'
-        });
-      }
-      
-      const branchToCheck = req.body.branchId || category.branchId;
-      if (parentCategory.branchId.toString() !== branchToCheck.toString()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Parent category must belong to the same branch'
-        });
-      }
-    }
 
-    category = await Category.findByIdAndUpdate(req.params.id, req.body, {
+    category = await Category.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true
-    }).populate('branchId', 'name address');
+    })
+    .populate({
+      path: 'items',
+      select: 'name price hideItem delivery collection dineIn description weight calorificValue calorieDetails'
+    })
+    .populate('branchId', 'name address');
+
+    // Transform response to match frontend structure
+    const transformedCategory = {
+      id: category._id,
+      name: category.name,
+      displayOrder: category.displayOrder,
+      hidden: category.hidden,
+      availability: category.availability,
+      printers: category.printers || [],
+      items: category.items.map(item => ({
+        id: item._id,
+        name: item.name,
+        price: item.price,
+        hideItem: item.hideItem || false,
+        delivery: item.delivery || true,
+        collection: item.collection || true,
+        dineIn: item.dineIn || true,
+        description: item.description,
+        weight: item.weight,
+        calorificValue: item.calorificValue,
+        calorieDetails: item.calorieDetails
+      }))
+    };
 
     res.status(200).json({
       success: true,
-      data: category
+      data: transformedCategory
     });
   } catch (error) {
     next(error);
