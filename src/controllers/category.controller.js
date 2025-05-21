@@ -21,7 +21,7 @@ exports.getCategories = async (req, res, next) => {
       query.name = { $regex: req.query.searchText, $options: 'i' };
     }
 
-    // Get categories with their items
+    // Get categories without products
     const categories = await Category.find(query)
       .populate({
         path: 'branchId',
@@ -30,45 +30,24 @@ exports.getCategories = async (req, res, next) => {
       .sort('displayOrder')
       .lean();
 
-    // Get products for each category
-    const categoriesWithProducts = await Promise.all(categories.map(async (category) => {
-      const products = await Product.find({
-        category: category._id,
-        branchId: category.branchId._id
-      }).select('name price hideItem delivery collection dineIn description weight calorificValue calorieDetails images availability allergens priceChanges').lean();
-
-      return {
-        id: category._id,
-        name: category.name,
-        displayOrder: category.displayOrder,
-        hidden: category.hidden,
-        imageUrl: category.imageUrl || '',
-        availability: category.availability,
-        printers: category.printers || [],
-        items: products.map(item => ({
-          id: item._id,
-          name: item.name,
-          price: item.price,
-          hideItem: item.hideItem || false,
-          delivery: item.delivery || true,
-          collection: item.collection || true,
-          dineIn: item.dineIn || true,
-          description: item.description,
-          weight: item.weight,
-          calorificValue: item.calorificValue,
-          calorieDetails: item.calorieDetails,
-          images: item.images || [],
-          availability: item.availability || {},
-          allergens: item.allergens || { contains: [], mayContain: [] },
-          priceChanges: item.priceChanges || []
-        }))
-      };
+    // Transform categories to match frontend structure
+    const transformedCategories = categories.map(category => ({
+      id: category._id,
+      name: category.name,
+      displayOrder: category.displayOrder,
+      hidden: category.hidden,
+      includeAttributes: category.includeAttributes || false,
+      includeDiscounts: category.includeDiscounts || false,
+      imageUrl: category.imageUrl || '',
+      availability: category.availability,
+      printers: category.printers || [],
+      branch: category.branchId
     }));
 
     res.status(200).json({
       success: true,
-      count: categoriesWithProducts.length,
-      data: categoriesWithProducts
+      count: transformedCategories.length,
+      data: transformedCategories
     });
   } catch (error) {
     next(error);
@@ -94,38 +73,18 @@ exports.getCategory = async (req, res, next) => {
       });
     }
 
-    // Get products for this category
-    const products = await Product.find({
-      category: category._id,
-      branchId: category.branchId._id
-    }).select('name price hideItem delivery collection dineIn description weight calorificValue calorieDetails images availability allergens priceChanges').lean();
-
     // Transform data to match frontend structure
     const transformedCategory = {
       id: category._id,
       name: category.name,
       displayOrder: category.displayOrder,
       hidden: category.hidden,
+      includeAttributes: category.includeAttributes || false,
+      includeDiscounts: category.includeDiscounts || false,
       imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
-      items: products.map(item => ({
-        id: item._id,
-        name: item.name,
-        price: item.price,
-        hideItem: item.hideItem || false,
-        delivery: item.delivery || true,
-        collection: item.collection || true,
-        dineIn: item.dineIn || true,
-        description: item.description,
-        weight: item.weight,
-        calorificValue: item.calorificValue,
-        calorieDetails: item.calorieDetails,
-        images: item.images || [],
-        availability: item.availability || {},
-        allergens: item.allergens || { contains: [], mayContain: [] },
-        priceChanges: item.priceChanges || []
-      }))
+      branch: category.branchId
     };
 
     res.status(200).json({
@@ -192,6 +151,8 @@ exports.createCategory = async (req, res, next) => {
       name: category.name,
       displayOrder: category.displayOrder,
       hidden: category.hidden,
+      includeAttributes: category.includeAttributes || false,
+      includeDiscounts: category.includeDiscounts || false,
       imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
@@ -269,6 +230,8 @@ exports.updateCategory = async (req, res, next) => {
       name: category.name,
       displayOrder: category.displayOrder,
       hidden: category.hidden,
+      includeAttributes: category.includeAttributes || false,
+      includeDiscounts: category.includeDiscounts || false,
       imageUrl: category.imageUrl || '',
       availability: category.availability,
       printers: category.printers || [],
@@ -366,6 +329,64 @@ exports.getCategoryProducts = async (req, res, next) => {
         category,
         products: products.products
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all categories with product counts
+// @route   GET /api/categories/counts
+// @access  Public
+exports.getCategoryProductCounts = async (req, res, next) => {
+  try {
+    let query = {};
+    
+    // Filter by branch if specified
+    if (req.query.branch) {
+      query.branchId = req.query.branch;
+    }
+    
+    // Get all categories with product counts and product details
+    const categoriesWithCounts = await Category.aggregate([
+      {
+        $match: query
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "category",
+          as: "products"
+        }
+      },
+      {
+        $project: {
+          id: "$_id",
+          name: 1,
+          productCount: { $size: "$products" },
+          products: {
+            $map: {
+              input: "$products",
+              as: "product",
+              in: {
+                name: "$$product.name",
+                price: "$$product.price"
+              }
+            }
+          },
+          _id: 0
+        }
+      },
+      {
+        $sort: { name: 1 }
+      }
+    ]);
+    
+    res.status(200).json({
+      success: true,
+      count: categoriesWithCounts.length,
+      data: categoriesWithCounts
     });
   } catch (error) {
     next(error);

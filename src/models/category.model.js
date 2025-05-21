@@ -66,6 +66,14 @@ const categorySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    includeAttributes: {
+      type: Boolean,
+      default: false
+    },
+    includeDiscounts: {
+      type: Boolean,
+      default: false
+    },
     imageUrl: {
       type: String
     },

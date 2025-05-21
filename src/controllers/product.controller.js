@@ -19,14 +19,41 @@ exports.getProducts = async (req, res, next) => {
       query.branchId = req.query.branch;
     }
 
+    // Add search functionality
+    if (req.query.searchText) {
+      query.name = { $regex: req.query.searchText, $options: 'i' };
+    }
+
     const products = await Product.find(query)
       .populate('category', 'name slug')
-      .populate('branchId', 'name address');
+      .populate('branchId', 'name address')
+      .sort('name');
+
+    // Transform products to match frontend structure
+    const transformedProducts = products.map(product => ({
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      hideItem: product.hideItem ?? false,
+      delivery: product.delivery !== undefined ? product.delivery : true,
+      collection: product.collection !== undefined ? product.collection : true,
+      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      description: product.description,
+      weight: product.weight,
+      calorificValue: product.calorificValue,
+      calorieDetails: product.calorieDetails,
+      images: product.images || [],
+      availability: product.availability || {},
+      allergens: product.allergens || { contains: [], mayContain: [] },
+      priceChanges: product.priceChanges || [],
+      category: product.category,
+      branch: product.branchId
+    }));
 
     res.status(200).json({
       success: true,
-      count: products.length,
-      data: products
+      count: transformedProducts.length,
+      data: transformedProducts
     });
   } catch (error) {
     next(error);
