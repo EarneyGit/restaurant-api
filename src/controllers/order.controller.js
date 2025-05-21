@@ -48,34 +48,33 @@ exports.getOrders = async (req, res, next) => {
       };
     }
 
-    // Search functionality
-    if (req.query.searchText) {
-      // First, find users matching the search criteria
+    // Handle specific search parameters
+    if (req.query.orderNumber) {
+      query.orderNumber = { $regex: req.query.orderNumber, $options: 'i' };
+    }
+
+    if (req.query.userName) {
+      // Find users matching the name
       const users = await User.find({
-        $or: [
-          { name: { $regex: req.query.searchText, $options: 'i' } },
-          { phone: { $regex: req.query.searchText, $options: 'i' } }
-        ]
+        name: { $regex: req.query.userName, $options: 'i' }
       }).select('_id');
-
+      
       const userIds = users.map(user => user._id);
+      query.user = { $in: userIds };
+    }
 
-      // Add search conditions to the query
-      const searchQuery = {
-        $or: [
-          { orderNumber: { $regex: req.query.searchText, $options: 'i' } },
-          { user: { $in: userIds } },
-          { 'deliveryAddress.postalCode': { $regex: req.query.searchText, $options: 'i' } }
-        ]
-      };
+    if (req.query.mobileNumber) {
+      // Find users matching the phone number
+      const users = await User.find({
+        phone: { $regex: req.query.mobileNumber, $options: 'i' }
+      }).select('_id');
+      
+      const userIds = users.map(user => user._id);
+      query.user = { $in: userIds };
+    }
 
-      // Combine with existing query using $and to maintain other filters
-      query = {
-        $and: [
-          query,
-          searchQuery
-        ]
-      };
+    if (req.query.postCode) {
+      query['deliveryAddress.postalCode'] = { $regex: req.query.postCode, $options: 'i' };
     }
     
     // Other filters
