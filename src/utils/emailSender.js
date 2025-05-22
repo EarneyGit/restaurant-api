@@ -6,12 +6,10 @@ const nodemailer = require('nodemailer');
  */
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
-    secure: process.env.EMAIL_SECURE === 'true',
+    service: 'gmail',
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+      user: process.env.EMAIL_USER || 'siva638302@gmail.com',
+      pass: process.env.EMAIL_PASS || 'kcvj pubw xxkl dght'
     }
   });
 };
@@ -43,14 +41,15 @@ const sendEmail = async (options) => {
     const transporter = createTransporter();
     
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'Restaurant API <noreply@restaurant.com>',
+      from: process.env.EMAIL_FROM || 'Restaurant API <siva638302@gmail.com>',
       to: options.to,
       subject: options.subject,
       text: options.text,
       html: options.html || options.text
     };
     
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent:', info.response);
     return true;
   } catch (error) {
     console.error('Email send error:', error);

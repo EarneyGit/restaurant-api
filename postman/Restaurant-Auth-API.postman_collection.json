@@ -1,0 +1,367 @@
+{
+  "info": {
+    "name": "Restaurant Auth API",
+    "description": "API endpoints for restaurant management system authentication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register Init",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register-init",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register-init"]
+        },
+        "description": "Start user registration process by sending OTP"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register-init",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register-init"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"message\": \"Verification OTP sent to your email\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Register Complete",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"otp\": \"123456\",\n    \"password\": \"password123\",\n    \"phone\": \"+1234567890\",\n    \"address\": \"123 Main St\",\n    \"roleId\": \"60d0fe4f5311236168a109ca\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register-complete",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register-complete"]
+        },
+        "description": "Complete user registration with OTP verification"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"otp\": \"123456\",\n    \"password\": \"password123\",\n    \"phone\": \"+1234567890\",\n    \"address\": \"123 Main St\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register-complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register-complete"]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"message\": \"User registered successfully\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n        \"id\": \"60d0fe4f5311236168a109ca\",\n        \"name\": \"John Doe\",\n        \"email\": \"john.doe@example.com\",\n        \"role\": \"user\"\n    }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"john.doe@example.com\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/forgot-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "forgot-password"]
+        },
+        "description": "Request password reset by sending OTP"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"message\": \"Password reset OTP sent to your email\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Verify Reset OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"otp\": \"123456\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/verify-reset-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "verify-reset-otp"]
+        },
+        "description": "Verify OTP and issue temporary token"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-reset-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "verify-reset-otp"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"message\": \"OTP verified successfully\",\n    \"resetToken\": \"74a5c6bb1cd1a7b429605809e90d951a2ea30554586fd5c7e9e4b1b4ec636c18\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reset Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"password\": \"newpassword123\",\n    \"confirmPassword\": \"newpassword123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/reset-password/74a5c6bb1cd1a7b429605809e90d951a2ea30554586fd5c7e9e4b1b4ec636c18",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "reset-password", "74a5c6bb1cd1a7b429605809e90d951a2ea30554586fd5c7e9e4b1b4ec636c18"]
+        },
+        "description": "Reset password with token"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"password\": \"newpassword123\",\n    \"confirmPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password/74a5c6bb1cd1a7b429605809e90d951a2ea30554586fd5c7e9e4b1b4ec636c18",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "reset-password", "74a5c6bb1cd1a7b429605809e90d951a2ea30554586fd5c7e9e4b1b4ec636c18"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"message\": \"Password reset successful\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "description": "Login user"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n        \"id\": \"60d0fe4f5311236168a109ca\",\n        \"name\": \"John Doe\",\n        \"email\": \"john.doe@example.com\",\n        \"role\": \"user\",\n        \"roleDetails\": {\n            \"id\": \"60d0fe4f5311236168a109cb\",\n            \"name\": \"User\",\n            \"slug\": \"user\"\n        },\n        \"branchId\": null,\n        \"branch\": null\n    }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Current User",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "me"]
+        },
+        "description": "Get current logged in user"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"data\": {\n        \"_id\": \"60d0fe4f5311236168a109ca\",\n        \"name\": \"John Doe\",\n        \"email\": \"john.doe@example.com\",\n        \"emailVerified\": true,\n        \"phone\": \"+1234567890\",\n        \"address\": \"123 Main St\",\n        \"isActive\": true,\n        \"lastLogin\": \"2023-06-15T10:30:45.123Z\",\n        \"branchId\": null,\n        \"roleId\": {\n            \"_id\": \"60d0fe4f5311236168a109cb\",\n            \"name\": \"User\",\n            \"slug\": \"user\"\n        }\n    }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "logout"]
+        },
+        "description": "Log user out"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n    \"success\": true,\n    \"message\": \"Successfully logged out\"\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+} 

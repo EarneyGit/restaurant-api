@@ -57,7 +57,13 @@ exports.getProducts = async (req, res, next) => {
         showChoiceAsDropdown: false
       },
       category: product.category,
-      branch: product.branchId
+      branch: product.branchId,
+      tillProviderProductId: product.tillProviderProductId || '',
+      cssClass: product.cssClass || '',
+      freeDelivery: product.freeDelivery || false,
+      collectionOnly: product.collectionOnly || false,
+      deleted: product.deleted || false,
+      hidePrice: product.hidePrice || false
     }));
 
     res.status(200).json({
@@ -114,7 +120,13 @@ exports.getProduct = async (req, res, next) => {
         showChoiceAsDropdown: false
       },
       category: product.category,
-      branch: product.branchId
+      branch: product.branchId,
+      tillProviderProductId: product.tillProviderProductId || '',
+      cssClass: product.cssClass || '',
+      freeDelivery: product.freeDelivery || false,
+      collectionOnly: product.collectionOnly || false,
+      deleted: product.deleted || false,
+      hidePrice: product.hidePrice || false
     };
 
     res.status(200).json({
@@ -177,6 +189,14 @@ exports.createProduct = async (req, res, next) => {
       req.body.itemSettings = JSON.parse(req.body.itemSettings);
     }
 
+    // Convert string boolean values to actual booleans
+    const booleanFields = ['hideItem', 'delivery', 'collection', 'dineIn', 'freeDelivery', 'collectionOnly', 'deleted', 'hidePrice'];
+    booleanFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        req.body[field] = req.body[field] === 'true' || req.body[field] === true;
+      }
+    });
+
     const product = await Product.create(req.body);
     
     // Fetch the populated product to return
@@ -212,7 +232,13 @@ exports.createProduct = async (req, res, next) => {
         showChoiceAsDropdown: false
       },
       category: populatedProduct.category,
-      branch: populatedProduct.branchId
+      branch: populatedProduct.branchId,
+      tillProviderProductId: populatedProduct.tillProviderProductId || '',
+      cssClass: populatedProduct.cssClass || '',
+      freeDelivery: populatedProduct.freeDelivery || false,
+      collectionOnly: populatedProduct.collectionOnly || false,
+      deleted: populatedProduct.deleted || false,
+      hidePrice: populatedProduct.hidePrice || false
     };
 
     res.status(201).json({
@@ -292,6 +318,14 @@ exports.updateProduct = async (req, res, next) => {
       req.body.itemSettings = JSON.parse(req.body.itemSettings);
     }
 
+    // Convert string boolean values to actual booleans
+    const booleanFields = ['hideItem', 'delivery', 'collection', 'dineIn', 'freeDelivery', 'collectionOnly', 'deleted', 'hidePrice'];
+    booleanFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        req.body[field] = req.body[field] === 'true' || req.body[field] === true;
+      }
+    });
+
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
@@ -326,7 +360,13 @@ exports.updateProduct = async (req, res, next) => {
         showChoiceAsDropdown: false
       },
       category: product.category,
-      branch: product.branchId
+      branch: product.branchId,
+      tillProviderProductId: product.tillProviderProductId || '',
+      cssClass: product.cssClass || '',
+      freeDelivery: product.freeDelivery || false,
+      collectionOnly: product.collectionOnly || false,
+      deleted: product.deleted || false,
+      hidePrice: product.hidePrice || false
     };
 
     res.status(200).json({
@@ -408,7 +448,13 @@ exports.getPopularProducts = async (req, res, next) => {
         showChoiceAsDropdown: false
       },
       category: product.category,
-      branch: product.branchId
+      branch: product.branchId,
+      tillProviderProductId: product.tillProviderProductId || '',
+      cssClass: product.cssClass || '',
+      freeDelivery: product.freeDelivery || false,
+      collectionOnly: product.collectionOnly || false,
+      deleted: product.deleted || false,
+      hidePrice: product.hidePrice || false
     }));
 
     res.status(200).json({
@@ -459,7 +505,13 @@ exports.getRecommendedProducts = async (req, res, next) => {
         showChoiceAsDropdown: false
       },
       category: product.category,
-      branch: product.branchId
+      branch: product.branchId,
+      tillProviderProductId: product.tillProviderProductId || '',
+      cssClass: product.cssClass || '',
+      freeDelivery: product.freeDelivery || false,
+      collectionOnly: product.collectionOnly || false,
+      deleted: product.deleted || false,
+      hidePrice: product.hidePrice || false
     }));
 
     res.status(200).json({

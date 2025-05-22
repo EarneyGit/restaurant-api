@@ -165,6 +165,30 @@ const productSchema = new mongoose.Schema(
     itemSettings: {
       type: itemSettingsSchema,
       default: () => ({})
+    },
+    tillProviderProductId: {
+      type: String,
+      trim: true
+    },
+    cssClass: {
+      type: String,
+      trim: true
+    },
+    freeDelivery: {
+      type: Boolean,
+      default: false
+    },
+    collectionOnly: {
+      type: Boolean,
+      default: false
+    },
+    deleted: {
+      type: Boolean,
+      default: false
+    },
+    hidePrice: {
+      type: Boolean,
+      default: false
     }
   },
   {
