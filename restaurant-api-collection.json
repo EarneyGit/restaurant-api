@@ -165,7 +165,14 @@
                 {"key": "delivery", "value": "true", "type": "text"},
                 {"key": "collection", "value": "true", "type": "text"},
                 {"key": "dineIn", "value": "true", "type": "text"},
-                {"key": "options", "value": "[{\"name\":\"Size\",\"required\":true,\"multiple\":false,\"items\":[{\"name\":\"Small\",\"price\":0}]}]", "type": "text"},
+                {"key": "weight", "value": "250", "type": "text"},
+                {"key": "calorificValue", "value": "850", "type": "text"},
+                {"key": "calorieDetails", "value": "Per 100g: 340 calories", "type": "text"},
+                {"key": "availability", "value": "{\"monday\":{\"isAvailable\":true,\"type\":\"All Day\"},\"tuesday\":{\"isAvailable\":true,\"type\":\"All Day\"},\"wednesday\":{\"isAvailable\":true,\"type\":\"All Day\"},\"thursday\":{\"isAvailable\":true,\"type\":\"All Day\"},\"friday\":{\"isAvailable\":true,\"type\":\"All Day\"},\"saturday\":{\"isAvailable\":true,\"type\":\"All Day\"},\"sunday\":{\"isAvailable\":true,\"type\":\"All Day\"}}", "type": "text"},
+                {"key": "allergens", "value": "{\"contains\":[\"gluten\",\"milk\"],\"mayContain\":[\"nuts\"]}", "type": "text"},
+                {"key": "priceChanges", "value": "[{\"id\":\"1621234567890\",\"name\":\"Happy Hour\",\"type\":\"decrease\",\"value\":10,\"startDate\":\"2023-05-01\",\"endDate\":\"2023-06-30\",\"daysOfWeek\":[\"monday\",\"tuesday\",\"wednesday\"],\"timeStart\":\"17:00\",\"timeEnd\":\"19:00\",\"active\":true}]", "type": "text"},
+                {"key": "selectedItems", "value": "[\"6123456789abcdef12345670\", \"6123456789abcdef12345671\"]", "type": "text"},
+                {"key": "itemSettings", "value": "{\"showSelectedOnly\":false,\"showSelectedCategories\":true,\"limitSingleChoice\":true,\"addAttributeCharges\":false,\"useProductPrices\":true,\"showChoiceAsDropdown\":true}", "type": "text"},
                 {"key": "image", "type": "file", "src": "/path/to/product-image.jpg"}
               ]
             },
@@ -182,6 +189,8 @@
               "formdata": [
                 {"key": "name", "value": "Updated Margherita Pizza", "type": "text"},
                 {"key": "price", "value": "10.99", "type": "text"},
+                {"key": "selectedItems", "value": "[\"6123456789abcdef12345672\", \"6123456789abcdef12345673\"]", "type": "text"},
+                {"key": "itemSettings", "value": "{\"showSelectedOnly\":true,\"showSelectedCategories\":true,\"limitSingleChoice\":false,\"addAttributeCharges\":true,\"useProductPrices\":true,\"showChoiceAsDropdown\":false}", "type": "text"},
                 {"key": "image", "type": "file", "src": "/path/to/updated-product.jpg"}
               ]
             },

@@ -56,6 +56,33 @@ const priceChangeSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const itemSettingsSchema = new mongoose.Schema({
+  showSelectedOnly: {
+    type: Boolean,
+    default: false
+  },
+  showSelectedCategories: {
+    type: Boolean,
+    default: false
+  },
+  limitSingleChoice: {
+    type: Boolean,
+    default: false
+  },
+  addAttributeCharges: {
+    type: Boolean,
+    default: false
+  },
+  useProductPrices: {
+    type: Boolean,
+    default: false
+  },
+  showChoiceAsDropdown: {
+    type: Boolean,
+    default: false
+  }
+}, { _id: false });
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -130,7 +157,15 @@ const productSchema = new mongoose.Schema(
         enum: ['celery', 'crustaceans', 'eggs', 'fish', 'gluten', 'lupin', 'milk', 'molluscs', 'mustard', 'nuts', 'peanuts', 'sesame', 'soya', 'sulphites']
       }]
     },
-    priceChanges: [priceChangeSchema]
+    priceChanges: [priceChangeSchema],
+    selectedItems: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product'
+    }],
+    itemSettings: {
+      type: itemSettingsSchema,
+      default: () => ({})
+    }
   },
   {
     timestamps: true,

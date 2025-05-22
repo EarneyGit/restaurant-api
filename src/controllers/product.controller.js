@@ -27,6 +27,7 @@ exports.getProducts = async (req, res, next) => {
     const products = await Product.find(query)
       .populate('category', 'name slug')
       .populate('branchId', 'name address')
+      .populate('selectedItems', 'name price category')
       .sort('name');
 
     // Transform products to match frontend structure
@@ -46,6 +47,15 @@ exports.getProducts = async (req, res, next) => {
       availability: product.availability || {},
       allergens: product.allergens || { contains: [], mayContain: [] },
       priceChanges: product.priceChanges || [],
+      selectedItems: product.selectedItems?.map(item => item._id) || [],
+      itemSettings: product.itemSettings || {
+        showSelectedOnly: false,
+        showSelectedCategories: false,
+        limitSingleChoice: false,
+        addAttributeCharges: false,
+        useProductPrices: false,
+        showChoiceAsDropdown: false
+      },
       category: product.category,
       branch: product.branchId
     }));
@@ -67,7 +77,8 @@ exports.getProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate('category', 'name slug')
-      .populate('branchId', 'name address');
+      .populate('branchId', 'name address')
+      .populate('selectedItems', 'name price category');
 
     if (!product) {
       return res.status(404).json({
@@ -76,9 +87,39 @@ exports.getProduct = async (req, res, next) => {
       });
     }
 
+    // Transform product data to match frontend structure
+    const transformedProduct = {
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      hideItem: product.hideItem ?? false,
+      delivery: product.delivery !== undefined ? product.delivery : true,
+      collection: product.collection !== undefined ? product.collection : true,
+      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      description: product.description,
+      weight: product.weight,
+      calorificValue: product.calorificValue,
+      calorieDetails: product.calorieDetails,
+      images: product.images || [],
+      availability: product.availability || {},
+      allergens: product.allergens || { contains: [], mayContain: [] },
+      priceChanges: product.priceChanges || [],
+      selectedItems: product.selectedItems?.map(item => item._id) || [],
+      itemSettings: product.itemSettings || {
+        showSelectedOnly: false,
+        showSelectedCategories: false,
+        limitSingleChoice: false,
+        addAttributeCharges: false,
+        useProductPrices: false,
+        showChoiceAsDropdown: false
+      },
+      category: product.category,
+      branch: product.branchId
+    };
+
     res.status(200).json({
       success: true,
-      data: product
+      data: transformedProduct
     });
   } catch (error) {
     next(error);
@@ -129,12 +170,54 @@ exports.createProduct = async (req, res, next) => {
     if (typeof req.body.priceChanges === 'string') {
       req.body.priceChanges = JSON.parse(req.body.priceChanges);
     }
+    if (typeof req.body.selectedItems === 'string') {
+      req.body.selectedItems = JSON.parse(req.body.selectedItems);
+    }
+    if (typeof req.body.itemSettings === 'string') {
+      req.body.itemSettings = JSON.parse(req.body.itemSettings);
+    }
 
     const product = await Product.create(req.body);
+    
+    // Fetch the populated product to return
+    const populatedProduct = await Product.findById(product._id)
+      .populate('category', 'name slug')
+      .populate('branchId', 'name address')
+      .populate('selectedItems', 'name price category');
+      
+    // Transform product data to match frontend structure
+    const transformedProduct = {
+      id: populatedProduct._id,
+      name: populatedProduct.name,
+      price: populatedProduct.price,
+      hideItem: populatedProduct.hideItem ?? false,
+      delivery: populatedProduct.delivery !== undefined ? populatedProduct.delivery : true,
+      collection: populatedProduct.collection !== undefined ? populatedProduct.collection : true,
+      dineIn: populatedProduct.dineIn !== undefined ? populatedProduct.dineIn : true,
+      description: populatedProduct.description,
+      weight: populatedProduct.weight,
+      calorificValue: populatedProduct.calorificValue,
+      calorieDetails: populatedProduct.calorieDetails,
+      images: populatedProduct.images || [],
+      availability: populatedProduct.availability || {},
+      allergens: populatedProduct.allergens || { contains: [], mayContain: [] },
+      priceChanges: populatedProduct.priceChanges || [],
+      selectedItems: populatedProduct.selectedItems?.map(item => item._id) || [],
+      itemSettings: populatedProduct.itemSettings || {
+        showSelectedOnly: false,
+        showSelectedCategories: false,
+        limitSingleChoice: false,
+        addAttributeCharges: false,
+        useProductPrices: false,
+        showChoiceAsDropdown: false
+      },
+      category: populatedProduct.category,
+      branch: populatedProduct.branchId
+    };
 
     res.status(201).json({
       success: true,
-      data: product
+      data: transformedProduct
     });
   } catch (error) {
     next(error);
@@ -202,15 +285,53 @@ exports.updateProduct = async (req, res, next) => {
     if (typeof req.body.priceChanges === 'string') {
       req.body.priceChanges = JSON.parse(req.body.priceChanges);
     }
+    if (typeof req.body.selectedItems === 'string') {
+      req.body.selectedItems = JSON.parse(req.body.selectedItems);
+    }
+    if (typeof req.body.itemSettings === 'string') {
+      req.body.itemSettings = JSON.parse(req.body.itemSettings);
+    }
 
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
-    });
+    }).populate('category', 'name slug')
+      .populate('branchId', 'name address')
+      .populate('selectedItems', 'name price category');
+
+    // Transform product data to match frontend structure
+    const transformedProduct = {
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      hideItem: product.hideItem ?? false,
+      delivery: product.delivery !== undefined ? product.delivery : true,
+      collection: product.collection !== undefined ? product.collection : true,
+      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      description: product.description,
+      weight: product.weight,
+      calorificValue: product.calorificValue,
+      calorieDetails: product.calorieDetails,
+      images: product.images || [],
+      availability: product.availability || {},
+      allergens: product.allergens || { contains: [], mayContain: [] },
+      priceChanges: product.priceChanges || [],
+      selectedItems: product.selectedItems?.map(item => item._id) || [],
+      itemSettings: product.itemSettings || {
+        showSelectedOnly: false,
+        showSelectedCategories: false,
+        limitSingleChoice: false,
+        addAttributeCharges: false,
+        useProductPrices: false,
+        showChoiceAsDropdown: false
+      },
+      category: product.category,
+      branch: product.branchId
+    };
 
     res.status(200).json({
       success: true,
-      data: product
+      data: transformedProduct
     });
   } catch (error) {
     next(error);
@@ -256,12 +377,44 @@ exports.getPopularProducts = async (req, res, next) => {
   try {
     const products = await Product.find({ isPopular: true })
       .populate('category', 'name')
+      .populate('branchId', 'name address')
+      .populate('selectedItems', 'name price category')
       .limit(8);
+
+    // Transform products to match frontend structure
+    const transformedProducts = products.map(product => ({
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      hideItem: product.hideItem ?? false,
+      delivery: product.delivery !== undefined ? product.delivery : true,
+      collection: product.collection !== undefined ? product.collection : true,
+      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      description: product.description,
+      weight: product.weight,
+      calorificValue: product.calorificValue,
+      calorieDetails: product.calorieDetails,
+      images: product.images || [],
+      availability: product.availability || {},
+      allergens: product.allergens || { contains: [], mayContain: [] },
+      priceChanges: product.priceChanges || [],
+      selectedItems: product.selectedItems?.map(item => item._id) || [],
+      itemSettings: product.itemSettings || {
+        showSelectedOnly: false,
+        showSelectedCategories: false,
+        limitSingleChoice: false,
+        addAttributeCharges: false,
+        useProductPrices: false,
+        showChoiceAsDropdown: false
+      },
+      category: product.category,
+      branch: product.branchId
+    }));
 
     res.status(200).json({
       success: true,
-      count: products.length,
-      data: products
+      count: transformedProducts.length,
+      data: transformedProducts
     });
   } catch (error) {
     next(error);
@@ -275,12 +428,44 @@ exports.getRecommendedProducts = async (req, res, next) => {
   try {
     const products = await Product.find({ isRecommended: true })
       .populate('category', 'name')
+      .populate('branchId', 'name address')
+      .populate('selectedItems', 'name price category')
       .limit(8);
+
+    // Transform products to match frontend structure
+    const transformedProducts = products.map(product => ({
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      hideItem: product.hideItem ?? false,
+      delivery: product.delivery !== undefined ? product.delivery : true,
+      collection: product.collection !== undefined ? product.collection : true,
+      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      description: product.description,
+      weight: product.weight,
+      calorificValue: product.calorificValue,
+      calorieDetails: product.calorieDetails,
+      images: product.images || [],
+      availability: product.availability || {},
+      allergens: product.allergens || { contains: [], mayContain: [] },
+      priceChanges: product.priceChanges || [],
+      selectedItems: product.selectedItems?.map(item => item._id) || [],
+      itemSettings: product.itemSettings || {
+        showSelectedOnly: false,
+        showSelectedCategories: false,
+        limitSingleChoice: false,
+        addAttributeCharges: false,
+        useProductPrices: false,
+        showChoiceAsDropdown: false
+      },
+      category: product.category,
+      branch: product.branchId
+    }));
 
     res.status(200).json({
       success: true,
-      count: products.length,
-      data: products
+      count: transformedProducts.length,
+      data: transformedProducts
     });
   } catch (error) {
     next(error);

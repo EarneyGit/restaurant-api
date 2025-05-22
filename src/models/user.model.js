@@ -50,7 +50,15 @@ const userSchema = new mongoose.Schema(
     },
     lastLogin: Date,
     resetPasswordToken: String,
-    resetPasswordExpire: Date
+    resetPasswordExpire: Date,
+    emailVerified: {
+      type: Boolean,
+      default: false
+    },
+    emailVerificationOtp: String,
+    emailVerificationOtpExpire: Date,
+    passwordResetOtp: String,
+    passwordResetOtpExpire: Date
   },
   {
     timestamps: true,
