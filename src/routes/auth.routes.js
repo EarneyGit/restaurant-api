@@ -1,21 +1,22 @@
 const express = require('express');
 const { 
-  registerInit, 
-  registerComplete, 
+  sendOtp,
+  verifyOtp, 
+  register, 
+  forgotPasswordOtp,
+  resetPassword,
   login, 
   getMe, 
-  logout,
-  forgotPassword,
-  verifyResetOTP,
-  resetPassword
+  logout
 } = require('../controllers/auth.controller');
 const { protect } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
 // Registration Routes
-router.post('/register-init', registerInit);
-router.post('/register-complete', registerComplete);
+router.post('/send-otp', sendOtp);
+router.post('/verify-otp', verifyOtp);
+router.post('/register', register);
 
 // Authentication Routes
 router.post('/login', login);
@@ -23,8 +24,7 @@ router.get('/me', protect, getMe);
 router.get('/logout', protect, logout);
 
 // Password Reset Routes
-router.post('/forgot-password', forgotPassword);
-router.post('/verify-reset-otp', verifyResetOTP);
-router.post('/reset-password/:resetToken', resetPassword);
+router.post('/forgot-password-otp', forgotPasswordOtp);
+router.post('/reset-password', resetPassword);
 
 module.exports = router; 

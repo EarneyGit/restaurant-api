@@ -87,14 +87,16 @@ const sendVerificationOTP = async (email, otp, name) => {
  * Send password reset OTP email
  * @param {string} email - User's email
  * @param {string} otp - OTP code
+ * @param {string} name - User's name (optional)
  * @returns {Promise<boolean>} Success status
  */
-const sendPasswordResetOTP = async (email, otp) => {
+const sendPasswordResetOTP = async (email, otp, name = 'User') => {
   const subject = 'Password Reset - Restaurant API';
-  const text = `You requested a password reset.\n\nYour password reset OTP is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you did not request a password reset, please ignore this email.\n\nRegards,\nRestaurant API Team`;
+  const text = `Dear ${name},\n\nYou requested a password reset.\n\nYour password reset OTP is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you did not request a password reset, please ignore this email.\n\nRegards,\nRestaurant API Team`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2>Password Reset</h2>
+      <p>Dear ${name},</p>
       <p>You requested a password reset.</p>
       <p>Your password reset OTP is:</p>
       <div style="background-color: #f4f4f4; padding: 12px; font-size: 24px; text-align: center; letter-spacing: 5px; font-weight: bold;">
