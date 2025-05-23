@@ -2,32 +2,197 @@ const Order = require('../models/order.model');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const Reservation = require('../models/reservation.model');
+const Category = require('../models/category.model');
+const Branch = require('../models/branch.model');
 
-// @desc    Get sales reports
-// @route   GET /api/reports/sales
+// Helper function to get date range
+const getDateRange = (period, customStart, customEnd) => {
+  const today = new Date();
+  let startDate, endDate;
+
+  switch (period) {
+    case 'today':
+      startDate = new Date(today.setHours(0, 0, 0, 0));
+      endDate = new Date(today.setHours(23, 59, 59, 999));
+      break;
+    case 'yesterday':
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      startDate = new Date(yesterday.setHours(0, 0, 0, 0));
+      endDate = new Date(yesterday.setHours(23, 59, 59, 999));
+      break;
+    case 'week':
+      startDate = new Date(today.setDate(today.getDate() - 7));
+      endDate = new Date();
+      break;
+    case 'month':
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+      break;
+    case 'year':
+      startDate = new Date(today.getFullYear(), 0, 1);
+      endDate = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
+      break;
+    case 'custom':
+      startDate = customStart ? new Date(customStart) : new Date(today.setDate(today.getDate() - 30));
+      endDate = customEnd ? new Date(customEnd) : new Date();
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    default:
+      startDate = new Date(today.setDate(today.getDate() - 30));
+      endDate = new Date();
+  }
+
+  return { startDate, endDate };
+};
+
+// @desc    Get end of night report
+// @route   GET /api/reports/end-of-night
 // @access  Private/Admin/Manager
-exports.getSalesReport = async (req, res, next) => {
+exports.getEndOfNightReport = async (req, res, next) => {
   try {
-    // Parse date range from query
-    const startDate = req.query.startDate ? new Date(req.query.startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
-    const endDate = req.query.endDate ? new Date(req.query.endDate) : new Date();
+    const { date, branchId } = req.query;
+    const reportDate = date ? new Date(date) : new Date();
     
-    // Set end date to end of day
-    endDate.setHours(23, 59, 59, 999);
+    // Set date range for the specific day
+    const startDate = new Date(reportDate.setHours(0, 0, 0, 0));
+    const endDate = new Date(reportDate.setHours(23, 59, 59, 999));
     
-    // Filter by branch if provided
-    const branchFilter = req.query.branch ? { branch: req.query.branch } : {};
+    // Build filter
+    const filter = {
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $in: ['completed', 'delivered'] }
+    };
     
-    // Aggregate sales data
-    const salesData = await Order.aggregate([
+    if (branchId) {
+      filter.branchId = branchId;
+    }
+
+    // Get sales summary
+    const salesSummary = await Order.aggregate([
+      { $match: filter },
       {
-        $match: {
-          createdAt: { $gte: startDate, $lte: endDate },
-          status: 'completed',
-          paymentStatus: 'paid',
-          ...branchFilter
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalSales: { $sum: '$total' },
+          totalTips: { $sum: '$tips' },
+          totalDeliveryFees: { $sum: '$deliveryFee' },
+          averageOrderValue: { $avg: '$total' },
+          cashOrders: { $sum: { $cond: [{ $eq: ['$paymentMethod', 'cash'] }, 1, 0] } },
+          cardOrders: { $sum: { $cond: [{ $eq: ['$paymentMethod', 'card'] }, 1, 0] } },
+          deliveryOrders: { $sum: { $cond: [{ $eq: ['$orderType', 'delivery'] }, 1, 0] } },
+          pickupOrders: { $sum: { $cond: [{ $eq: ['$orderType', 'pickup'] }, 1, 0] } },
+          dineInOrders: { $sum: { $cond: [{ $eq: ['$orderType', 'dine-in'] }, 1, 0] } }
+        }
+      }
+    ]);
+
+    // Get top selling items for the day
+    const topItems = await Order.aggregate([
+      { $match: filter },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          name: { $first: '$items.name' },
+          quantity: { $sum: '$items.quantity' },
+          revenue: { $sum: { $multiply: ['$items.priceAtTime', '$items.quantity'] } }
         }
       },
+      { $sort: { quantity: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Get hourly sales breakdown
+    const hourlySales = await Order.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: { $hour: '$createdAt' },
+          orders: { $sum: 1 },
+          sales: { $sum: '$total' }
+        }
+      },
+      { $sort: { '_id': 1 } }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        date: reportDate.toISOString().split('T')[0],
+        summary: salesSummary[0] || {
+          totalOrders: 0,
+          totalSales: 0,
+          totalTips: 0,
+          totalDeliveryFees: 0,
+          averageOrderValue: 0,
+          cashOrders: 0,
+          cardOrders: 0,
+          deliveryOrders: 0,
+          pickupOrders: 0,
+          dineInOrders: 0
+        },
+        topItems,
+        hourlySales
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get end of month report
+// @route   GET /api/reports/end-of-month
+// @access  Private/Admin/Manager
+exports.getEndOfMonthReport = async (req, res, next) => {
+  try {
+    const { month, year, branchId } = req.query;
+    const reportYear = year ? parseInt(year) : new Date().getFullYear();
+    const reportMonth = month ? parseInt(month) - 1 : new Date().getMonth(); // Month is 0-indexed
+    
+    const startDate = new Date(reportYear, reportMonth, 1);
+    const endDate = new Date(reportYear, reportMonth + 1, 0, 23, 59, 59, 999);
+    
+    // Build filter
+    const filter = {
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $in: ['completed', 'delivered'] }
+    };
+    
+    if (branchId) {
+      filter.branchId = branchId;
+    }
+
+    // Monthly summary
+    const monthlySummary = await Order.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalSales: { $sum: '$total' },
+          totalTips: { $sum: '$tips' },
+          totalDeliveryFees: { $sum: '$deliveryFee' },
+          averageOrderValue: { $avg: '$total' },
+          uniqueCustomers: { $addToSet: '$customerId' }
+        }
+      },
+      {
+        $project: {
+          totalOrders: 1,
+          totalSales: 1,
+          totalTips: 1,
+          totalDeliveryFees: 1,
+          averageOrderValue: 1,
+          uniqueCustomers: { $size: '$uniqueCustomers' }
+        }
+      }
+    ]);
+
+    // Daily breakdown
+    const dailyBreakdown = await Order.aggregate([
+      { $match: filter },
       {
         $group: {
           _id: {
@@ -35,183 +200,57 @@ exports.getSalesReport = async (req, res, next) => {
             month: { $month: '$createdAt' },
             day: { $dayOfMonth: '$createdAt' }
           },
-          totalSales: { $sum: '$totalAmount' },
-          orderCount: { $sum: 1 },
-          averageOrderValue: { $avg: '$totalAmount' }
+          orders: { $sum: 1 },
+          sales: { $sum: '$total' },
+          averageOrderValue: { $avg: '$total' }
         }
       },
-      {
-        $sort: {
-          '_id.year': 1,
-          '_id.month': 1,
-          '_id.day': 1
-        }
-      }
+      { $sort: { '_id.day': 1 } }
     ]);
-    
-    // Calculate totals
-    const totalSales = salesData.reduce((sum, day) => sum + day.totalSales, 0);
-    const totalOrders = salesData.reduce((sum, day) => sum + day.orderCount, 0);
-    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-    
-    res.status(200).json({
-      success: true,
-      data: {
-        salesByDay: salesData,
-        summary: {
-          totalSales,
-          totalOrders,
-          averageOrderValue,
-          period: {
-            startDate,
-            endDate
-          }
-        }
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
-// @desc    Get top selling products
-// @route   GET /api/reports/products/top
-// @access  Private/Admin/Manager
-exports.getTopProducts = async (req, res, next) => {
-  try {
-    // Parse date range from query
-    const startDate = req.query.startDate ? new Date(req.query.startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
-    const endDate = req.query.endDate ? new Date(req.query.endDate) : new Date();
-    
-    // Set end date to end of day
-    endDate.setHours(23, 59, 59, 999);
-    
-    // Limit number of products to return
-    const limit = parseInt(req.query.limit, 10) || 10;
-    
-    // Aggregate top selling products
-    const topProducts = await Order.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startDate, $lte: endDate },
-          status: 'completed'
-        }
-      },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.product',
-          productName: { $first: '$items.name' },
-          totalQuantity: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
-        }
-      },
-      {
-        $sort: { totalQuantity: -1 }
-      },
-      {
-        $limit: limit
-      },
-      {
-        $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'productDetails'
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          productName: 1,
-          totalQuantity: 1,
-          totalRevenue: 1,
-          product: { $arrayElemAt: ['$productDetails', 0] }
-        }
-      }
-    ]);
-    
-    res.status(200).json({
-      success: true,
-      count: topProducts.length,
-      data: topProducts
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get customer statistics
-// @route   GET /api/reports/customers
-// @access  Private/Admin
-exports.getCustomerStats = async (req, res, next) => {
-  try {
-    // Get total customers
-    const totalCustomers = await User.countDocuments({ role: 'user' });
-    
-    // Get new customers this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    
-    const newCustomers = await User.countDocuments({
-      role: 'user',
-      createdAt: { $gte: startOfMonth }
-    });
-    
-    // Get top customers by order value
+    // Top customers
     const topCustomers = await Order.aggregate([
-      {
-        $match: {
-          status: 'completed',
-          paymentStatus: 'paid'
-        }
-      },
+      { $match: filter },
       {
         $group: {
-          _id: '$user',
-          totalSpent: { $sum: '$totalAmount' },
-          orderCount: { $sum: 1 }
+          _id: '$customerId',
+          totalOrders: { $sum: 1 },
+          totalSpent: { $sum: '$total' }
         }
-      },
-      {
-        $sort: { totalSpent: -1 }
-      },
-      {
-        $limit: 10
       },
       {
         $lookup: {
           from: 'users',
           localField: '_id',
           foreignField: '_id',
-          as: 'userDetails'
+          as: 'customer'
         }
       },
       {
         $project: {
-          _id: 1,
+          totalOrders: 1,
           totalSpent: 1,
-          orderCount: 1,
-          user: { $arrayElemAt: ['$userDetails', 0] }
+          customerName: { $arrayElemAt: ['$customer.name', 0] },
+          customerEmail: { $arrayElemAt: ['$customer.email', 0] }
         }
       },
-      {
-        $project: {
-          _id: 1,
-          totalSpent: 1,
-          orderCount: 1,
-          'user.name': 1,
-          'user.email': 1
-        }
-      }
+      { $sort: { totalSpent: -1 } },
+      { $limit: 10 }
     ]);
-    
+
     res.status(200).json({
       success: true,
       data: {
-        totalCustomers,
-        newCustomers,
+        period: `${reportYear}-${String(reportMonth + 1).padStart(2, '0')}`,
+        summary: monthlySummary[0] || {
+          totalOrders: 0,
+          totalSales: 0,
+          totalTips: 0,
+          totalDeliveryFees: 0,
+          averageOrderValue: 0,
+          uniqueCustomers: 0
+        },
+        dailyBreakdown,
         topCustomers
       }
     });
@@ -220,74 +259,565 @@ exports.getCustomerStats = async (req, res, next) => {
   }
 };
 
-// @desc    Get reservation statistics
-// @route   GET /api/reports/reservations
+// @desc    Get sales history
+// @route   GET /api/reports/sales-history
 // @access  Private/Admin/Manager
-exports.getReservationStats = async (req, res, next) => {
+exports.getSalesHistory = async (req, res, next) => {
   try {
-    // Parse date range from query
-    const startDate = req.query.startDate ? new Date(req.query.startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
-    const endDate = req.query.endDate ? new Date(req.query.endDate) : new Date();
+    const { startDate: start, endDate: end, branchId, page = 1, limit = 50 } = req.query;
     
-    // Set end date to end of day
-    endDate.setHours(23, 59, 59, 999);
+    // Date range
+    const { startDate, endDate } = getDateRange('custom', start, end);
     
-    // Filter by branch if provided
-    const branchFilter = req.query.branch ? { branch: req.query.branch } : {};
+    // Build filter
+    const filter = {
+      createdAt: { $gte: startDate, $lte: endDate }
+    };
     
-    // Get reservation count by status
-    const reservationsByStatus = await Reservation.aggregate([
-      {
-        $match: {
-          reservationDate: { $gte: startDate, $lte: endDate },
-          ...branchFilter
-        }
-      },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
+    if (branchId) {
+      filter.branchId = branchId;
+    }
+
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get orders with customer details
+    const orders = await Order.find(filter)
+      .populate('customerId', 'name email phone')
+      .populate('branchId', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Transform data to match frontend interface
+    const salesData = orders.map(order => ({
+      id: order._id.toString(),
+      customer: order.customerId?.name || 'Guest',
+      value: order.total || 0,
+      discount: order.discount || 0,
+      tip: order.tips || 0,
+      postcode: order.deliveryAddress?.zipCode || 'N/A',
+      pay: order.paymentMethod === 'card' ? 'Card' : 'Cash',
+      type: order.orderType === 'delivery' ? 'Delivery' : 'Collection',
+      created: order.createdAt.toISOString().split('T')[0],
+      platform: 'Web'
+    }));
+
+    // Get total count for pagination
+    const totalCount = await Order.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: salesData,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalItems: totalCount,
+        itemsPerPage: parseInt(limit)
       }
-    ]);
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get sales of item history
+// @route   GET /api/reports/item-sales-history
+// @access  Private/Admin/Manager
+exports.getItemSalesHistory = async (req, res, next) => {
+  try {
+    const { startDate: start, endDate: end, productId, categoryId, page = 1, limit = 50 } = req.query;
     
-    // Get reservation count by day
-    const reservationsByDay = await Reservation.aggregate([
-      {
-        $match: {
-          reservationDate: { $gte: startDate, $lte: endDate },
-          ...branchFilter
+    // Date range
+    const { startDate, endDate } = getDateRange('custom', start, end);
+    
+    // Build filter
+    const filter = {
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $in: ['completed', 'delivered'] }
+    };
+
+    // Aggregation pipeline
+    const pipeline = [
+      { $match: filter },
+      { $unwind: '$items' }
+    ];
+
+    // Add product filter if specified
+    if (productId) {
+      pipeline.push({ $match: { 'items.productId': productId } });
+    }
+
+    // Add category filter if specified
+    if (categoryId) {
+      pipeline.push({
+        $lookup: {
+          from: 'products',
+          localField: 'items.productId',
+          foreignField: '_id',
+          as: 'product'
         }
-      },
+      });
+      pipeline.push({ $match: { 'product.category': categoryId } });
+    }
+
+    // Group and sort
+    pipeline.push(
       {
         $group: {
           _id: {
-            year: { $year: '$reservationDate' },
-            month: { $month: '$reservationDate' },
-            day: { $dayOfMonth: '$reservationDate' }
+            productId: '$items.productId',
+            name: '$items.name',
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$createdAt'
+              }
+            }
           },
-          count: { $sum: 1 }
+          quantity: { $sum: '$items.quantity' },
+          revenue: { $sum: { $multiply: ['$items.priceAtTime', '$items.quantity'] } }
+        }
+      },
+      { $sort: { '_id.date': -1, 'quantity': -1 } }
+    );
+
+    // Add pagination
+    pipeline.push(
+      { $skip: (parseInt(page) - 1) * parseInt(limit) },
+      { $limit: parseInt(limit) }
+    );
+
+    const itemSales = await Order.aggregate(pipeline);
+
+    // Transform data to match frontend interface
+    const itemSalesData = itemSales.map(item => ({
+      id: item._id.productId.toString(),
+      name: item._id.name,
+      quantity: item.quantity,
+      created: item._id.date
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: itemSalesData,
+      pagination: {
+        currentPage: parseInt(page),
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get discount history
+// @route   GET /api/reports/discount-history
+// @access  Private/Admin/Manager
+exports.getDiscountHistory = async (req, res, next) => {
+  try {
+    const { startDate: start, endDate: end, discountType, page = 1, limit = 50 } = req.query;
+    
+    // Date range
+    const { startDate, endDate } = getDateRange('custom', start, end);
+    
+    // Build filter
+    const filter = {
+      createdAt: { $gte: startDate, $lte: endDate },
+      discount: { $gt: 0 }
+    };
+
+    // Add discount type filter if specified
+    if (discountType && discountType !== 'all') {
+      filter.discountType = discountType;
+    }
+
+    // Get orders with discounts
+    const orders = await Order.find(filter)
+      .populate('customerId', 'name email')
+      .sort({ createdAt: -1 })
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit))
+      .lean();
+
+    // Transform data to match frontend interface
+    const discountData = orders.map(order => ({
+      id: order._id.toString(),
+      customer: order.customerId?.name || 'Guest',
+      discount: order.discountType || 'General',
+      value: order.discount || 0,
+      date: order.createdAt.toISOString()
+    }));
+
+    // Get total count
+    const totalCount = await Order.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: discountData,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalItems: totalCount,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get outlet/branch reports
+// @route   GET /api/reports/outlet-reports
+// @access  Private/Admin/Manager
+exports.getOutletReports = async (req, res, next) => {
+  try {
+    const { branchId, period = 'month' } = req.query;
+    
+    if (!branchId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
+
+    // Date range
+    const { startDate, endDate } = getDateRange(period);
+    
+    // Get branch details
+    const branch = await Branch.findById(branchId);
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
+      });
+    }
+
+    // Build filter
+    const filter = {
+      branchId,
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $in: ['completed', 'delivered'] }
+    };
+
+    // Outlet summary
+    const outletSummary = await Order.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalSales: { $sum: '$total' },
+          averageOrderValue: { $avg: '$total' },
+          totalCustomers: { $addToSet: '$customerId' }
         }
       },
       {
-        $sort: {
-          '_id.year': 1,
-          '_id.month': 1,
-          '_id.day': 1
+        $project: {
+          totalOrders: 1,
+          totalSales: 1,
+          averageOrderValue: 1,
+          totalCustomers: { $size: '$totalCustomers' }
         }
       }
     ]);
-    
-    // Calculate totals
-    const totalReservations = reservationsByStatus.reduce((sum, status) => sum + status.count, 0);
-    
+
+    // Order type breakdown
+    const orderTypeBreakdown = await Order.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: '$orderType',
+          count: { $sum: 1 },
+          revenue: { $sum: '$total' }
+        }
+      }
+    ]);
+
+    // Top selling products for this outlet
+    const topProducts = await Order.aggregate([
+      { $match: filter },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          name: { $first: '$items.name' },
+          quantity: { $sum: '$items.quantity' },
+          revenue: { $sum: { $multiply: ['$items.priceAtTime', '$items.quantity'] } }
+        }
+      },
+      { $sort: { quantity: -1 } },
+      { $limit: 10 }
+    ]);
+
     res.status(200).json({
       success: true,
       data: {
-        totalReservations,
-        byStatus: reservationsByStatus,
-        byDay: reservationsByDay
+        branch: {
+          id: branch._id,
+          name: branch.name,
+          address: branch.address
+        },
+        period: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
+        },
+        summary: outletSummary[0] || {
+          totalOrders: 0,
+          totalSales: 0,
+          averageOrderValue: 0,
+          totalCustomers: 0
+        },
+        orderTypeBreakdown,
+        topProducts
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get custom reports
+// @route   GET /api/reports/custom
+// @access  Private/Admin/Manager
+exports.getCustomReports = async (req, res, next) => {
+  try {
+    const { type, startDate: start, endDate: end, branchId } = req.query;
+    
+    // Date range
+    const { startDate, endDate } = getDateRange('custom', start, end);
+    
+    // Build base filter
+    const filter = {
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $in: ['completed', 'delivered'] }
+    };
+    
+    if (branchId) {
+      filter.branchId = branchId;
+    }
+
+    let reportData = {};
+
+    switch (type) {
+      case 'menu-category-totals':
+        reportData = await Order.aggregate([
+          { $match: filter },
+          { $unwind: '$items' },
+          {
+            $lookup: {
+              from: 'products',
+              localField: 'items.productId',
+              foreignField: '_id',
+              as: 'product'
+            }
+          },
+          {
+            $lookup: {
+              from: 'categories',
+              localField: 'product.category',
+              foreignField: '_id',
+              as: 'category'
+            }
+          },
+          {
+            $group: {
+              _id: {
+                categoryId: { $arrayElemAt: ['$category._id', 0] },
+                categoryName: { $arrayElemAt: ['$category.name', 0] }
+              },
+              totalQuantity: { $sum: '$items.quantity' },
+              totalRevenue: { $sum: { $multiply: ['$items.priceAtTime', '$items.quantity'] } }
+            }
+          },
+          { $sort: { totalRevenue: -1 } }
+        ]);
+        break;
+
+      case 'daily-totals':
+        reportData = await Order.aggregate([
+          { $match: filter },
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+                day: { $dayOfMonth: '$createdAt' }
+              },
+              totalOrders: { $sum: 1 },
+              totalSales: { $sum: '$total' },
+              averageOrderValue: { $avg: '$total' }
+            }
+          },
+          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+        ]);
+        break;
+
+      case 'order-export':
+        const exportData = await Order.find(filter)
+          .populate('customerId', 'name email phone')
+          .populate('branchId', 'name')
+          .sort({ createdAt: -1 })
+          .lean();
+
+        reportData = exportData.map(order => ({
+          orderId: order._id.toString(),
+          customerName: order.customerId?.name || 'Guest',
+          customerEmail: order.customerId?.email || 'N/A',
+          orderType: order.orderType,
+          status: order.status,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          subtotal: order.subtotal,
+          tax: order.tax,
+          deliveryFee: order.deliveryFee,
+          discount: order.discount,
+          tips: order.tips,
+          total: order.total,
+          branchName: order.branchId?.name || 'N/A',
+          createdAt: order.createdAt,
+          items: order.items
+        }));
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid report type. Choose from: menu-category-totals, daily-totals, order-export'
+        });
+    }
+
+    res.status(200).json({
+      success: true,
+      type,
+      period: {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      },
+      data: reportData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get dashboard summary metrics
+// @route   GET /api/reports/dashboard-summary
+// @access  Private/Admin/Manager
+exports.getDashboardSummary = async (req, res, next) => {
+  try {
+    const { period = 'today', branchId } = req.query;
+    
+    // Date range
+    const { startDate, endDate } = getDateRange(period);
+    
+    // Build filter
+    const filter = {
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $in: ['completed', 'delivered'] }
+    };
+    
+    if (branchId) {
+      filter.branchId = branchId;
+    }
+
+    // Current period metrics
+    const currentMetrics = await Order.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalSales: { $sum: '$total' },
+          averageOrderValue: { $avg: '$total' },
+          totalCustomers: { $addToSet: '$customerId' }
+        }
+      },
+      {
+        $project: {
+          totalOrders: 1,
+          totalSales: 1,
+          averageOrderValue: 1,
+          totalCustomers: { $size: '$totalCustomers' }
+        }
+      }
+    ]);
+
+    // Previous period for comparison
+    const previousStartDate = new Date(startDate);
+    const previousEndDate = new Date(endDate);
+    const periodDiff = endDate - startDate;
+    previousStartDate.setTime(previousStartDate.getTime() - periodDiff);
+    previousEndDate.setTime(previousEndDate.getTime() - periodDiff);
+
+    const previousFilter = {
+      ...filter,
+      createdAt: { $gte: previousStartDate, $lte: previousEndDate }
+    };
+
+    const previousMetrics = await Order.aggregate([
+      { $match: previousFilter },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalSales: { $sum: '$total' },
+          averageOrderValue: { $avg: '$total' },
+          totalCustomers: { $addToSet: '$customerId' }
+        }
+      },
+      {
+        $project: {
+          totalOrders: 1,
+          totalSales: 1,
+          averageOrderValue: 1,
+          totalCustomers: { $size: '$totalCustomers' }
+        }
+      }
+    ]);
+
+    const current = currentMetrics[0] || { totalOrders: 0, totalSales: 0, averageOrderValue: 0, totalCustomers: 0 };
+    const previous = previousMetrics[0] || { totalOrders: 0, totalSales: 0, averageOrderValue: 0, totalCustomers: 0 };
+
+    // Calculate percentage changes
+    const calculatePercentageChange = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    const summary = [
+      {
+        label: 'Total Sales',
+        value: current.totalSales.toFixed(2),
+        previousValue: previous.totalSales.toFixed(2),
+        percentageChange: calculatePercentageChange(current.totalSales, previous.totalSales),
+        prefix: '£'
+      },
+      {
+        label: 'Total Orders',
+        value: current.totalOrders,
+        previousValue: previous.totalOrders,
+        percentageChange: calculatePercentageChange(current.totalOrders, previous.totalOrders)
+      },
+      {
+        label: 'Average Order Value',
+        value: current.averageOrderValue.toFixed(2),
+        previousValue: previous.averageOrderValue.toFixed(2),
+        percentageChange: calculatePercentageChange(current.averageOrderValue, previous.averageOrderValue),
+        prefix: '£'
+      },
+      {
+        label: 'Customers',
+        value: current.totalCustomers,
+        previousValue: previous.totalCustomers,
+        percentageChange: calculatePercentageChange(current.totalCustomers, previous.totalCustomers)
+      }
+    ];
+
+    res.status(200).json({
+      success: true,
+      data: summary
     });
   } catch (error) {
     next(error);

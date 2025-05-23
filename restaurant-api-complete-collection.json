@@ -1117,88 +1117,325 @@
       "name": "7. Report Management",
       "item": [
         {
-          "name": "Get Sales Report",
+          "name": "Get Dashboard Summary",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/reports/sales?startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}",
+              "raw": "{{baseUrl}}/api/reports/dashboard-summary?period=today&branchId={{branchId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "sales"],
+              "path": ["api", "reports", "dashboard-summary"],
               "query": [
                 {
-                  "key": "startDate",
-                  "value": "2024-01-01"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31"
+                  "key": "period",
+                  "value": "today",
+                  "description": "today, yesterday, week, month, year"
                 },
                 {
                   "key": "branchId",
-                  "value": "{{branchId}}"
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
                 }
               ]
             }
           }
         },
         {
-          "name": "Get Top Products",
+          "name": "Get End of Night Report",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/reports/products/top?limit=10&period=month",
+              "raw": "{{baseUrl}}/api/reports/end-of-night?date=2024-01-15&branchId={{branchId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "products", "top"],
+              "path": ["api", "reports", "end-of-night"],
               "query": [
                 {
-                  "key": "limit",
-                  "value": "10"
+                  "key": "date",
+                  "value": "2024-01-15",
+                  "description": "Date in YYYY-MM-DD format"
                 },
                 {
-                  "key": "period",
-                  "value": "month"
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
                 }
               ]
             }
           }
         },
         {
-          "name": "Get Customer Stats",
+          "name": "Get End of Month Report",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/reports/customers?period=month",
+              "raw": "{{baseUrl}}/api/reports/end-of-month?month=1&year=2024&branchId={{branchId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "customers"],
+              "path": ["api", "reports", "end-of-month"],
               "query": [
                 {
-                  "key": "period",
-                  "value": "month"
+                  "key": "month",
+                  "value": "1",
+                  "description": "Month number (1-12)"
+                },
+                {
+                  "key": "year",
+                  "value": "2024",
+                  "description": "Year"
+                },
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
                 }
               ]
             }
           }
         },
         {
-          "name": "Get Reservation Stats",
+          "name": "Get Sales History",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/reports/reservations?startDate=2024-01-01&endDate=2024-01-31",
+              "raw": "{{baseUrl}}/api/reports/sales-history?startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}&page=1&limit=50",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "reservations"],
+              "path": ["api", "reports", "sales-history"],
               "query": [
                 {
                   "key": "startDate",
-                  "value": "2024-01-01"
+                  "value": "2024-01-01",
+                  "description": "Start date (optional)"
                 },
                 {
                   "key": "endDate",
-                  "value": "2024-01-31"
+                  "value": "2024-01-31",
+                  "description": "End date (optional)"
+                },
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Items per page"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Item Sales History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/item-sales-history?startDate=2024-01-01&endDate=2024-01-31&productId={{productId}}&categoryId={{categoryId}}&page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "item-sales-history"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "description": "End date (optional)"
+                },
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Specific product filter (optional)"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "{{categoryId}}",
+                  "description": "Category filter (optional)"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Items per page"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Discount History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/discount-history?startDate=2024-01-01&endDate=2024-01-31&discountType=all&page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "discount-history"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "description": "End date (optional)"
+                },
+                {
+                  "key": "discountType",
+                  "value": "all",
+                  "description": "all, first-order, loyalty, limited-time, free-wrap"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Items per page"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Outlet Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/outlet-reports?branchId={{branchId}}&period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "outlet-reports"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Required branch ID"
+                },
+                {
+                  "key": "period",
+                  "value": "month",
+                  "description": "today, yesterday, week, month, year"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Custom Report - Menu Category Totals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/custom?type=menu-category-totals&startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "custom"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "menu-category-totals",
+                  "description": "Report type"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "description": "End date"
+                },
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Custom Report - Daily Totals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/custom?type=daily-totals&startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "custom"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "daily-totals",
+                  "description": "Report type"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "description": "End date"
+                },
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Custom Report - Order Export",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/custom?type=order-export&startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "custom"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "order-export",
+                  "description": "Report type for complete order data export"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "description": "End date"
+                },
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
                 }
               ]
             }
