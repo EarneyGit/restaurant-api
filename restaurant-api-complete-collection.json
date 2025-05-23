@@ -419,7 +419,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Downtown Branch\",\n  \"address\": {\n    \"street\": \"456 Restaurant Ave\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10002\",\n    \"country\": \"USA\"\n  },\n  \"phone\": \"+1234567891\",\n  \"email\": \"downtown@restaurant.com\",\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [-73.9857, 40.7484]\n  },\n  \"operatingHours\": {\n    \"monday\": { \"open\": \"09:00\", \"close\": \"22:00\", \"closed\": false },\n    \"tuesday\": { \"open\": \"09:00\", \"close\": \"22:00\", \"closed\": false },\n    \"wednesday\": { \"open\": \"09:00\", \"close\": \"22:00\", \"closed\": false },\n    \"thursday\": { \"open\": \"09:00\", \"close\": \"22:00\", \"closed\": false },\n    \"friday\": { \"open\": \"09:00\", \"close\": \"23:00\", \"closed\": false },\n    \"saturday\": { \"open\": \"10:00\", \"close\": \"23:00\", \"closed\": false },\n    \"sunday\": { \"open\": \"10:00\", \"close\": \"21:00\", \"closed\": false }\n  },\n  \"deliveryRadius\": 5,\n  \"isActive\": true,\n  \"features\": [\"delivery\", \"pickup\", \"dine-in\"],\n  \"manager\": \"John Manager\",\n  \"capacity\": 50\n}"
+              "raw": "{\n  \"name\": \"Downtown Branch\",\n  \"code\": \"DTB001\",\n  \"aboutUs\": \"Our flagship downtown location with modern amenities and excellent service.\",\n  \"address\": {\n    \"street\": \"456 Restaurant Ave\",\n    \"addressLine2\": \"Suite 101\",\n    \"city\": \"New York\",\n    \"county\": \"Manhattan\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10002\",\n    \"country\": \"United Kingdom\"\n  },\n  \"contact\": {\n    \"phone\": \"+1234567891\",\n    \"email\": \"downtown@restaurant.com\",\n    \"telephone\": \"+1234567892\"\n  },\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [-73.9857, 40.7484]\n  },\n  \"openingHours\": [\n    { \"day\": \"monday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"tuesday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"wednesday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"thursday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"friday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"23:00\" },\n    { \"day\": \"saturday\", \"isOpen\": true, \"openTime\": \"10:00\", \"closeTime\": \"23:00\" },\n    { \"day\": \"sunday\", \"isOpen\": true, \"openTime\": \"10:00\", \"closeTime\": \"21:00\" }\n  ],\n  \"openingTimes\": {\n    \"Monday\": [\"11:45-14:30\", \"16:30-22:00\"],\n    \"Tuesday\": [\"16:30-22:00\"],\n    \"Wednesday\": [\"16:30-22:00\"],\n    \"Thursday\": [\"11:45-14:30\", \"16:30-22:00\"],\n    \"Friday\": [\"11:45-14:30\", \"16:30-23:00\"],\n    \"Saturday\": [\"11:45-14:30\", \"16:30-23:00\"],\n    \"Sunday\": [\"11:45-14:30\", \"16:30-22:00\"]\n  },\n  \"orderingOptions\": {\n    \"collection\": {\n      \"displayFormat\": \"TimeOnly\",\n      \"timeslotLength\": 15\n    },\n    \"delivery\": {\n      \"displayFormat\": \"TimeOnly\",\n      \"timeslotLength\": 15\n    }\n  },\n  \"preOrdering\": {\n    \"allowCollectionPreOrders\": false,\n    \"allowDeliveryPreOrders\": false\n  },\n  \"isActive\": true,\n  \"capacity\": 50,\n  \"description\": \"Modern restaurant with outdoor seating\",\n  \"manager\": null,\n  \"isCollectionEnabled\": true,\n  \"isDeliveryEnabled\": true,\n  \"isTableOrderingEnabled\": true,\n  \"facilities\": [\"wifi\", \"parking\", \"delivery\", \"takeaway\", \"outdoor\"],\n  \"maxCapacity\": 60\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/branches",
@@ -440,7 +440,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Downtown Branch - Updated\",\n  \"phone\": \"+1234567892\",\n  \"capacity\": 60,\n  \"isActive\": true\n}"
+              "raw": "{\n  \"name\": \"Downtown Branch - Updated\",\n  \"contact\": {\n    \"phone\": \"+1234567892\"\n  },\n  \"capacity\": 60,\n  \"isActive\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/branches/{{branchId}}",
@@ -473,7 +473,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"deliveryRadius\": 7,\n  \"isActive\": true,\n  \"features\": [\"delivery\", \"pickup\", \"dine-in\", \"catering\"]\n}"
+              "raw": "{\n  \"isCollectionEnabled\": true,\n  \"isDeliveryEnabled\": true,\n  \"isTableOrderingEnabled\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/branches/{{branchId}}/settings",
@@ -491,6 +491,123 @@
               "raw": "{{baseUrl}}/api/branches/{{branchId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "branches", "{{branchId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Outlet Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "{{branchId}}", "outlet-settings"]
+            }
+          }
+        },
+        {
+          "name": "Update Outlet Details",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin user\",\n  \"aboutUs\": \"<p>Admin user</p><p><strong>Address</strong></p><p>26 Bruce Street</p><p>Admin user</p><p>KY12 7AG</p><p>United Kingdom</p><p><strong>Telephone</strong></p><p>01383223409</p><p><strong>Opening Times</strong></p><p><strong>Monday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p><p><strong>Tuesday</strong></p><p>16:30-22:00</p><p><strong>Wednesday</strong></p><p>16:30-22:00</p><p><strong>Thursday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p><p><strong>Friday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p><p><strong>Saturday</strong></p><p>11:45-14:30</p><p>16:30-23:00</p><p><strong>Sunday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p>\",\n  \"email\": \"kockraco@gmail.com\",\n  \"contactNumber\": \"+44383623409\",\n  \"telephone\": \"01383223409\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-details",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "{{branchId}}", "outlet-details"]
+            }
+          }
+        },
+        {
+          "name": "Update Outlet Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"street\": \"26 Bruce Street\",\n  \"addressLine2\": \"\",\n  \"city\": \"Admin user\",\n  \"county\": \"Fife\",\n  \"state\": \"Scotland\",\n  \"postcode\": \"KY12 7AG\",\n  \"country\": \"United Kingdom\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-location",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "{{branchId}}", "outlet-location"]
+            }
+          }
+        },
+        {
+          "name": "Update Outlet Ordering Options",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"collection\": {\n    \"displayFormat\": \"TimeOnly\",\n    \"timeslotLength\": 15\n  },\n  \"delivery\": {\n    \"displayFormat\": \"TimeOnly\",\n    \"timeslotLength\": 15\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-ordering-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "{{branchId}}", "outlet-ordering-options"]
+            }
+          }
+        },
+        {
+          "name": "Update Outlet Pre-Ordering",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"allowCollectionPreOrders\": false,\n  \"allowDeliveryPreOrders\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-pre-ordering",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "branches", "{{branchId}}", "outlet-pre-ordering"]
             }
           }
         }
@@ -1769,6 +1886,267 @@
           }
         }
       ]
+    },
+    {
+      "name": "11. Ordering Times Management",
+      "item": [
+        {
+          "name": "Get Ordering Times",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Weekly Schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weeklySchedule\": {\n    \"monday\": {\n      \"isCollectionAllowed\": true,\n      \"isDeliveryAllowed\": true,\n      \"isTableOrderingAllowed\": false,\n      \"defaultTimes\": {\n        \"start\": \"11:45\",\n        \"end\": \"21:50\"\n      },\n      \"collection\": {\n        \"leadTime\": 20,\n        \"displayedTime\": \"12:10\"\n      },\n      \"delivery\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 45,\n        \"displayedTime\": \"12:30\",\n        \"customTimes\": {\n          \"start\": \"11:45\",\n          \"end\": \"21:50\"\n        }\n      },\n      \"tableOrdering\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 0,\n        \"displayedTime\": \"\",\n        \"customTimes\": {\n          \"start\": \"11:45\",\n          \"end\": \"21:50\"\n        }\n      }\n    },\n    \"tuesday\": {\n      \"isCollectionAllowed\": false,\n      \"isDeliveryAllowed\": true,\n      \"isTableOrderingAllowed\": false,\n      \"defaultTimes\": {\n        \"start\": \"16:30\",\n        \"end\": \"22:00\"\n      },\n      \"collection\": {\n        \"leadTime\": 20,\n        \"displayedTime\": \"16:50\"\n      },\n      \"delivery\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 45,\n        \"displayedTime\": \"17:15\",\n        \"customTimes\": {\n          \"start\": \"16:30\",\n          \"end\": \"22:00\"\n        }\n      },\n      \"tableOrdering\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 0,\n        \"displayedTime\": \"\",\n        \"customTimes\": {\n          \"start\": \"16:30\",\n          \"end\": \"22:00\"\n        }\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/weekly-schedule",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "weekly-schedule"]
+            }
+          }
+        },
+        {
+          "name": "Update Day Schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isCollectionAllowed\": true,\n  \"isDeliveryAllowed\": true,\n  \"isTableOrderingAllowed\": false,\n  \"defaultTimes\": {\n    \"start\": \"11:45\",\n    \"end\": \"21:50\"\n  },\n  \"collection\": {\n    \"leadTime\": 25,\n    \"displayedTime\": \"12:15\"\n  },\n  \"delivery\": {\n    \"useDifferentTimes\": true,\n    \"leadTime\": 50,\n    \"displayedTime\": \"12:40\",\n    \"customTimes\": {\n      \"start\": \"12:00\",\n      \"end\": \"22:00\"\n    }\n  },\n  \"tableOrdering\": {\n    \"useDifferentTimes\": false,\n    \"leadTime\": 0,\n    \"displayedTime\": \"\",\n    \"customTimes\": {\n      \"start\": \"11:45\",\n      \"end\": \"21:50\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/day/wednesday",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "day", "wednesday"]
+            }
+          }
+        },
+        {
+          "name": "Get Closed Dates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
+            }
+          }
+        },
+        {
+          "name": "Add Single Closed Date",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-12-25\",\n  \"type\": \"single\",\n  \"reason\": \"Christmas Day\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
+            }
+          }
+        },
+        {
+          "name": "Add Date Range Closed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-12-24\",\n  \"endDate\": \"2024-12-26\",\n  \"type\": \"range\",\n  \"reason\": \"Christmas Holiday Period\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
+            }
+          }
+        },
+        {
+          "name": "Delete Closed Date",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates/closedDateId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates", "closedDateId"]
+            }
+          }
+        },
+        {
+          "name": "Delete All Closed Dates",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
+            }
+          }
+        },
+        {
+          "name": "Get Order Restrictions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/restrictions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "restrictions"]
+            }
+          }
+        },
+        {
+          "name": "Update Order Restrictions - Combined Total",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restrictions\": {\n    \"type\": \"Combined Total\",\n    \"combined\": {\n      \"sunday\": {\n        \"enabled\": true,\n        \"orderTotal\": 500,\n        \"windowSize\": 15\n      },\n      \"monday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1000,\n        \"windowSize\": 10\n      },\n      \"tuesday\": {\n        \"enabled\": false,\n        \"orderTotal\": 0,\n        \"windowSize\": 5\n      },\n      \"wednesday\": {\n        \"enabled\": true,\n        \"orderTotal\": 750,\n        \"windowSize\": 10\n      },\n      \"thursday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1000,\n        \"windowSize\": 10\n      },\n      \"friday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1500,\n        \"windowSize\": 5\n      },\n      \"saturday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1200,\n        \"windowSize\": 8\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/restrictions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "restrictions"]
+            }
+          }
+        },
+        {
+          "name": "Update Order Restrictions - Split Total",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restrictions\": {\n    \"type\": \"Split Total\",\n    \"collection\": {\n      \"sunday\": {\n        \"enabled\": true,\n        \"orderTotal\": 300,\n        \"windowSize\": 15\n      },\n      \"monday\": {\n        \"enabled\": true,\n        \"orderTotal\": 600,\n        \"windowSize\": 10\n      },\n      \"tuesday\": {\n        \"enabled\": false,\n        \"orderTotal\": 0,\n        \"windowSize\": 5\n      },\n      \"wednesday\": {\n        \"enabled\": true,\n        \"orderTotal\": 450,\n        \"windowSize\": 10\n      },\n      \"thursday\": {\n        \"enabled\": true,\n        \"orderTotal\": 600,\n        \"windowSize\": 10\n      },\n      \"friday\": {\n        \"enabled\": true,\n        \"orderTotal\": 900,\n        \"windowSize\": 5\n      },\n      \"saturday\": {\n        \"enabled\": true,\n        \"orderTotal\": 750,\n        \"windowSize\": 8\n      }\n    },\n    \"delivery\": {\n      \"sunday\": {\n        \"enabled\": true,\n        \"orderTotal\": 200,\n        \"windowSize\": 20\n      },\n      \"monday\": {\n        \"enabled\": true,\n        \"orderTotal\": 400,\n        \"windowSize\": 15\n      },\n      \"tuesday\": {\n        \"enabled\": false,\n        \"orderTotal\": 0,\n        \"windowSize\": 5\n      },\n      \"wednesday\": {\n        \"enabled\": true,\n        \"orderTotal\": 300,\n        \"windowSize\": 15\n      },\n      \"thursday\": {\n        \"enabled\": true,\n        \"orderTotal\": 400,\n        \"windowSize\": 15\n      },\n      \"friday\": {\n        \"enabled\": true,\n        \"orderTotal\": 600,\n        \"windowSize\": 10\n      },\n      \"saturday\": {\n        \"enabled\": true,\n        \"orderTotal\": 450,\n        \"windowSize\": 12\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/restrictions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "restrictions"]
+            }
+          }
+        },
+        {
+          "name": "Check Ordering Availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderType\": \"collection\",\n  \"date\": \"2024-01-15\",\n  \"time\": \"12:30\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/check-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ordering-times", "{{branchId}}", "check-availability"]
+            }
+          }
+        }
+      ]
     }
   ],
   "event": [
@@ -1804,4 +2182,4 @@
       }
     }
   ]
-} 
+}

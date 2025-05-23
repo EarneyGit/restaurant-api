@@ -342,4 +342,338 @@ const geocodeAddress = async (zipcode) => {
     latitude: 0,
     longitude: 0
   };
+};
+
+// @desc    Get outlet settings
+// @route   GET /api/branches/:id/outlet-settings
+// @access  Private/Admin/Manager
+exports.getOutletSettings = async (req, res, next) => {
+  try {
+    const branch = await Branch.findById(req.params.id).populate('manager', 'name email');
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: `Branch not found with id of ${req.params.id}`
+      });
+    }
+
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // For manager/staff, only allow access to their branch
+    if ((userRole === 'manager' || userRole === 'staff') && 
+        req.user.branchId && 
+        branch._id.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this branch settings'
+      });
+    }
+
+    // Transform data to match frontend format
+    const outletSettings = {
+      id: branch._id,
+      name: branch.name,
+      aboutUs: branch.aboutUs || '',
+      email: branch.contact.email,
+      contactNumber: branch.contact.phone,
+      telephone: branch.contact.telephone || '',
+      address: {
+        street: branch.address.street,
+        addressLine2: branch.address.addressLine2 || '',
+        city: branch.address.city,
+        county: branch.address.county || '',
+        state: branch.address.state,
+        postcode: branch.address.postalCode,
+        country: branch.address.country
+      },
+      openingTimes: branch.openingTimes || {},
+      orderingOptions: {
+        collection: {
+          displayFormat: branch.orderingOptions?.collection?.displayFormat || 'TimeOnly',
+          timeslotLength: branch.orderingOptions?.collection?.timeslotLength || 15
+        },
+        delivery: {
+          displayFormat: branch.orderingOptions?.delivery?.displayFormat || 'TimeOnly',
+          timeslotLength: branch.orderingOptions?.delivery?.timeslotLength || 15
+        }
+      },
+      preOrdering: {
+        allowCollectionPreOrders: branch.preOrdering?.allowCollectionPreOrders || false,
+        allowDeliveryPreOrders: branch.preOrdering?.allowDeliveryPreOrders || false
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: outletSettings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update outlet details
+// @route   PUT /api/branches/:id/outlet-details
+// @access  Private/Admin/Manager
+exports.updateOutletDetails = async (req, res, next) => {
+  try {
+    const { name, aboutUs, email, contactNumber, telephone } = req.body;
+
+    let branch = await Branch.findById(req.params.id);
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: `Branch not found with id of ${req.params.id}`
+      });
+    }
+
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Staff cannot update outlet details
+    if (userRole === 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Staff are not authorized to update outlet details'
+      });
+    }
+    
+    // For manager, allow updates only to their branch
+    if (userRole === 'manager') {
+      if (branch._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update other branch details'
+        });
+      }
+    }
+
+    // Prepare update object
+    const updateData = {};
+    
+    if (name !== undefined) updateData.name = name;
+    if (aboutUs !== undefined) updateData.aboutUs = aboutUs;
+    if (email !== undefined) updateData['contact.email'] = email;
+    if (contactNumber !== undefined) updateData['contact.phone'] = contactNumber;
+    if (telephone !== undefined) updateData['contact.telephone'] = telephone;
+
+    branch = await Branch.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Outlet details updated successfully',
+      data: branch
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update outlet location
+// @route   PUT /api/branches/:id/outlet-location
+// @access  Private/Admin/Manager
+exports.updateOutletLocation = async (req, res, next) => {
+  try {
+    const { street, addressLine2, city, county, state, postcode, country } = req.body;
+
+    let branch = await Branch.findById(req.params.id);
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: `Branch not found with id of ${req.params.id}`
+      });
+    }
+
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Staff cannot update location
+    if (userRole === 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Staff are not authorized to update outlet location'
+      });
+    }
+    
+    // For manager, allow updates only to their branch
+    if (userRole === 'manager') {
+      if (branch._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update other branch location'
+        });
+      }
+    }
+
+    // Prepare update object
+    const updateData = {};
+    
+    if (street !== undefined) updateData['address.street'] = street;
+    if (addressLine2 !== undefined) updateData['address.addressLine2'] = addressLine2;
+    if (city !== undefined) updateData['address.city'] = city;
+    if (county !== undefined) updateData['address.county'] = county;
+    if (state !== undefined) updateData['address.state'] = state;
+    if (postcode !== undefined) updateData['address.postalCode'] = postcode;
+    if (country !== undefined) updateData['address.country'] = country;
+
+    branch = await Branch.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Outlet location updated successfully',
+      data: branch
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update outlet ordering options
+// @route   PUT /api/branches/:id/outlet-ordering-options
+// @access  Private/Admin/Manager
+exports.updateOutletOrderingOptions = async (req, res, next) => {
+  try {
+    const { collection, delivery } = req.body;
+
+    let branch = await Branch.findById(req.params.id);
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: `Branch not found with id of ${req.params.id}`
+      });
+    }
+
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Staff cannot update ordering options
+    if (userRole === 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Staff are not authorized to update ordering options'
+      });
+    }
+    
+    // For manager, allow updates only to their branch
+    if (userRole === 'manager') {
+      if (branch._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update other branch ordering options'
+        });
+      }
+    }
+
+    // Prepare update object
+    const updateData = {};
+    
+    if (collection) {
+      if (collection.displayFormat !== undefined) {
+        updateData['orderingOptions.collection.displayFormat'] = collection.displayFormat;
+      }
+      if (collection.timeslotLength !== undefined) {
+        updateData['orderingOptions.collection.timeslotLength'] = collection.timeslotLength;
+      }
+    }
+    
+    if (delivery) {
+      if (delivery.displayFormat !== undefined) {
+        updateData['orderingOptions.delivery.displayFormat'] = delivery.displayFormat;
+      }
+      if (delivery.timeslotLength !== undefined) {
+        updateData['orderingOptions.delivery.timeslotLength'] = delivery.timeslotLength;
+      }
+    }
+
+    branch = await Branch.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Outlet ordering options updated successfully',
+      data: branch
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update outlet pre-ordering settings
+// @route   PUT /api/branches/:id/outlet-pre-ordering
+// @access  Private/Admin/Manager
+exports.updateOutletPreOrdering = async (req, res, next) => {
+  try {
+    const { allowCollectionPreOrders, allowDeliveryPreOrders } = req.body;
+
+    let branch = await Branch.findById(req.params.id);
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: `Branch not found with id of ${req.params.id}`
+      });
+    }
+
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Staff cannot update pre-ordering settings
+    if (userRole === 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Staff are not authorized to update pre-ordering settings'
+      });
+    }
+    
+    // For manager, allow updates only to their branch
+    if (userRole === 'manager') {
+      if (branch._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update other branch pre-ordering settings'
+        });
+      }
+    }
+
+    // Prepare update object
+    const updateData = {};
+    
+    if (allowCollectionPreOrders !== undefined) {
+      updateData['preOrdering.allowCollectionPreOrders'] = allowCollectionPreOrders;
+    }
+    
+    if (allowDeliveryPreOrders !== undefined) {
+      updateData['preOrdering.allowDeliveryPreOrders'] = allowDeliveryPreOrders;
+    }
+
+    branch = await Branch.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Outlet pre-ordering settings updated successfully',
+      data: branch
+    });
+  } catch (error) {
+    next(error);
+  }
 }; 

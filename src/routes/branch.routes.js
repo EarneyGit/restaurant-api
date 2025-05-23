@@ -6,7 +6,12 @@ const {
   updateBranch,
   deleteBranch,
   getBranchesInRadius,
-  updateBranchSettings
+  updateBranchSettings,
+  getOutletSettings,
+  updateOutletDetails,
+  updateOutletLocation,
+  updateOutletOrderingOptions,
+  updateOutletPreOrdering
 } = require('../controllers/branch.controller');
 
 const router = express.Router();
@@ -23,5 +28,12 @@ router.delete('/:id', deleteBranch);
 
 router.route('/:id/settings')
   .patch(updateBranchSettings);
+
+// Outlet-specific settings routes
+router.get('/:id/outlet-settings', getOutletSettings);
+router.put('/:id/outlet-details', updateOutletDetails);
+router.put('/:id/outlet-location', updateOutletLocation);
+router.put('/:id/outlet-ordering-options', updateOutletOrderingOptions);
+router.put('/:id/outlet-pre-ordering', updateOutletPreOrdering);
 
 module.exports = router; 

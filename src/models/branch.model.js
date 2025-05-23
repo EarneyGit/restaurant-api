@@ -16,14 +16,28 @@ const branchSchema = new mongoose.Schema(
       unique: true,
       maxlength: [10, 'Code cannot be more than 10 characters']
     },
+    // About us field for outlet description
+    aboutUs: {
+      type: String,
+      default: '',
+      maxlength: [2000, 'About us cannot be more than 2000 characters']
+    },
     address: {
       street: {
         type: String,
         required: [true, 'Please add a street address']
       },
+      addressLine2: {
+        type: String,
+        default: ''
+      },
       city: {
         type: String,
         required: [true, 'Please add a city']
+      },
+      county: {
+        type: String,
+        default: ''
       },
       state: {
         type: String,
@@ -36,7 +50,7 @@ const branchSchema = new mongoose.Schema(
       country: {
         type: String,
         required: [true, 'Please add a country'],
-        default: 'United States'
+        default: 'United Kingdom'
       }
     },
     contact: {
@@ -47,6 +61,10 @@ const branchSchema = new mongoose.Schema(
       email: {
         type: String,
         required: [true, 'Please add an email']
+      },
+      telephone: {
+        type: String,
+        default: ''
       }
     },
     location: {
@@ -100,6 +118,61 @@ const branchSchema = new mongoose.Schema(
         }
       }
     ],
+    // Opening times in the format used by frontend
+    openingTimes: {
+      type: mongoose.Schema.Types.Mixed,
+      default: function() {
+        return {
+          Monday: [],
+          Tuesday: [],
+          Wednesday: [],
+          Thursday: [],
+          Friday: [],
+          Saturday: [],
+          Sunday: []
+        };
+      }
+    },
+    // Ordering options configuration
+    orderingOptions: {
+      collection: {
+        displayFormat: {
+          type: String,
+          enum: ['TimeOnly', 'DateAndTime'],
+          default: 'TimeOnly'
+        },
+        timeslotLength: {
+          type: Number,
+          default: 15,
+          min: [5, 'Timeslot length must be at least 5 minutes'],
+          max: [120, 'Timeslot length cannot exceed 120 minutes']
+        }
+      },
+      delivery: {
+        displayFormat: {
+          type: String,
+          enum: ['TimeOnly', 'DateAndTime'],
+          default: 'TimeOnly'
+        },
+        timeslotLength: {
+          type: Number,
+          default: 15,
+          min: [5, 'Timeslot length must be at least 5 minutes'],
+          max: [120, 'Timeslot length cannot exceed 120 minutes']
+        }
+      }
+    },
+    // Pre-ordering settings
+    preOrdering: {
+      allowCollectionPreOrders: {
+        type: Boolean,
+        default: false
+      },
+      allowDeliveryPreOrders: {
+        type: Boolean,
+        default: false
+      }
+    },
     isActive: {
       type: Boolean,
       default: true

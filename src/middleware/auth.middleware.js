@@ -44,7 +44,8 @@ const protect = async (req, res, next) => {
 
       // Get user details
       const user = await User.findById(decoded.id)
-        .populate('roleId', 'name slug permissions');
+        .populate('roleId', 'name slug permissions')
+        .populate('branchId', 'name');
 
       if (!user) {
         return res.status(401).json({
@@ -66,6 +67,8 @@ const protect = async (req, res, next) => {
         email: user.email,
         name: user.name,
         role: user.roleId ? user.roleId.slug : 'user',
+        roleId: user.roleId,
+        branchId: user.branchId ? user.branchId._id : null,
         permissions: user.roleId ? user.roleId.permissions : []
       };
 
