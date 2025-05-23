@@ -189,6 +189,26 @@ const productSchema = new mongoose.Schema(
     hidePrice: {
       type: Boolean,
       default: false
+    },
+    // Stock Management fields
+    stockManagement: {
+      isManaged: {
+        type: Boolean,
+        default: false
+      },
+      quantity: {
+        type: Number,
+        default: 0,
+        min: [0, 'Stock quantity cannot be negative']
+      },
+      lowStockThreshold: {
+        type: Number,
+        default: 10
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now
+      }
     }
   },
   {

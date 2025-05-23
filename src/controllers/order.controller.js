@@ -1,6 +1,7 @@
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
+const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -183,6 +184,8 @@ exports.createOrder = async (req, res, next) => {
     }
     
     // Validate product IDs and check branch assignment
+    const validatedProducts = [];
+    
     for (let i = 0; i < req.body.products.length; i++) {
       const item = req.body.products[i];
       
@@ -208,22 +211,47 @@ exports.createOrder = async (req, res, next) => {
         });
       }
       
-      if (!product.isAvailable) {
-        return res.status(400).json({
-          success: false,
-          message: `Product ${product.name} is not available`
-        });
-      }
-      
       // Add product price to order item
-      req.body.products[i].price = product.price;
+      validatedProducts.push({
+        product: item.product,
+        quantity: item.quantity,
+        price: product.price,
+        notes: item.notes
+      });
     }
 
+    // Check stock availability for all products
+    const stockCheck = await checkStockAvailability(validatedProducts);
+    
+    if (!stockCheck.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Stock validation failed',
+        errors: stockCheck.errors,
+        stockInfo: stockCheck.stockInfo
+      });
+    }
+
+    // Update the products array with validated data
+    req.body.products = validatedProducts;
+
+    // Create the order first
     const order = await Order.create(req.body);
+
+    // Deduct stock for managed products after successful order creation
+    const stockDeduction = await deductStock(validatedProducts);
+    
+    // Populate order data for response
+    const populatedOrder = await Order.findById(order._id)
+      .populate('user', 'name email phone')
+      .populate('branchId', 'name address')
+      .populate('products.product', 'name price')
+      .populate('assignedTo', 'name email');
 
     res.status(201).json({
       success: true,
-      data: order
+      data: populatedOrder,
+      stockDeduction: stockDeduction.updated
     });
   } catch (error) {
     next(error);
@@ -244,19 +272,43 @@ exports.updateOrder = async (req, res, next) => {
       });
     }
 
-    // Update with full body
-    order = await Order.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    }).populate('user', 'name email')
-      .populate('branchId', 'name address')
-      .populate('products.product', 'name price')
-      .populate('assignedTo', 'name email');
+    const oldStatus = order.status;
+    const newStatus = req.body.status;
 
-    res.status(200).json({
-      success: true,
-      data: order
-    });
+    // If order is being cancelled, restore stock
+    if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
+      const stockRestoration = await restoreStock(order.products);
+      
+      // Update with full body
+      order = await Order.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+      }).populate('user', 'name email')
+        .populate('branchId', 'name address')
+        .populate('products.product', 'name price')
+        .populate('assignedTo', 'name email');
+
+      res.status(200).json({
+        success: true,
+        data: order,
+        stockRestoration: stockRestoration.restored
+      });
+    } else {
+      // Update with full body (no stock changes)
+      order = await Order.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+      }).populate('user', 'name email')
+        .populate('branchId', 'name address')
+        .populate('products.product', 'name price')
+        .populate('assignedTo', 'name email');
+
+      res.status(200).json({
+        success: true,
+        data: order
+      });
+    }
+
   } catch (error) {
     next(error);
   }

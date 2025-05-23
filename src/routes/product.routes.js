@@ -7,7 +7,9 @@ const {
   updateProduct,
   deleteProduct,
   getPopularProducts,
-  getRecommendedProducts
+  getRecommendedProducts,
+  bulkUpdateStock,
+  getStockStatus
 } = require('../controllers/product.controller');
 const { ALLOWED_FILE_TYPES } = require('../utils/fileUpload');
 
@@ -32,6 +34,8 @@ const upload = multer({
 // All routes are public
 router.get('/popular', getPopularProducts);
 router.get('/recommended', getRecommendedProducts);
+router.get('/stock/status', getStockStatus);
+router.put('/stock/bulk-update', bulkUpdateStock);
 router.get('/', getProducts);
 router.get('/:id', getProduct);
 router.post('/', upload.array('images', 10), createProduct);

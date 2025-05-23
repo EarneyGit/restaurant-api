@@ -63,7 +63,13 @@ exports.getProducts = async (req, res, next) => {
       freeDelivery: product.freeDelivery || false,
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
-      hidePrice: product.hidePrice || false
+      hidePrice: product.hidePrice || false,
+      stockManagement: product.stockManagement || {
+        isManaged: false,
+        quantity: 0,
+        lowStockThreshold: 10,
+        lastUpdated: new Date()
+      }
     }));
 
     res.status(200).json({
@@ -126,7 +132,13 @@ exports.getProduct = async (req, res, next) => {
       freeDelivery: product.freeDelivery || false,
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
-      hidePrice: product.hidePrice || false
+      hidePrice: product.hidePrice || false,
+      stockManagement: product.stockManagement || {
+        isManaged: false,
+        quantity: 0,
+        lowStockThreshold: 10,
+        lastUpdated: new Date()
+      }
     };
 
     res.status(200).json({
@@ -238,7 +250,13 @@ exports.createProduct = async (req, res, next) => {
       freeDelivery: populatedProduct.freeDelivery || false,
       collectionOnly: populatedProduct.collectionOnly || false,
       deleted: populatedProduct.deleted || false,
-      hidePrice: populatedProduct.hidePrice || false
+      hidePrice: populatedProduct.hidePrice || false,
+      stockManagement: populatedProduct.stockManagement || {
+        isManaged: false,
+        quantity: 0,
+        lowStockThreshold: 10,
+        lastUpdated: new Date()
+      }
     };
 
     res.status(201).json({
@@ -366,7 +384,13 @@ exports.updateProduct = async (req, res, next) => {
       freeDelivery: product.freeDelivery || false,
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
-      hidePrice: product.hidePrice || false
+      hidePrice: product.hidePrice || false,
+      stockManagement: product.stockManagement || {
+        isManaged: false,
+        quantity: 0,
+        lowStockThreshold: 10,
+        lastUpdated: new Date()
+      }
     };
 
     res.status(200).json({
@@ -454,7 +478,13 @@ exports.getPopularProducts = async (req, res, next) => {
       freeDelivery: product.freeDelivery || false,
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
-      hidePrice: product.hidePrice || false
+      hidePrice: product.hidePrice || false,
+      stockManagement: product.stockManagement || {
+        isManaged: false,
+        quantity: 0,
+        lowStockThreshold: 10,
+        lastUpdated: new Date()
+      }
     }));
 
     res.status(200).json({
@@ -511,7 +541,13 @@ exports.getRecommendedProducts = async (req, res, next) => {
       freeDelivery: product.freeDelivery || false,
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
-      hidePrice: product.hidePrice || false
+      hidePrice: product.hidePrice || false,
+      stockManagement: product.stockManagement || {
+        isManaged: false,
+        quantity: 0,
+        lowStockThreshold: 10,
+        lastUpdated: new Date()
+      }
     }));
 
     res.status(200).json({
@@ -519,6 +555,149 @@ exports.getRecommendedProducts = async (req, res, next) => {
       count: transformedProducts.length,
       data: transformedProducts
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Bulk update stock for multiple products
+// @route   PUT /api/products/stock/bulk-update
+// @access  Public
+exports.bulkUpdateStock = async (req, res, next) => {
+  try {
+    const { products } = req.body;
+
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Products array is required'
+      });
+    }
+
+    const updateResults = [];
+    const errors = [];
+
+    // Process each product update
+    for (const productUpdate of products) {
+      try {
+        const { id, isManaged, quantity } = productUpdate;
+
+        if (!id) {
+          errors.push({ productId: null, error: 'Product ID is required' });
+          continue;
+        }
+
+        // Validate quantity if provided
+        if (quantity !== undefined && (quantity < 0 || !Number.isInteger(quantity))) {
+          errors.push({ productId: id, error: 'Quantity must be a non-negative integer' });
+          continue;
+        }
+
+        // Find and update the product
+        const product = await Product.findById(id);
+        if (!product) {
+          errors.push({ productId: id, error: 'Product not found' });
+          continue;
+        }
+
+        // Prepare stock management update
+        const stockUpdate = {
+          'stockManagement.lastUpdated': new Date()
+        };
+
+        if (isManaged !== undefined) {
+          stockUpdate['stockManagement.isManaged'] = isManaged;
+        }
+
+        if (quantity !== undefined) {
+          stockUpdate['stockManagement.quantity'] = quantity;
+        }
+
+        // Update the product
+        const updatedProduct = await Product.findByIdAndUpdate(
+          id, 
+          stockUpdate, 
+          { new: true, runValidators: true }
+        );
+
+        updateResults.push({
+          productId: id,
+          name: updatedProduct.name,
+          stockManagement: updatedProduct.stockManagement,
+          success: true
+        });
+
+      } catch (error) {
+        errors.push({ 
+          productId: productUpdate.id || 'unknown', 
+          error: error.message 
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Stock updated successfully`,
+      data: {
+        updated: updateResults,
+        errors: errors,
+        totalProcessed: products.length,
+        successCount: updateResults.length,
+        errorCount: errors.length
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get stock status for all managed products
+// @route   GET /api/products/stock/status
+// @access  Public
+exports.getStockStatus = async (req, res, next) => {
+  try {
+    let query = { 'stockManagement.isManaged': true };
+    
+    // Filter by branch if provided
+    if (req.query.branchId) {
+      query.branchId = req.query.branchId;
+    }
+
+    // Filter by category if provided
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+
+    // Filter by low stock if requested
+    if (req.query.lowStock === 'true') {
+      query.$expr = {
+        $lte: ['$stockManagement.quantity', '$stockManagement.lowStockThreshold']
+      };
+    }
+
+    const products = await Product.find(query)
+      .populate('category', 'name')
+      .populate('branchId', 'name')
+      .select('name stockManagement category branchId')
+      .sort('name');
+
+    // Transform data for response
+    const stockStatus = products.map(product => ({
+      id: product._id,
+      name: product.name,
+      category: product.category,
+      branch: product.branchId,
+      stockManagement: product.stockManagement,
+      isLowStock: product.stockManagement.quantity <= product.stockManagement.lowStockThreshold
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: stockStatus.length,
+      data: stockStatus
+    });
+
   } catch (error) {
     next(error);
   }
