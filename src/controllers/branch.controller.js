@@ -36,8 +36,8 @@ exports.getBranches = async (req, res, next) => {
 // @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.getBranch = async (req, res, next) => {
   try {
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from authenticated user
+    const userRole = req.user ? req.user.role : null;
     
     // Ensure user has branch assignment
     if (!req.user.branchId) {
@@ -72,7 +72,7 @@ exports.getBranch = async (req, res, next) => {
 exports.createBranch = async (req, res, next) => {
   try {
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     
     // Allow admin, manager, and staff to create branches
     if (!['admin', 'manager', 'staff'].includes(userRole)) {
@@ -107,8 +107,8 @@ exports.createBranch = async (req, res, next) => {
 // @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.updateBranch = async (req, res, next) => {
   try {
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from authenticated user
+    const userRole = req.user ? req.user.role : null;
 
     // Ensure user has branch assignment
     if (!req.user.branchId) {
@@ -171,8 +171,8 @@ exports.updateBranch = async (req, res, next) => {
 // @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.deleteBranch = async (req, res, next) => {
   try {
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from authenticated user
+    const userRole = req.user ? req.user.role : null;
 
     // Allow admin, manager, and staff to delete branches
     if (!['admin', 'manager', 'staff'].includes(userRole)) {
@@ -299,8 +299,8 @@ exports.updateBranchSettings = async (req, res, next) => {
       });
     }
 
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
     
     // Allow admin, manager, and staff to update branch settings
     if (!['admin', 'manager', 'staff'].includes(userRole)) {
@@ -374,8 +374,8 @@ const geocodeAddress = async (zipcode) => {
 // @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.getOutletSettings = async (req, res, next) => {
   try {
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
     
     // Ensure user has branch assignment
     if (!req.user.branchId) {
@@ -445,8 +445,8 @@ exports.updateOutletDetails = async (req, res, next) => {
   try {
     const { name, aboutUs, email, contactNumber, telephone } = req.body;
 
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
     
     // Ensure user has branch assignment
     if (!req.user.branchId) {
@@ -506,8 +506,8 @@ exports.updateOutletLocation = async (req, res, next) => {
   try {
     const { street, addressLine2, city, county, state, postcode, country } = req.body;
 
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
     
     // Ensure user has branch assignment
     if (!req.user.branchId) {
@@ -569,8 +569,8 @@ exports.updateOutletOrderingOptions = async (req, res, next) => {
   try {
     const { collection, delivery } = req.body;
 
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
     
     // Ensure user has branch assignment
     if (!req.user.branchId) {
@@ -642,8 +642,8 @@ exports.updateOutletPreOrdering = async (req, res, next) => {
   try {
     const { allowCollectionPreOrders, allowDeliveryPreOrders } = req.body;
 
-    // Get user role and branch from authenticated user
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
     
     // Ensure user has branch assignment
     if (!req.user.branchId) {

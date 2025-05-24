@@ -11,7 +11,7 @@ exports.getOrders = async (req, res, next) => {
     let query = {};
     let targetBranchId = null;
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     const isRegularUser = userRole === 'user' || userRole === null;
@@ -149,7 +149,7 @@ exports.getOrder = async (req, res, next) => {
     }
     
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     const isRegularUser = userRole === 'user' || userRole === null;
@@ -229,7 +229,7 @@ exports.getOrder = async (req, res, next) => {
 exports.createOrder = async (req, res, next) => {
   try {
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     const isRegularUser = userRole === 'user' || userRole === null;
@@ -363,7 +363,7 @@ exports.updateOrder = async (req, res, next) => {
     }
 
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
     // Only admin users can update orders
@@ -470,7 +470,7 @@ exports.getMyOrders = async (req, res, next) => {
     }
     
     // Determine user role and branch
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     let targetBranchId = null;
     
@@ -529,7 +529,7 @@ exports.getTodayOrders = async (req, res, next) => {
     }
     
     // Determine user role
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
     // Only admin users can access today's orders

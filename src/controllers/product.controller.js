@@ -12,7 +12,7 @@ exports.getProducts = async (req, res, next) => {
     let targetBranchId = null;
     
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
@@ -126,7 +126,7 @@ exports.getProduct = async (req, res, next) => {
     }
 
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
@@ -223,7 +223,7 @@ exports.getProduct = async (req, res, next) => {
 exports.createProduct = async (req, res, next) => {
   try {
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     
     // Set branchId from authenticated user if not provided
     if (!req.body.branchId && (userRole === 'manager' || userRole === 'staff' || userRole === 'admin')) {
@@ -367,7 +367,7 @@ exports.updateProduct = async (req, res, next) => {
     }
     
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     
     // For manager/staff/admin, check if product belongs to their branch
     if ((userRole === 'manager' || userRole === 'staff' || userRole === 'admin') && 
@@ -805,6 +805,189 @@ exports.getStockStatus = async (req, res, next) => {
       data: stockStatus
     });
 
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get offline products for admin's branch
+// @route   GET /api/products/offline
+// @access  Private (Admin/Manager/Staff)
+exports.getOfflineProducts = async (req, res, next) => {
+  try {
+    // Determine user role and authentication status
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can access offline products'
+      });
+    }
+
+    // Admin users: Use their assigned branchId
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    let query = { branchId: req.user.branchId };
+    
+    // Search functionality
+    if (req.query.searchText) {
+      query.name = { $regex: req.query.searchText, $options: 'i' };
+    }
+
+    // Filter by category if provided
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+
+    const products = await Product.find(query)
+      .populate('category', 'name slug')
+      .populate('branchId', 'name address')
+      .sort('name');
+
+    // Transform products to match frontend structure
+    const transformedProducts = products.map(product => ({
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      hideItem: product.hideItem ?? false,
+      delivery: product.delivery !== undefined ? product.delivery : true,
+      collection: product.collection !== undefined ? product.collection : true,
+      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      description: product.description,
+      category: product.category,
+      isOffline: product.hideItem ?? false // hideItem represents offline status
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: transformedProducts.length,
+      data: transformedProducts,
+      branchId: req.user.branchId
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Toggle product offline status
+// @route   PATCH /api/products/:id/toggle-offline
+// @access  Private (Admin/Manager/Staff)
+exports.toggleProductOffline = async (req, res, next) => {
+  try {
+    const { isOffline } = req.body;
+
+    // Determine user role and authentication status
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can toggle product offline status'
+      });
+    }
+
+    // Admin users: Use their assigned branchId
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    let product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: `Product not found with id of ${req.params.id}`
+      });
+    }
+
+    // Check if product belongs to admin's branch
+    if (product.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update products from other branches'
+      });
+    }
+
+    // Update hideItem field (which represents offline status)
+    product = await Product.findByIdAndUpdate(
+      req.params.id, 
+      { hideItem: isOffline },
+      { new: true, runValidators: true }
+    ).populate('category', 'name slug')
+     .populate('branchId', 'name address');
+
+    // Transform product data to match frontend structure
+    const transformedProduct = {
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      hideItem: product.hideItem ?? false,
+      delivery: product.delivery !== undefined ? product.delivery : true,
+      collection: product.collection !== undefined ? product.collection : true,
+      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      description: product.description,
+      category: product.category,
+      isOffline: product.hideItem ?? false
+    };
+
+    res.status(200).json({
+      success: true,
+      data: transformedProduct,
+      message: `Product ${isOffline ? 'taken offline' : 'brought online'} successfully`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Toggle all products offline status
+// @route   PATCH /api/products/toggle-all-offline
+// @access  Private (Admin/Manager/Staff)
+exports.toggleAllProductsOffline = async (req, res, next) => {
+  try {
+    const { isOffline } = req.body;
+
+    // Determine user role and authentication status
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can toggle all products offline status'
+      });
+    }
+
+    // Admin users: Use their assigned branchId
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    // Update all products for the admin's branch
+    const result = await Product.updateMany(
+      { branchId: req.user.branchId },
+      { hideItem: isOffline }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `${result.modifiedCount} products ${isOffline ? 'taken offline' : 'brought online'} successfully`,
+      modifiedCount: result.modifiedCount
+    });
   } catch (error) {
     next(error);
   }

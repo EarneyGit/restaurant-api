@@ -20,7 +20,7 @@ exports.getLeadTimes = async (req, res, next) => {
     let branchId;
     
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
     // Admin users use their assigned branchId
@@ -83,7 +83,7 @@ exports.updateLeadTimes = async (req, res, next) => {
     const { collection, delivery } = req.body;
     
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
     // Admin users use their assigned branchId

@@ -9,7 +9,10 @@ const {
   getPopularProducts,
   getRecommendedProducts,
   bulkUpdateStock,
-  getStockStatus
+  getStockStatus,
+  getOfflineProducts,
+  toggleProductOffline,
+  toggleAllProductsOffline
 } = require('../controllers/product.controller');
 const { ALLOWED_FILE_TYPES } = require('../utils/fileUpload');
 
@@ -38,8 +41,15 @@ const upload = multer({
 router.get('/popular', optionalAuth, getPopularProducts);
 router.get('/recommended', optionalAuth, getRecommendedProducts);
 router.get('/stock/status', optionalAuth, getStockStatus);
+
+// Protected routes for offline management (admin, manager, staff only)
+router.get('/offline', protect, getOfflineProducts);
+router.patch('/toggle-all-offline', protect, toggleAllProductsOffline);
+
+// General product routes
 router.get('/', optionalAuth, getProducts);
 router.get('/:id', optionalAuth, getProduct);
+router.patch('/:id/toggle-offline', protect, toggleProductOffline);
 
 // Protected routes (write operations) - allow admin, manager, staff
 router.put('/stock/bulk-update', protect, bulkUpdateStock);

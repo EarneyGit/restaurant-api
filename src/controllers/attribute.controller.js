@@ -10,7 +10,7 @@ exports.getAttributes = async (req, res, next) => {
     let targetBranchId = null;
     
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
@@ -292,6 +292,132 @@ exports.reorderAttributes = async (req, res, next) => {
       success: true,
       data: updatedAttributes,
       message: 'Attributes reordered successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get offline attributes for admin's branch
+// @route   GET /api/attributes/offline
+// @access  Private (Admin/Manager/Staff)
+exports.getOfflineAttributes = async (req, res, next) => {
+  try {
+    // Determine user role and authentication status
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can access offline attributes'
+      });
+    }
+
+    // Admin users: Use their assigned branchId
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    let query = { branchId: req.user.branchId };
+    
+    // Search functionality
+    if (req.query.searchText) {
+      query.name = { $regex: req.query.searchText, $options: 'i' };
+    }
+
+    const attributes = await Attribute.find(query)
+      .populate('branchId', 'name address')
+      .sort('name');
+
+    // Transform attributes to match frontend structure
+    const transformedAttributes = attributes.map(attribute => ({
+      id: attribute._id,
+      name: attribute.name,
+      type: attribute.type,
+      isRequired: attribute.isRequired,
+      isActive: attribute.isActive,
+      isOffline: !attribute.isActive // isActive represents online status
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: transformedAttributes.length,
+      data: transformedAttributes,
+      branchId: req.user.branchId
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Toggle attribute offline status
+// @route   PATCH /api/attributes/:id/toggle-offline
+// @access  Private (Admin/Manager/Staff)
+exports.toggleAttributeOffline = async (req, res, next) => {
+  try {
+    const { isOffline } = req.body;
+
+    // Determine user role and authentication status
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can toggle attribute offline status'
+      });
+    }
+
+    // Admin users: Use their assigned branchId
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    let attribute = await Attribute.findById(req.params.id);
+
+    if (!attribute) {
+      return res.status(404).json({
+        success: false,
+        message: `Attribute not found with id of ${req.params.id}`
+      });
+    }
+
+    // Check if attribute belongs to admin's branch
+    if (attribute.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update attributes from other branches'
+      });
+    }
+
+    // Update isActive field (opposite of offline status)
+    attribute = await Attribute.findByIdAndUpdate(
+      req.params.id, 
+      { isActive: !isOffline },
+      { new: true, runValidators: true }
+    ).populate('branchId', 'name address');
+
+    // Transform attribute data to match frontend structure
+    const transformedAttribute = {
+      id: attribute._id,
+      name: attribute.name,
+      type: attribute.type,
+      isRequired: attribute.isRequired,
+      isActive: attribute.isActive,
+      isOffline: !attribute.isActive
+    };
+
+    res.status(200).json({
+      success: true,
+      data: transformedAttribute,
+      message: `Attribute ${isOffline ? 'taken offline' : 'brought online'} successfully`
     });
   } catch (error) {
     next(error);

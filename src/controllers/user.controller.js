@@ -9,7 +9,7 @@ exports.getUsers = async (req, res, next) => {
     let query = {};
     
     // Get user role from roleId
-    const userRole = req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     
     // Allow filtering by role
     if (req.query.role) {
@@ -72,7 +72,7 @@ exports.getUser = async (req, res, next) => {
     }
     
     // Get user role from roleId
-    const userRole = req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const targetUserRole = user.roleId ? user.roleId.slug : null;
     
     // Managers can only view staff from their branch or regular users
@@ -159,7 +159,7 @@ exports.createUser = async (req, res, next) => {
     }
     
     // Check if requesting user is admin by looking at the roleId
-    const isAdmin = req.user && req.user.roleId && req.user.roleId.slug === 'admin';
+    const isAdmin = req.user && req.user.role === 'admin';
     
     // Only admins can create other admins or managers
     if (!isAdmin && (role === 'admin' || role === 'manager')) {
@@ -170,7 +170,7 @@ exports.createUser = async (req, res, next) => {
     }
     
     // If manager is creating staff, make sure they're assigned to their branch
-    if (req.user.roleId && req.user.roleId.slug === 'manager' && role === 'staff') {
+    if (req.user.role === 'manager' && role === 'staff') {
       if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
@@ -236,7 +236,7 @@ exports.updateUser = async (req, res, next) => {
     }
     
     // Get user roles from roleId
-    const userRole = req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const targetUserRole = user.roleId ? user.roleId.slug : null;
     
     // Check authorization
@@ -400,7 +400,7 @@ exports.deleteUser = async (req, res, next) => {
     }
     
     // Only admin can delete users
-    const userRole = req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     if (userRole !== 'admin') {
       return res.status(403).json({
         success: false,

@@ -13,7 +13,7 @@ exports.getCategories = async (req, res, next) => {
     let targetBranchId = null;
     
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
@@ -99,7 +99,7 @@ exports.getCategory = async (req, res, next) => {
     }
 
     // Determine user role and authentication status
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
@@ -176,7 +176,7 @@ exports.createCategory = async (req, res, next) => {
     }
 
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     
     // Default to user's branch if not specified
     if (!req.body.branchId && (userRole === 'manager' || userRole === 'staff')) {
@@ -257,7 +257,7 @@ exports.updateCategory = async (req, res, next) => {
     }
     
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     
     // For manager/staff/admin, check if category belongs to their branch
     if ((userRole === 'manager' || userRole === 'staff' || userRole === 'admin') && 
@@ -340,7 +340,7 @@ exports.deleteCategory = async (req, res, next) => {
     }
     
     // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const userRole = req.user ? req.user.role : null;
     
     // Staff cannot delete categories
     if (userRole === 'staff') {
