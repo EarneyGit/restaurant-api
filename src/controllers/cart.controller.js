@@ -94,7 +94,14 @@ exports.getCart = async (req, res, next) => {
 // @access  Private/Public
 exports.addToCart = async (req, res, next) => {
   try {
-    const { productId, quantity = 1, selectedOptions = {}, specialRequirements = '', branchId } = req.body;
+    const { 
+      productId, 
+      quantity = 1, 
+      selectedOptions = {}, 
+      specialRequirements = '', 
+      branchId,
+      selectedAttributes = []
+    } = req.body;
     const userId = req.user?.id;
     const sessionId = req.headers['x-session-id'] || req.body.sessionId;
     
@@ -128,11 +135,53 @@ exports.addToCart = async (req, res, next) => {
       });
     }
     
+    // Validate selected attributes if provided
+    if (selectedAttributes && selectedAttributes.length > 0) {
+      const Attribute = require('../models/attribute.model');
+      const ProductAttributeItem = require('../models/product-attribute-item.model');
+      
+      for (const attr of selectedAttributes) {
+        // Validate attribute exists
+        const attribute = await Attribute.findById(attr.attributeId);
+        if (!attribute) {
+          return res.status(400).json({
+            success: false,
+            message: `Attribute not found: ${attr.attributeId}`
+          });
+        }
+        
+        // Validate selected items exist and belong to the product
+        for (const selectedItem of attr.selectedItems) {
+          const attributeItem = await ProductAttributeItem.findOne({
+            _id: selectedItem.itemId,
+            productId: productId,
+            attributeId: attr.attributeId,
+            isActive: true
+          });
+          
+          if (!attributeItem) {
+            return res.status(400).json({
+              success: false,
+              message: `Attribute item not found or not available for this product: ${selectedItem.itemId}`
+            });
+          }
+          
+          // Update the item with current price and name
+          selectedItem.itemPrice = attributeItem.price;
+          selectedItem.itemName = attributeItem.name;
+        }
+        
+        // Update attribute details
+        attr.attributeName = attribute.name;
+        attr.attributeType = attribute.type;
+      }
+    }
+    
     // Find or create cart
     let cart = await Cart.findOrCreateCart(userId, sessionId, branchId);
     
-    // Add item to cart
-    await cart.addItem(productId, quantity, selectedOptions, specialRequirements, product.price);
+    // Add item to cart with attributes
+    await cart.addItem(productId, quantity, selectedOptions, specialRequirements, product.price, selectedAttributes);
     
     // Populate cart items for response
     await cart.populate('items.productId', 'name price images category description allergens');

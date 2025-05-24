@@ -345,12 +345,6 @@ exports.resetPassword = async (req, res, next) => {
 
     // Find user
     const user = await User.findOne({ email: tokenRecord.email });
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
 
     // Update password
     user.password = password;
@@ -386,6 +380,7 @@ exports.login = async (req, res, next) => {
 
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() })
+      .select('+password')
       .populate('roleId', 'name slug permissions');
 
     if (!user) {

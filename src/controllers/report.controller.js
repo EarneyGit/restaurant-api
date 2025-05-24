@@ -116,7 +116,7 @@ exports.getEndOfNightReport = async (req, res, next) => {
       },
       { $sort: { '_id': 1 } }
     ]);
-
+    
     res.status(200).json({
       success: true,
       data: {
@@ -237,7 +237,7 @@ exports.getEndOfMonthReport = async (req, res, next) => {
       { $sort: { totalSpent: -1 } },
       { $limit: 10 }
     ]);
-
+    
     res.status(200).json({
       success: true,
       data: {
@@ -550,7 +550,7 @@ exports.getOutletReports = async (req, res, next) => {
       { $sort: { quantity: -1 } },
       { $limit: 10 }
     ]);
-
+    
     res.status(200).json({
       success: true,
       data: {
@@ -743,7 +743,7 @@ exports.getDashboardSummary = async (req, res, next) => {
         }
       }
     ]);
-
+    
     // Previous period for comparison
     const previousStartDate = new Date(startDate);
     const previousEndDate = new Date(endDate);
@@ -776,7 +776,7 @@ exports.getDashboardSummary = async (req, res, next) => {
         }
       }
     ]);
-
+    
     const current = currentMetrics[0] || { totalOrders: 0, totalSales: 0, averageOrderValue: 0, totalCustomers: 0 };
     const previous = previousMetrics[0] || { totalOrders: 0, totalSales: 0, averageOrderValue: 0, totalCustomers: 0 };
 
@@ -814,7 +814,7 @@ exports.getDashboardSummary = async (req, res, next) => {
         percentageChange: calculatePercentageChange(current.totalCustomers, previous.totalCustomers)
       }
     ];
-
+    
     res.status(200).json({
       success: true,
       data: summary

@@ -44,6 +44,45 @@ const cartItemSchema = new mongoose.Schema({
     required: [true, 'Price at time of adding is required'],
     min: [0, 'Price cannot be negative']
   },
+  // Attribute selections for this cart item
+  selectedAttributes: [{
+    attributeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Attribute',
+      required: true
+    },
+    attributeName: {
+      type: String,
+      required: true
+    },
+    attributeType: {
+      type: String,
+      enum: ['single', 'multiple', 'multiple-times'],
+      required: true
+    },
+    selectedItems: [{
+      itemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ProductAttributeItem',
+        required: true
+      },
+      itemName: {
+        type: String,
+        required: true
+      },
+      itemPrice: {
+        type: Number,
+        required: true,
+        default: 0
+      },
+      quantity: {
+        type: Number,
+        required: true,
+        default: 1,
+        min: [1, 'Attribute item quantity must be at least 1']
+      }
+    }]
+  }],
   // Calculated fields
   itemTotal: {
     type: Number,
@@ -125,12 +164,30 @@ cartSchema.virtual('itemCount').get(function() {
   return this.items.reduce((total, item) => total + item.quantity, 0);
 });
 
-// Pre-save middleware to calculate totals
+// Pre-save middleware to calculate totals (including attribute prices)
 cartSchema.pre('save', function(next) {
-  // Calculate subtotal from items
+  // Calculate subtotal from items including attributes
   this.subtotal = this.items.reduce((total, item) => {
-    item.itemTotal = item.priceAtTime * item.quantity;
-    return total + item.itemTotal;
+    let itemTotal = item.priceAtTime * item.quantity;
+    
+    // Add attribute item prices
+    if (item.selectedAttributes && item.selectedAttributes.length > 0) {
+      const attributeTotal = item.selectedAttributes.reduce((attrTotal, attr) => {
+        if (attr.selectedItems && attr.selectedItems.length > 0) {
+          const attrItemTotal = attr.selectedItems.reduce((itemSum, selectedItem) => {
+            return itemSum + (selectedItem.itemPrice * selectedItem.quantity);
+          }, 0);
+          return attrTotal + attrItemTotal;
+        }
+        return attrTotal;
+      }, 0);
+      
+      // Multiply attribute total by product quantity
+      itemTotal += (attributeTotal * item.quantity);
+    }
+    
+    item.itemTotal = itemTotal;
+    return total + itemTotal;
   }, 0);
   
   // Set default delivery fee if not set
@@ -170,12 +227,13 @@ cartSchema.statics.findOrCreateCart = async function(userId, sessionId = null, b
   return cart;
 };
 
-// Method to add item to cart
-cartSchema.methods.addItem = async function(productId, quantity, selectedOptions = {}, specialRequirements = '', priceAtTime) {
-  // Check if item with same product and options already exists
+// Method to add item to cart (updated to support attributes)
+cartSchema.methods.addItem = async function(productId, quantity, selectedOptions = {}, specialRequirements = '', priceAtTime, selectedAttributes = []) {
+  // Check if item with same product, options, and attributes already exists
   const existingItemIndex = this.items.findIndex(item => 
     item.productId.toString() === productId.toString() && 
-    this._compareOptions(item.selectedOptions, selectedOptions)
+    this._compareOptions(item.selectedOptions, selectedOptions) &&
+    this._compareAttributes(item.selectedAttributes, selectedAttributes)
   );
   
   if (existingItemIndex >= 0) {
@@ -189,7 +247,8 @@ cartSchema.methods.addItem = async function(productId, quantity, selectedOptions
       quantity,
       selectedOptions: new Map(Object.entries(selectedOptions)),
       specialRequirements,
-      priceAtTime
+      priceAtTime,
+      selectedAttributes
     });
   }
   
@@ -233,6 +292,36 @@ cartSchema.methods._compareOptions = function(options1, options2) {
   
   for (let [key, value] of map1) {
     if (map2.get(key) !== value) return false;
+  }
+  
+  return true;
+};
+
+// Helper method to compare selected attributes
+cartSchema.methods._compareAttributes = function(attributes1, attributes2) {
+  if (!attributes1 && !attributes2) return true;
+  if (!attributes1 || !attributes2) return false;
+  if (attributes1.length !== attributes2.length) return false;
+  
+  // Sort both arrays by attributeId for comparison
+  const sorted1 = [...attributes1].sort((a, b) => a.attributeId.toString().localeCompare(b.attributeId.toString()));
+  const sorted2 = [...attributes2].sort((a, b) => a.attributeId.toString().localeCompare(b.attributeId.toString()));
+  
+  for (let i = 0; i < sorted1.length; i++) {
+    const attr1 = sorted1[i];
+    const attr2 = sorted2[i];
+    
+    if (attr1.attributeId.toString() !== attr2.attributeId.toString()) return false;
+    if (attr1.selectedItems.length !== attr2.selectedItems.length) return false;
+    
+    // Sort selected items by itemId for comparison
+    const items1 = [...attr1.selectedItems].sort((a, b) => a.itemId.toString().localeCompare(b.itemId.toString()));
+    const items2 = [...attr2.selectedItems].sort((a, b) => a.itemId.toString().localeCompare(b.itemId.toString()));
+    
+    for (let j = 0; j < items1.length; j++) {
+      if (items1[j].itemId.toString() !== items2[j].itemId.toString()) return false;
+      if (items1[j].quantity !== items2[j].quantity) return false;
+    }
   }
   
   return true;

@@ -22,6 +22,8 @@ const reportRoutes = require('./routes/report.routes');
 const roleRoutes = require('./routes/role.routes');
 const cartRoutes = require('./routes/cart.routes');
 const orderingTimesRoutes = require('./routes/ordering-times.routes');
+const attributeRoutes = require('./routes/attribute.routes');
+const productAttributeItemRoutes = require('./routes/product-attribute-item.routes');
 
 // Initialize Express
 const app = express();
@@ -57,6 +59,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/ordering-times', orderingTimesRoutes);
+app.use('/api/attributes', attributeRoutes);
+app.use('/api/product-attribute-items', productAttributeItemRoutes);
 
 // Call initRoles to create default roles if they don't exist
 const initRoles = require('./utils/initRoles');

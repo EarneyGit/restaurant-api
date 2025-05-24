@@ -1,9 +1,9 @@
 {
   "info": {
-    "name": "Restaurant API - Complete Collection",
-    "description": "Complete collection for Restaurant Management System API with all modules and sample payloads",
+    "name": "Restaurant API - Complete Collection v2.0",
+    "description": "Complete collection for Restaurant Management System API with all modules including Attributes and sample payloads",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "variables": [
     {
@@ -63,6 +63,21 @@
     },
     {
       "key": "resetToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attributeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attributeItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cartItemId",
       "value": "",
       "type": "string"
     }
@@ -419,7 +434,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Downtown Branch\",\n  \"code\": \"DTB001\",\n  \"aboutUs\": \"Our flagship downtown location with modern amenities and excellent service.\",\n  \"address\": {\n    \"street\": \"456 Restaurant Ave\",\n    \"addressLine2\": \"Suite 101\",\n    \"city\": \"New York\",\n    \"county\": \"Manhattan\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10002\",\n    \"country\": \"United Kingdom\"\n  },\n  \"contact\": {\n    \"phone\": \"+1234567891\",\n    \"email\": \"downtown@restaurant.com\",\n    \"telephone\": \"+1234567892\"\n  },\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [-73.9857, 40.7484]\n  },\n  \"openingHours\": [\n    { \"day\": \"monday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"tuesday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"wednesday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"thursday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"friday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"23:00\" },\n    { \"day\": \"saturday\", \"isOpen\": true, \"openTime\": \"10:00\", \"closeTime\": \"23:00\" },\n    { \"day\": \"sunday\", \"isOpen\": true, \"openTime\": \"10:00\", \"closeTime\": \"21:00\" }\n  ],\n  \"openingTimes\": {\n    \"Monday\": [\"11:45-14:30\", \"16:30-22:00\"],\n    \"Tuesday\": [\"16:30-22:00\"],\n    \"Wednesday\": [\"16:30-22:00\"],\n    \"Thursday\": [\"11:45-14:30\", \"16:30-22:00\"],\n    \"Friday\": [\"11:45-14:30\", \"16:30-23:00\"],\n    \"Saturday\": [\"11:45-14:30\", \"16:30-23:00\"],\n    \"Sunday\": [\"11:45-14:30\", \"16:30-22:00\"]\n  },\n  \"orderingOptions\": {\n    \"collection\": {\n      \"displayFormat\": \"TimeOnly\",\n      \"timeslotLength\": 15\n    },\n    \"delivery\": {\n      \"displayFormat\": \"TimeOnly\",\n      \"timeslotLength\": 15\n    }\n  },\n  \"preOrdering\": {\n    \"allowCollectionPreOrders\": false,\n    \"allowDeliveryPreOrders\": false\n  },\n  \"isActive\": true,\n  \"capacity\": 50,\n  \"description\": \"Modern restaurant with outdoor seating\",\n  \"manager\": null,\n  \"isCollectionEnabled\": true,\n  \"isDeliveryEnabled\": true,\n  \"isTableOrderingEnabled\": true,\n  \"facilities\": [\"wifi\", \"parking\", \"delivery\", \"takeaway\", \"outdoor\"],\n  \"maxCapacity\": 60\n}"
+              "raw": "{\n  \"name\": \"Downtown Branch\",\n  \"code\": \"DTB001\",\n  \"aboutUs\": \"Our flagship downtown location with modern amenities and excellent service.\",\n  \"address\": {\n    \"street\": \"456 Restaurant Ave\",\n    \"addressLine2\": \"Suite 101\",\n    \"city\": \"New York\",\n    \"county\": \"Manhattan\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10002\",\n    \"country\": \"United Kingdom\"\n  },\n  \"contact\": {\n    \"phone\": \"+1234567891\",\n    \"email\": \"downtown@restaurant.com\",\n    \"telephone\": \"+1234567892\"\n  },\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [-73.9857, 40.7484]\n  },\n  \"openingHours\": [\n    { \"day\": \"monday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"tuesday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"wednesday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"thursday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"22:00\" },\n    { \"day\": \"friday\", \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"23:00\" },\n    { \"day\": \"saturday\", \"isOpen\": true, \"openTime\": \"10:00\", \"closeTime\": \"23:00\" },\n    { \"day\": \"sunday\", \"isOpen\": true, \"openTime\": \"10:00\", \"closeTime\": \"21:00\" }\n  ],\n  \"isActive\": true,\n  \"capacity\": 50,\n  \"description\": \"Modern restaurant with outdoor seating\",\n  \"isCollectionEnabled\": true,\n  \"isDeliveryEnabled\": true,\n  \"isTableOrderingEnabled\": true,\n  \"facilities\": [\"wifi\", \"parking\", \"delivery\", \"takeaway\", \"outdoor\"],\n  \"maxCapacity\": 60\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/branches",
@@ -450,39 +465,6 @@
           }
         },
         {
-          "name": "Get Branches in Radius",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/branches/radius/10001/5",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "branches", "radius", "10001", "5"]
-            }
-          }
-        },
-        {
-          "name": "Update Branch Settings",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"isCollectionEnabled\": true,\n  \"isDeliveryEnabled\": true,\n  \"isTableOrderingEnabled\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/branches/{{branchId}}/settings",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "branches", "{{branchId}}", "settings"]
-            }
-          }
-        },
-        {
           "name": "Delete Branch",
           "request": {
             "method": "DELETE",
@@ -493,128 +475,660 @@
               "path": ["api", "branches", "{{branchId}}"]
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "3. Category Management",
+      "item": [
         {
-          "name": "Get Outlet Settings",
+          "name": "Get All Categories",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-settings",
+              "raw": "{{baseUrl}}/api/categories",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "branches", "{{branchId}}", "outlet-settings"]
+              "path": ["api", "categories"]
             }
           }
         },
         {
-          "name": "Update Outlet Details",
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "{{categoryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('categoryId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Main Course\",\n  \"description\": \"Delicious main course dishes\",\n  \"slug\": \"main-course\",\n  \"isActive\": true,\n  \"displayOrder\": 1,\n  \"parentCategory\": null,\n  \"branchId\": \"{{branchId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Update Category",
           "request": {
             "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Admin user\",\n  \"aboutUs\": \"<p>Admin user</p><p><strong>Address</strong></p><p>26 Bruce Street</p><p>Admin user</p><p>KY12 7AG</p><p>United Kingdom</p><p><strong>Telephone</strong></p><p>01383223409</p><p><strong>Opening Times</strong></p><p><strong>Monday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p><p><strong>Tuesday</strong></p><p>16:30-22:00</p><p><strong>Wednesday</strong></p><p>16:30-22:00</p><p><strong>Thursday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p><p><strong>Friday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p><p><strong>Saturday</strong></p><p>11:45-14:30</p><p>16:30-23:00</p><p><strong>Sunday</strong></p><p>11:45-14:30</p><p>16:30-22:00</p>\",\n  \"email\": \"kockraco@gmail.com\",\n  \"contactNumber\": \"+44383623409\",\n  \"telephone\": \"01383223409\"\n}"
+              "raw": "{\n  \"name\": \"Main Course - Updated\",\n  \"description\": \"Updated description for main course\",\n  \"displayOrder\": 2\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-details",
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "branches", "{{branchId}}", "outlet-details"]
+              "path": ["api", "categories", "{{categoryId}}"]
             }
           }
         },
         {
-          "name": "Update Outlet Location",
+          "name": "Delete Category",
           "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"street\": \"26 Bruce Street\",\n  \"addressLine2\": \"\",\n  \"city\": \"Admin user\",\n  \"county\": \"Fife\",\n  \"state\": \"Scotland\",\n  \"postcode\": \"KY12 7AG\",\n  \"country\": \"United Kingdom\"\n}"
-            },
+            "method": "DELETE",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-location",
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "branches", "{{branchId}}", "outlet-location"]
-            }
-          }
-        },
-        {
-          "name": "Update Outlet Ordering Options",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"collection\": {\n    \"displayFormat\": \"TimeOnly\",\n    \"timeslotLength\": 15\n  },\n  \"delivery\": {\n    \"displayFormat\": \"TimeOnly\",\n    \"timeslotLength\": 15\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-ordering-options",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "branches", "{{branchId}}", "outlet-ordering-options"]
-            }
-          }
-        },
-        {
-          "name": "Update Outlet Pre-Ordering",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"allowCollectionPreOrders\": false,\n  \"allowDeliveryPreOrders\": false\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/branches/{{branchId}}/outlet-pre-ordering",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "branches", "{{branchId}}", "outlet-pre-ordering"]
+              "path": ["api", "categories", "{{categoryId}}"]
             }
           }
         }
       ]
     },
     {
-      "name": "3. Cart Management",
+      "name": "4. Product Management",
+      "item": [
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products?page=1&limit=10&category={{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "category",
+                  "value": "{{categoryId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('productId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chicken Biryani\",\n  \"description\": \"Aromatic basmati rice cooked with tender chicken and traditional spices\",\n  \"price\": 18.99,\n  \"category\": \"{{categoryId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"images\": [],\n  \"allergens\": {\n    \"contains\": [\"gluten\", \"dairy\"],\n    \"mayContain\": [\"nuts\"]\n  },\n  \"availability\": {\n    \"monday\": true,\n    \"tuesday\": true,\n    \"wednesday\": true,\n    \"thursday\": true,\n    \"friday\": true,\n    \"saturday\": true,\n    \"sunday\": true\n  },\n  \"delivery\": true,\n  \"collection\": true,\n  \"dineIn\": true,\n  \"hideItem\": false,\n  \"weight\": \"450g\",\n  \"calorificValue\": 650,\n  \"stockManagement\": {\n    \"isManaged\": true,\n    \"quantity\": 50,\n    \"lowStockThreshold\": 10\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chicken Biryani - Premium\",\n  \"price\": 21.99,\n  \"description\": \"Premium Chicken Biryani with saffron and premium basmati rice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Popular Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/popular?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "popular"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Update Stock",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    {\n      \"id\": \"{{productId}}\",\n      \"isManaged\": true,\n      \"quantity\": 25\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/stock/bulk-update",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "stock", "bulk-update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Attribute Management",
+      "item": [
+        {
+          "name": "Get All Attributes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attributes?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attributes"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Attribute by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attributes/{{attributeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attributes", "{{attributeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Attribute",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('attributeId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Beverages\",\n  \"displayOrder\": 1,\n  \"type\": \"single\",\n  \"requiresSelection\": true,\n  \"availableDays\": [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\", \"Sunday\"],\n  \"isActive\": true,\n  \"description\": \"Choose your preferred beverage to accompany your meal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attributes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attributes"]
+            }
+          }
+        },
+        {
+          "name": "Update Attribute",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Beverages - Updated\",\n  \"type\": \"multiple\",\n  \"requiresSelection\": false,\n  \"description\": \"Choose one or more beverages to accompany your meal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attributes/{{attributeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attributes", "{{attributeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Attribute",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attributes/{{attributeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attributes", "{{attributeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Attributes by Branch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attributes/branch/{{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attributes", "branch", "{{branchId}}"]
+            }
+          }
+        },
+        {
+          "name": "Reorder Attributes",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attributeOrders\": [\n    {\n      \"id\": \"{{attributeId}}\",\n      \"displayOrder\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attributes/reorder",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attributes", "reorder"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Product Attribute Items",
+      "item": [
+        {
+          "name": "Get All Product Attribute Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items?productId={{productId}}&attributeId={{attributeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items"],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}"
+                },
+                {
+                  "key": "attributeId",
+                  "value": "{{attributeId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Product Attribute Item by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items/{{attributeItemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items", "{{attributeItemId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Product Attribute Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('attributeItemId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"attributeId\": \"{{attributeId}}\",\n  \"name\": \"Coca Cola\",\n  \"price\": 2.50,\n  \"displayOrder\": 1,\n  \"isActive\": true,\n  \"description\": \"Classic Coca Cola 330ml\",\n  \"stockManagement\": {\n    \"isManaged\": true,\n    \"quantity\": 100,\n    \"lowStockThreshold\": 20\n  },\n  \"availability\": {\n    \"monday\": true,\n    \"tuesday\": true,\n    \"wednesday\": true,\n    \"thursday\": true,\n    \"friday\": true,\n    \"saturday\": true,\n    \"sunday\": true\n  },\n  \"allergens\": {\n    \"contains\": [],\n    \"mayContain\": []\n  },\n  \"calorificValue\": 139,\n  \"weight\": \"330ml\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items"]
+            }
+          }
+        },
+        {
+          "name": "Create Product Attribute Item with Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('attributeItemId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "attributeId",
+                  "value": "{{attributeId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "Pepsi",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "2.25",
+                  "type": "text"
+                },
+                {
+                  "key": "displayOrder",
+                  "value": "2",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Pepsi 330ml can",
+                  "type": "text"
+                },
+                {
+                  "key": "stockManagement",
+                  "value": "{\"isManaged\": true, \"quantity\": 80, \"lowStockThreshold\": 15}",
+                  "type": "text"
+                },
+                {
+                  "key": "availability",
+                  "value": "{\"monday\": true, \"tuesday\": true, \"wednesday\": true, \"thursday\": true, \"friday\": true, \"saturday\": true, \"sunday\": true}",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items"]
+            }
+          }
+        },
+        {
+          "name": "Update Product Attribute Item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coca Cola - Updated\",\n  \"price\": 2.75,\n  \"description\": \"Classic Coca Cola 330ml - Premium\",\n  \"stockManagement\": {\n    \"quantity\": 120\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items/{{attributeItemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items", "{{attributeItemId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Product Attribute Item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items/{{attributeItemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items", "{{attributeItemId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Attribute Items by Product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items/product/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items", "product", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Attribute Items by Attribute",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items/attribute/{{attributeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items", "attribute", "{{attributeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create Attribute Items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"attributeId\": \"{{attributeId}}\",\n  \"items\": [\n    {\n      \"name\": \"Sprite\",\n      \"price\": 2.25,\n      \"displayOrder\": 3,\n      \"description\": \"Sprite 330ml can\",\n      \"stockManagement\": {\n        \"isManaged\": true,\n        \"quantity\": 60,\n        \"lowStockThreshold\": 10\n      }\n    },\n    {\n      \"name\": \"Orange Juice\",\n      \"price\": 3.50,\n      \"displayOrder\": 4,\n      \"description\": \"Fresh orange juice 250ml\",\n      \"stockManagement\": {\n        \"isManaged\": true,\n        \"quantity\": 30,\n        \"lowStockThreshold\": 5\n      }\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items", "bulk"]
+            }
+          }
+        },
+        {
+          "name": "Update Attribute Item Stock",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 50,\n  \"operation\": \"set\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/product-attribute-items/{{attributeItemId}}/stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-attribute-items", "{{attributeItemId}}", "stock"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Cart Management (Updated with Attributes)",
       "item": [
         {
           "name": "Get Cart (Guest)",
@@ -651,7 +1165,23 @@
           }
         },
         {
-          "name": "Add Item to Cart",
+          "name": "Add Item to Cart (Basic)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.items && jsonData.data.items.length > 0) {",
+                  "        pm.environment.set('cartItemId', jsonData.data.items[0].id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -666,7 +1196,73 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 2,\n  \"selectedOptions\": {\n    \"size\": \"Large\",\n    \"toppings\": \"Extra Cheese\",\n    \"crust\": \"Thin\"\n  },\n  \"specialRequirements\": \"No onions please, extra spicy\",\n  \"branchId\": \"{{branchId}}\"\n}"
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 1,\n  \"selectedOptions\": {\n    \"size\": \"Regular\",\n    \"spiceLevel\": \"Medium\"\n  },\n  \"specialRequirements\": \"No onions please\",\n  \"branchId\": \"{{branchId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/cart/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "Add Item to Cart with Attributes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.items && jsonData.data.items.length > 0) {",
+                  "        pm.environment.set('cartItemId', jsonData.data.items[0].id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-session-id",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 2,\n  \"selectedOptions\": {\n    \"size\": \"Large\",\n    \"spiceLevel\": \"Hot\"\n  },\n  \"specialRequirements\": \"Extra spicy, no garlic\",\n  \"branchId\": \"{{branchId}}\",\n  \"selectedAttributes\": [\n    {\n      \"attributeId\": \"{{attributeId}}\",\n      \"attributeName\": \"Beverages\",\n      \"attributeType\": \"single\",\n      \"selectedItems\": [\n        {\n          \"itemId\": \"{{attributeItemId}}\",\n          \"itemName\": \"Coca Cola\",\n          \"itemPrice\": 2.50,\n          \"quantity\": 1\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/cart/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "Add Item with Multiple Attributes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-session-id",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 1,\n  \"selectedOptions\": {\n    \"size\": \"Family\",\n    \"spiceLevel\": \"Mild\"\n  },\n  \"specialRequirements\": \"Family pack for 4 people\",\n  \"branchId\": \"{{branchId}}\",\n  \"selectedAttributes\": [\n    {\n      \"attributeId\": \"{{attributeId}}\",\n      \"attributeName\": \"Beverages\",\n      \"attributeType\": \"multiple\",\n      \"selectedItems\": [\n        {\n          \"itemId\": \"{{attributeItemId}}\",\n          \"itemName\": \"Coca Cola\",\n          \"itemPrice\": 2.50,\n          \"quantity\": 2\n        },\n        {\n          \"itemId\": \"attributeItem2Id\",\n          \"itemName\": \"Sprite\",\n          \"itemPrice\": 2.25,\n          \"quantity\": 2\n        }\n      ]\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/cart/items",
@@ -694,9 +1290,9 @@
               "raw": "{\n  \"quantity\": 3,\n  \"specialRequirements\": \"Updated: Make it extra spicy and no garlic\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/cart/items/cartItemId",
+              "raw": "{{baseUrl}}/api/cart/items/{{cartItemId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "cart", "items", "cartItemId"]
+              "path": ["api", "cart", "items", "{{cartItemId}}"]
             }
           }
         },
@@ -711,9 +1307,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/cart/items/cartItemId",
+              "raw": "{{baseUrl}}/api/cart/items/{{cartItemId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "cart", "items", "cartItemId"]
+              "path": ["api", "cart", "items", "{{cartItemId}}"]
             }
           }
         },
@@ -804,128 +1400,7 @@
       ]
     },
     {
-      "name": "4. Category Management",
-      "item": [
-        {
-          "name": "Get All Categories",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/categories",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categories"]
-            }
-          }
-        },
-        {
-          "name": "Get Category by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categories", "{{categoryId}}"]
-            }
-          }
-        },
-        {
-          "name": "Create Category",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.environment.set('categoryId', jsonData.data.id);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Appetizers\",\n  \"description\": \"Delicious appetizers to start your meal\",\n  \"slug\": \"appetizers\",\n  \"isActive\": true,\n  \"displayOrder\": 1,\n  \"parentCategory\": null,\n  \"branchId\": \"{{branchId}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/categories",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categories"]
-            }
-          }
-        },
-        {
-          "name": "Update Category",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Starters & Appetizers\",\n  \"description\": \"Updated description for appetizers\",\n  \"displayOrder\": 2\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categories", "{{categoryId}}"]
-            }
-          }
-        },
-        {
-          "name": "Get Category Products",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/categories/{{categoryId}}/products",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categories", "{{categoryId}}", "products"]
-            }
-          }
-        },
-        {
-          "name": "Get Category Product Counts",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/categories/counts",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categories", "counts"]
-            }
-          }
-        },
-        {
-          "name": "Delete Category",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "categories", "{{categoryId}}"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "5. Order Management",
+      "name": "8. Order Management (Updated with Attributes)",
       "item": [
         {
           "name": "Get All Orders",
@@ -952,7 +1427,7 @@
           }
         },
         {
-          "name": "Create Order",
+          "name": "Create Order (Basic)",
           "event": [
             {
               "listen": "test",
@@ -977,7 +1452,64 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"price\": 12.99,\n      \"selectedOptions\": {\n        \"size\": \"Large\",\n        \"toppings\": \"Extra Cheese\"\n      },\n      \"specialRequirements\": \"No onions\"\n    }\n  ],\n  \"orderType\": \"delivery\",\n  \"deliveryAddress\": {\n    \"street\": \"123 Customer St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"card\",\n  \"paymentStatus\": \"pending\",\n  \"specialInstructions\": \"Ring doorbell twice\",\n  \"subtotal\": 25.98,\n  \"tax\": 2.08,\n  \"deliveryFee\": 5.00,\n  \"total\": 33.06\n}"
+              "raw": "{\n  \"user\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"price\": 18.99,\n      \"notes\": \"Medium spice level\"\n    }\n  ],\n  \"deliveryMethod\": \"delivery\",\n  \"deliveryAddress\": {\n    \"street\": \"123 Customer St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"card\",\n  \"paymentStatus\": \"pending\",
+  \"customerNotes\": \"Ring doorbell twice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "Create Order with Attributes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('orderId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"{{productId}}\",\n      \"quantity\": 1,\n      \"price\": 18.99,\n      \"notes\": \"Large portion with extra spice\",\n      \"selectedAttributes\": [\n        {\n          \"attributeId\": \"{{attributeId}}\",\n          \"attributeName\": \"Beverages\",\n          \"attributeType\": \"single\",\n          \"selectedItems\": [\n            {\n              \"itemId\": \"{{attributeItemId}}\",\n              \"itemName\": \"Coca Cola\",\n              \"itemPrice\": 2.50,\n              \"quantity\": 1\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"deliveryMethod\": \"delivery\",\n  \"deliveryAddress\": {\n    \"street\": \"456 Oak Avenue\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10002\",\n    \"country\": \"USA\",\n    \"notes\": \"Apartment 3B\"\n  },\n  \"paymentMethod\": \"card\",\n  \"paymentStatus\": \"pending\",\n  \"customerNotes\": \"Please call when arriving\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "Create Order with Multiple Attributes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"price\": 18.99,\n      \"notes\": \"Family pack order\",\n      \"selectedAttributes\": [\n        {\n          \"attributeId\": \"{{attributeId}}\",\n          \"attributeName\": \"Beverages\",\n          \"attributeType\": \"multiple\",\n          \"selectedItems\": [\n            {\n              \"itemId\": \"{{attributeItemId}}\",\n              \"itemName\": \"Coca Cola\",\n              \"itemPrice\": 2.50,\n              \"quantity\": 2\n            },\n            {\n              \"itemId\": \"attributeItem2Id\",\n              \"itemName\": \"Sprite\",\n              \"itemPrice\": 2.25,\n              \"quantity\": 2\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"deliveryMethod\": \"pickup\",\n  \"paymentMethod\": \"cash\",\n  \"paymentStatus\": \"pending\",\n  \"customerNotes\": \"Will pick up at 7 PM\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/orders",
@@ -998,7 +1530,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"confirmed\",\n  \"estimatedDeliveryTime\": \"2024-01-15T19:30:00.000Z\",\n  \"paymentStatus\": \"paid\"\n}"
+              "raw": "{\n  \"status\": \"processing\",\n  \"estimatedDeliveryTime\": \"2024-01-15T19:30:00.000Z\",\n  \"paymentStatus\": \"paid\",\n  \"internalNotes\": \"Customer confirmed payment\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/orders/{{orderId}}",
@@ -1051,17 +1583,17 @@
       ]
     },
     {
-      "name": "6. Product Management",
+      "name": "9. User Management",
       "item": [
         {
-          "name": "Get All Products",
+          "name": "Get All Users",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/products?page=1&limit=10&category={{categoryId}}",
+              "raw": "{{baseUrl}}/api/users?page=1&limit=10&role=user",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "products"],
+              "path": ["api", "users"],
               "query": [
                 {
                   "key": "page",
@@ -1072,27 +1604,110 @@
                   "value": "10"
                 },
                 {
-                  "key": "category",
-                  "value": "{{categoryId}}"
+                  "key": "role",
+                  "value": "user"
                 }
               ]
             }
           }
         },
         {
-          "name": "Get Product by ID",
+          "name": "Get User by ID",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "products", "{{productId}}"]
+              "path": ["api", "users", "{{userId}}"]
             }
           }
         },
         {
-          "name": "Create Product",
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+1234567891\",\n  \"address\": {\n    \"street\": \"456 Oak St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10003\",\n    \"country\": \"USA\"\n  },\n  \"roleId\": \"{{roleId}}\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith Updated\",\n  \"phone\": \"+1234567892\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Role Management",
+      "item": [
+        {
+          "name": "Get All Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles"]
+            }
+          }
+        },
+        {
+          "name": "Get Role by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles", "{{roleId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Role",
           "event": [
             {
               "listen": "test",
@@ -1100,7 +1715,7 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "    var jsonData = pm.response.json();",
-                  "    pm.environment.set('productId', jsonData.data.id);",
+                  "    pm.environment.set('roleId', jsonData.data.id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -1117,17 +1732,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Margherita Pizza\",\n  \"description\": \"Classic pizza with fresh mozzarella, tomato sauce, and basil\",\n  \"price\": 14.99,\n  \"category\": \"{{categoryId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"images\": [],\n  \"allergens\": {\n    \"contains\": [\"gluten\", \"dairy\"],\n    \"mayContain\": [\"nuts\"]\n  },\n  \"availability\": {\n    \"monday\": true,\n    \"tuesday\": true,\n    \"wednesday\": true,\n    \"thursday\": true,\n    \"friday\": true,\n    \"saturday\": true,\n    \"sunday\": true\n  },\n  \"delivery\": true,\n  \"collection\": true,\n  \"dineIn\": true,\n  \"hideItem\": false,\n  \"weight\": \"350g\",\n  \"calorificValue\": 850,\n  \"calorieDetails\": {\n    \"protein\": 35,\n    \"carbs\": 95,\n    \"fat\": 28,\n    \"fiber\": 4\n  },\n  \"stockManagement\": {\n    \"isManaged\": true,\n    \"quantity\": 50,\n    \"lowStockThreshold\": 10\n  }\n}"
+              "raw": "{\n  \"name\": \"Kitchen Staff\",\n  \"slug\": \"kitchen-staff\",\n  \"description\": \"Kitchen staff members with access to order management\",\n  \"permissions\": [\n    \"view_orders\",\n    \"update_order_status\",\n    \"view_products\",\n    \"update_inventory\"\n  ],\n  \"isActive\": true,\n  \"level\": 2\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/products",
+              "raw": "{{baseUrl}}/api/roles",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "products"]
+              "path": ["api", "roles"]
             }
           }
         },
         {
-          "name": "Update Product",
+          "name": "Update Role",
           "request": {
             "method": "PUT",
             "header": [
@@ -1138,430 +1753,31 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Margherita Pizza - Premium\",\n  \"price\": 16.99,\n  \"description\": \"Premium Margherita pizza with organic ingredients\"\n}"
+              "raw": "{\n  \"name\": \"Senior Kitchen Staff\",\n  \"description\": \"Senior kitchen staff with additional permissions\",\n  \"permissions\": [\n    \"view_orders\",\n    \"update_order_status\",\n    \"view_products\",\n    \"update_inventory\",\n    \"manage_recipes\"\n  ],\n  \"level\": 3\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "products", "{{productId}}"]
+              "path": ["api", "roles", "{{roleId}}"]
             }
           }
         },
         {
-          "name": "Get Popular Products",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/products/popular?limit=5",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "products", "popular"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "5"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Recommended Products",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/products/recommended?userId={{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "products", "recommended"],
-              "query": [
-                {
-                  "key": "userId",
-                  "value": "{{userId}}"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Stock Status",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/products/stock/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "products", "stock", "status"]
-            }
-          }
-        },
-        {
-          "name": "Bulk Update Stock",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"updates\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 25,\n      \"operation\": \"set\"\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/products/stock/bulk-update",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "products", "stock", "bulk-update"]
-            }
-          }
-        },
-        {
-          "name": "Delete Product",
+          "name": "Delete Role",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "products", "{{productId}}"]
+              "path": ["api", "roles", "{{roleId}}"]
             }
           }
         }
       ]
     },
     {
-      "name": "7. Report Management",
-      "item": [
-        {
-          "name": "Get Dashboard Summary",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/dashboard-summary?period=today&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "dashboard-summary"],
-              "query": [
-                {
-                  "key": "period",
-                  "value": "today",
-                  "description": "today, yesterday, week, month, year"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get End of Night Report",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/end-of-night?date=2024-01-15&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "end-of-night"],
-              "query": [
-                {
-                  "key": "date",
-                  "value": "2024-01-15",
-                  "description": "Date in YYYY-MM-DD format"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get End of Month Report",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/end-of-month?month=1&year=2024&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "end-of-month"],
-              "query": [
-                {
-                  "key": "month",
-                  "value": "1",
-                  "description": "Month number (1-12)"
-                },
-                {
-                  "key": "year",
-                  "value": "2024",
-                  "description": "Year"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Sales History",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/sales-history?startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}&page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "sales-history"],
-              "query": [
-                {
-                  "key": "startDate",
-                  "value": "2024-01-01",
-                  "description": "Start date (optional)"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31",
-                  "description": "End date (optional)"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                },
-                {
-                  "key": "page",
-                  "value": "1",
-                  "description": "Page number"
-                },
-                {
-                  "key": "limit",
-                  "value": "50",
-                  "description": "Items per page"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Item Sales History",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/item-sales-history?startDate=2024-01-01&endDate=2024-01-31&productId={{productId}}&categoryId={{categoryId}}&page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "item-sales-history"],
-              "query": [
-                {
-                  "key": "startDate",
-                  "value": "2024-01-01",
-                  "description": "Start date (optional)"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31",
-                  "description": "End date (optional)"
-                },
-                {
-                  "key": "productId",
-                  "value": "{{productId}}",
-                  "description": "Specific product filter (optional)"
-                },
-                {
-                  "key": "categoryId",
-                  "value": "{{categoryId}}",
-                  "description": "Category filter (optional)"
-                },
-                {
-                  "key": "page",
-                  "value": "1",
-                  "description": "Page number"
-                },
-                {
-                  "key": "limit",
-                  "value": "50",
-                  "description": "Items per page"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Discount History",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/discount-history?startDate=2024-01-01&endDate=2024-01-31&discountType=all&page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "discount-history"],
-              "query": [
-                {
-                  "key": "startDate",
-                  "value": "2024-01-01",
-                  "description": "Start date (optional)"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31",
-                  "description": "End date (optional)"
-                },
-                {
-                  "key": "discountType",
-                  "value": "all",
-                  "description": "all, first-order, loyalty, limited-time, free-wrap"
-                },
-                {
-                  "key": "page",
-                  "value": "1",
-                  "description": "Page number"
-                },
-                {
-                  "key": "limit",
-                  "value": "50",
-                  "description": "Items per page"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Outlet Reports",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/outlet-reports?branchId={{branchId}}&period=month",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "outlet-reports"],
-              "query": [
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Required branch ID"
-                },
-                {
-                  "key": "period",
-                  "value": "month",
-                  "description": "today, yesterday, week, month, year"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Custom Report - Menu Category Totals",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/custom?type=menu-category-totals&startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "custom"],
-              "query": [
-                {
-                  "key": "type",
-                  "value": "menu-category-totals",
-                  "description": "Report type"
-                },
-                {
-                  "key": "startDate",
-                  "value": "2024-01-01",
-                  "description": "Start date"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31",
-                  "description": "End date"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Custom Report - Daily Totals",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/custom?type=daily-totals&startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "custom"],
-              "query": [
-                {
-                  "key": "type",
-                  "value": "daily-totals",
-                  "description": "Report type"
-                },
-                {
-                  "key": "startDate",
-                  "value": "2024-01-01",
-                  "description": "Start date"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31",
-                  "description": "End date"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Custom Report - Order Export",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/custom?type=order-export&startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "custom"],
-              "query": [
-                {
-                  "key": "type",
-                  "value": "order-export",
-                  "description": "Report type for complete order data export"
-                },
-                {
-                  "key": "startDate",
-                  "value": "2024-01-01",
-                  "description": "Start date"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31",
-                  "description": "End date"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "8. Reservation Management",
+      "name": "11. Reservation Management",
       "item": [
         {
           "name": "Get All Reservations",
@@ -1694,201 +1910,75 @@
       ]
     },
     {
-      "name": "9. User Management",
+      "name": "12. Report Management",
       "item": [
         {
-          "name": "Get All Users",
+          "name": "Get Dashboard Summary",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/users?page=1&limit=10&role=user",
+              "raw": "{{baseUrl}}/api/reports/dashboard-summary?period=today&branchId={{branchId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "users"],
+              "path": ["api", "reports", "dashboard-summary"],
               "query": [
                 {
-                  "key": "page",
-                  "value": "1"
+                  "key": "period",
+                  "value": "today",
+                  "description": "today, yesterday, week, month, year"
                 },
                 {
-                  "key": "limit",
-                  "value": "10"
-                },
-                {
-                  "key": "role",
-                  "value": "user"
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
                 }
               ]
             }
           }
         },
         {
-          "name": "Get User by ID",
+          "name": "Get Sales History",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "raw": "{{baseUrl}}/api/reports/sales-history?startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}&page=1&limit=50",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
-            }
-          }
-        },
-        {
-          "name": "Create User",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+1234567891\",\n  \"address\": {\n    \"street\": \"456 Oak St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10003\",\n    \"country\": \"USA\"\n  },\n  \"roleId\": \"{{roleId}}\",\n  \"isActive\": true,\n  \"preferences\": {\n    \"newsletter\": true,\n    \"smsNotifications\": false,\n    \"dietaryRestrictions\": [\"vegetarian\"]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users"]
-            }
-          }
-        },
-        {
-          "name": "Update User",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Smith Updated\",\n  \"phone\": \"+1234567892\",\n  \"preferences\": {\n    \"newsletter\": false,\n    \"smsNotifications\": true,\n    \"dietaryRestrictions\": [\"vegetarian\", \"gluten-free\"]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
-            }
-          }
-        },
-        {
-          "name": "Delete User",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
+              "path": ["api", "reports", "sales-history"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "description": "End date (optional)"
+                },
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}",
+                  "description": "Optional branch filter"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Items per page"
+                }
+              ]
             }
           }
         }
       ]
     },
     {
-      "name": "10. Role Management",
-      "item": [
-        {
-          "name": "Get All Roles",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/roles",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles"]
-            }
-          }
-        },
-        {
-          "name": "Get Role by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles", "{{roleId}}"]
-            }
-          }
-        },
-        {
-          "name": "Create Role",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.environment.set('roleId', jsonData.data.id);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Kitchen Staff\",\n  \"slug\": \"kitchen-staff\",\n  \"description\": \"Kitchen staff members with access to order management\",\n  \"permissions\": [\n    \"view_orders\",\n    \"update_order_status\",\n    \"view_products\",\n    \"update_inventory\"\n  ],\n  \"isActive\": true,\n  \"level\": 2\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/roles",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles"]
-            }
-          }
-        },
-        {
-          "name": "Update Role",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Senior Kitchen Staff\",\n  \"description\": \"Senior kitchen staff with additional permissions\",\n  \"permissions\": [\n    \"view_orders\",\n    \"update_order_status\",\n    \"view_products\",\n    \"update_inventory\",\n    \"manage_recipes\"\n  ],\n  \"level\": 3\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles", "{{roleId}}"]
-            }
-          }
-        },
-        {
-          "name": "Delete Role",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles", "{{roleId}}"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "11. Ordering Times Management",
+      "name": "13. Ordering Times Management",
       "item": [
         {
           "name": "Get Ordering Times",
@@ -1923,226 +2013,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"weeklySchedule\": {\n    \"monday\": {\n      \"isCollectionAllowed\": true,\n      \"isDeliveryAllowed\": true,\n      \"isTableOrderingAllowed\": false,\n      \"defaultTimes\": {\n        \"start\": \"11:45\",\n        \"end\": \"21:50\"\n      },\n      \"collection\": {\n        \"leadTime\": 20,\n        \"displayedTime\": \"12:10\"\n      },\n      \"delivery\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 45,\n        \"displayedTime\": \"12:30\",\n        \"customTimes\": {\n          \"start\": \"11:45\",\n          \"end\": \"21:50\"\n        }\n      },\n      \"tableOrdering\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 0,\n        \"displayedTime\": \"\",\n        \"customTimes\": {\n          \"start\": \"11:45\",\n          \"end\": \"21:50\"\n        }\n      }\n    },\n    \"tuesday\": {\n      \"isCollectionAllowed\": false,\n      \"isDeliveryAllowed\": true,\n      \"isTableOrderingAllowed\": false,\n      \"defaultTimes\": {\n        \"start\": \"16:30\",\n        \"end\": \"22:00\"\n      },\n      \"collection\": {\n        \"leadTime\": 20,\n        \"displayedTime\": \"16:50\"\n      },\n      \"delivery\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 45,\n        \"displayedTime\": \"17:15\",\n        \"customTimes\": {\n          \"start\": \"16:30\",\n          \"end\": \"22:00\"\n        }\n      },\n      \"tableOrdering\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 0,\n        \"displayedTime\": \"\",\n        \"customTimes\": {\n          \"start\": \"16:30\",\n          \"end\": \"22:00\"\n        }\n      }\n    }\n  }\n}"
+              "raw": "{\n  \"weeklySchedule\": {\n    \"monday\": {\n      \"isCollectionAllowed\": true,\n      \"isDeliveryAllowed\": true,\n      \"isTableOrderingAllowed\": false,\n      \"defaultTimes\": {\n        \"start\": \"11:45\",\n        \"end\": \"21:50\"\n      },\n      \"collection\": {\n        \"leadTime\": 20,\n        \"displayedTime\": \"12:10\"\n      },\n      \"delivery\": {\n        \"useDifferentTimes\": false,\n        \"leadTime\": 45,\n        \"displayedTime\": \"12:30\"\n      }\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/weekly-schedule",
               "host": ["{{baseUrl}}"],
               "path": ["api", "ordering-times", "{{branchId}}", "weekly-schedule"]
-            }
-          }
-        },
-        {
-          "name": "Update Day Schedule",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"isCollectionAllowed\": true,\n  \"isDeliveryAllowed\": true,\n  \"isTableOrderingAllowed\": false,\n  \"defaultTimes\": {\n    \"start\": \"11:45\",\n    \"end\": \"21:50\"\n  },\n  \"collection\": {\n    \"leadTime\": 25,\n    \"displayedTime\": \"12:15\"\n  },\n  \"delivery\": {\n    \"useDifferentTimes\": true,\n    \"leadTime\": 50,\n    \"displayedTime\": \"12:40\",\n    \"customTimes\": {\n      \"start\": \"12:00\",\n      \"end\": \"22:00\"\n    }\n  },\n  \"tableOrdering\": {\n    \"useDifferentTimes\": false,\n    \"leadTime\": 0,\n    \"displayedTime\": \"\",\n    \"customTimes\": {\n      \"start\": \"11:45\",\n      \"end\": \"21:50\"\n    }\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/day/wednesday",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "day", "wednesday"]
-            }
-          }
-        },
-        {
-          "name": "Get Closed Dates",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
-            }
-          }
-        },
-        {
-          "name": "Add Single Closed Date",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"date\": \"2024-12-25\",\n  \"type\": \"single\",\n  \"reason\": \"Christmas Day\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
-            }
-          }
-        },
-        {
-          "name": "Add Date Range Closed",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"date\": \"2024-12-24\",\n  \"endDate\": \"2024-12-26\",\n  \"type\": \"range\",\n  \"reason\": \"Christmas Holiday Period\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
-            }
-          }
-        },
-        {
-          "name": "Delete Closed Date",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates/closedDateId",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates", "closedDateId"]
-            }
-          }
-        },
-        {
-          "name": "Delete All Closed Dates",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/closed-dates",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "closed-dates"]
-            }
-          }
-        },
-        {
-          "name": "Get Order Restrictions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/restrictions",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "restrictions"]
-            }
-          }
-        },
-        {
-          "name": "Update Order Restrictions - Combined Total",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"restrictions\": {\n    \"type\": \"Combined Total\",\n    \"combined\": {\n      \"sunday\": {\n        \"enabled\": true,\n        \"orderTotal\": 500,\n        \"windowSize\": 15\n      },\n      \"monday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1000,\n        \"windowSize\": 10\n      },\n      \"tuesday\": {\n        \"enabled\": false,\n        \"orderTotal\": 0,\n        \"windowSize\": 5\n      },\n      \"wednesday\": {\n        \"enabled\": true,\n        \"orderTotal\": 750,\n        \"windowSize\": 10\n      },\n      \"thursday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1000,\n        \"windowSize\": 10\n      },\n      \"friday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1500,\n        \"windowSize\": 5\n      },\n      \"saturday\": {\n        \"enabled\": true,\n        \"orderTotal\": 1200,\n        \"windowSize\": 8\n      }\n    }\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/restrictions",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "restrictions"]
-            }
-          }
-        },
-        {
-          "name": "Update Order Restrictions - Split Total",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"restrictions\": {\n    \"type\": \"Split Total\",\n    \"collection\": {\n      \"sunday\": {\n        \"enabled\": true,\n        \"orderTotal\": 300,\n        \"windowSize\": 15\n      },\n      \"monday\": {\n        \"enabled\": true,\n        \"orderTotal\": 600,\n        \"windowSize\": 10\n      },\n      \"tuesday\": {\n        \"enabled\": false,\n        \"orderTotal\": 0,\n        \"windowSize\": 5\n      },\n      \"wednesday\": {\n        \"enabled\": true,\n        \"orderTotal\": 450,\n        \"windowSize\": 10\n      },\n      \"thursday\": {\n        \"enabled\": true,\n        \"orderTotal\": 600,\n        \"windowSize\": 10\n      },\n      \"friday\": {\n        \"enabled\": true,\n        \"orderTotal\": 900,\n        \"windowSize\": 5\n      },\n      \"saturday\": {\n        \"enabled\": true,\n        \"orderTotal\": 750,\n        \"windowSize\": 8\n      }\n    },\n    \"delivery\": {\n      \"sunday\": {\n        \"enabled\": true,\n        \"orderTotal\": 200,\n        \"windowSize\": 20\n      },\n      \"monday\": {\n        \"enabled\": true,\n        \"orderTotal\": 400,\n        \"windowSize\": 15\n      },\n      \"tuesday\": {\n        \"enabled\": false,\n        \"orderTotal\": 0,\n        \"windowSize\": 5\n      },\n      \"wednesday\": {\n        \"enabled\": true,\n        \"orderTotal\": 300,\n        \"windowSize\": 15\n      },\n      \"thursday\": {\n        \"enabled\": true,\n        \"orderTotal\": 400,\n        \"windowSize\": 15\n      },\n      \"friday\": {\n        \"enabled\": true,\n        \"orderTotal\": 600,\n        \"windowSize\": 10\n      },\n      \"saturday\": {\n        \"enabled\": true,\n        \"orderTotal\": 450,\n        \"windowSize\": 12\n      }\n    }\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/restrictions",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "restrictions"]
-            }
-          }
-        },
-        {
-          "name": "Check Ordering Availability",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"orderType\": \"collection\",\n  \"date\": \"2024-01-15\",\n  \"time\": \"12:30\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/ordering-times/{{branchId}}/check-availability",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "ordering-times", "{{branchId}}", "check-availability"]
             }
           }
         }

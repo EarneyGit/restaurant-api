@@ -28,7 +28,46 @@ const orderSchema = new mongoose.Schema(
           type: Number,
           required: [true, 'Price is required']
         },
-        notes: String
+        notes: String,
+        // Attribute selections for this product
+        selectedAttributes: [{
+          attributeId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Attribute',
+            required: true
+          },
+          attributeName: {
+            type: String,
+            required: true
+          },
+          attributeType: {
+            type: String,
+            enum: ['single', 'multiple', 'multiple-times'],
+            required: true
+          },
+          selectedItems: [{
+            itemId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: 'ProductAttributeItem',
+              required: true
+            },
+            itemName: {
+              type: String,
+              required: true
+            },
+            itemPrice: {
+              type: Number,
+              required: true,
+              default: 0
+            },
+            quantity: {
+              type: Number,
+              required: true,
+              default: 1,
+              min: [1, 'Attribute item quantity must be at least 1']
+            }
+          }]
+        }]
       }
     ],
     branchId: {
@@ -134,11 +173,29 @@ orderSchema.pre('save', async function(next) {
   }
 });
 
-// Calculate total amount before saving
+// Calculate total amount before saving (including attribute prices)
 orderSchema.pre('save', function(next) {
   if (this.products && this.products.length > 0) {
     this.totalAmount = this.products.reduce((total, item) => {
-      return total + (item.price * item.quantity);
+      let itemTotal = item.price * item.quantity;
+      
+      // Add attribute item prices
+      if (item.selectedAttributes && item.selectedAttributes.length > 0) {
+        const attributeTotal = item.selectedAttributes.reduce((attrTotal, attr) => {
+          if (attr.selectedItems && attr.selectedItems.length > 0) {
+            const attrItemTotal = attr.selectedItems.reduce((itemSum, selectedItem) => {
+              return itemSum + (selectedItem.itemPrice * selectedItem.quantity);
+            }, 0);
+            return attrTotal + attrItemTotal;
+          }
+          return attrTotal;
+        }, 0);
+        
+        // Multiply attribute total by product quantity
+        itemTotal += (attributeTotal * item.quantity);
+      }
+      
+      return total + itemTotal;
     }, 0);
   }
   next();
