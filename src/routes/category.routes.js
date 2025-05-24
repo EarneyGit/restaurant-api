@@ -10,18 +10,20 @@ const {
 } = require('../controllers/category.controller');
 const { uploadSingle } = require('../middleware/upload');
 
+// Import authentication middleware
+const { protect, admin, optionalAuth } = require('../middleware/auth.middleware');
+
 const router = express.Router();
 
-// All routes are now public
-router.get('/', getCategories);
-router.get('/counts', getCategoryProductCounts);
-router.get('/:id', getCategory);
-router.post('/', uploadSingle, createCategory);
-router.put('/:id', uploadSingle, updateCategory);
-router.delete('/:id', deleteCategory);
+// Public routes with optional authentication (branch-based)
+router.get('/', optionalAuth, getCategories);
+router.get('/counts', optionalAuth, getCategoryProductCounts);
+router.get('/:id', optionalAuth, getCategory);
+router.get('/:id/products', optionalAuth, getCategoryProducts);
 
-// Get category products
-router.route('/:id/products')
-  .get(getCategoryProducts);
+// Protected routes (write operations) - allow admin, manager, staff
+router.post('/', protect, uploadSingle, createCategory);
+router.put('/:id', protect, uploadSingle, updateCategory);
+router.delete('/:id', protect, deleteCategory);
 
 module.exports = router; 

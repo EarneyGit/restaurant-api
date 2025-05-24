@@ -5,18 +5,43 @@ const { saveSingleFile, saveMultipleFiles, deleteFile } = require('../utils/file
 
 // @desc    Get all products
 // @route   GET /api/products
-// @access  Public
+// @access  Public (Branch-based)
 exports.getProducts = async (req, res, next) => {
   try {
     let query = {};
+    let targetBranchId = null;
     
-    // Apply filters if provided
-    if (req.query.category) {
-      query.category = req.query.category;
+    // Determine user role and authentication status
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (isAdmin) {
+      // Admin users: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      targetBranchId = req.user.branchId;
+      query.branchId = targetBranchId;
+    } else {
+      // Regular users and guests: Use branch from query parameter
+      if (!req.query.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      targetBranchId = req.query.branchId;
+      query.branchId = targetBranchId;
     }
     
-    if (req.query.branch) {
-      query.branchId = req.query.branch;
+    // Apply additional filters if provided
+    if (req.query.category) {
+      query.category = req.query.category;
     }
 
     // Add search functionality
@@ -75,7 +100,8 @@ exports.getProducts = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: transformedProducts.length,
-      data: transformedProducts
+      data: transformedProducts,
+      branchId: targetBranchId
     });
   } catch (error) {
     next(error);
@@ -84,7 +110,7 @@ exports.getProducts = async (req, res, next) => {
 
 // @desc    Get single product
 // @route   GET /api/products/:id
-// @access  Public
+// @access  Public (Branch-based)
 exports.getProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id)
@@ -97,6 +123,47 @@ exports.getProduct = async (req, res, next) => {
         success: false,
         message: `Product not found with id of ${req.params.id}`
       });
+    }
+
+    // Determine user role and authentication status
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch verification based on user type
+    if (isAdmin) {
+      // Admin users: Check if product belongs to their branch
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      
+      if (product.branchId._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Product not found in your branch'
+        });
+      }
+    } else {
+      // Regular users and guests: Check branch from query parameter
+      const requestedBranchId = req.query.branchId;
+      
+      if (!requestedBranchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      
+      // Check if product belongs to the requested branch
+      if (product.branchId._id.toString() !== requestedBranchId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Product not found in the selected branch'
+        });
+      }
     }
 
     // Transform product data to match frontend structure
@@ -152,9 +219,17 @@ exports.getProduct = async (req, res, next) => {
 
 // @desc    Create new product
 // @route   POST /api/products
-// @access  Public
+// @access  Private (Admin/Manager/Staff)
 exports.createProduct = async (req, res, next) => {
   try {
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Set branchId from authenticated user if not provided
+    if (!req.body.branchId && (userRole === 'manager' || userRole === 'staff' || userRole === 'admin')) {
+      req.body.branchId = req.user.branchId;
+    }
+    
     // Verify branch exists
     if (req.body.branchId) {
       const branch = await Branch.findById(req.body.branchId);
@@ -162,6 +237,15 @@ exports.createProduct = async (req, res, next) => {
         return res.status(404).json({
           success: false,
           message: 'Branch not found'
+        });
+      }
+      
+      // For manager/staff/admin, ensure they're creating for their branch
+      if ((userRole === 'manager' || userRole === 'staff' || userRole === 'admin') && 
+          req.body.branchId.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to create products for other branches'
         });
       }
     }
@@ -270,7 +354,7 @@ exports.createProduct = async (req, res, next) => {
 
 // @desc    Update product
 // @route   PUT /api/products/:id
-// @access  Public
+// @access  Private (Admin/Manager/Staff)
 exports.updateProduct = async (req, res, next) => {
   try {
     let product = await Product.findById(req.params.id);
@@ -282,6 +366,20 @@ exports.updateProduct = async (req, res, next) => {
       });
     }
     
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // For manager/staff/admin, check if product belongs to their branch
+    if ((userRole === 'manager' || userRole === 'staff' || userRole === 'admin') && 
+        product.branchId && 
+        req.user.branchId && 
+        product.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update products from other branches'
+      });
+    }
+    
     // Validate branch exists
     if (req.body.branchId) {
       const branch = await Branch.findById(req.body.branchId);
@@ -289,6 +387,15 @@ exports.updateProduct = async (req, res, next) => {
         return res.status(404).json({
           success: false,
           message: 'Branch not found'
+        });
+      }
+      
+      // For manager/staff/admin, ensure they're not changing to other branch
+      if ((userRole === 'manager' || userRole === 'staff' || userRole === 'admin') && 
+          req.body.branchId.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to move products to other branches'
         });
       }
     }

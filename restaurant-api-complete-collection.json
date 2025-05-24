@@ -638,6 +638,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "body": {
@@ -648,7 +652,8 @@
               "raw": "{{baseUrl}}/api/products",
               "host": ["{{baseUrl}}"],
               "path": ["api", "products"]
-            }
+            },
+            "description": "Create new product. Requires admin authentication. Admin can only create products for their branch."
           }
         },
         {
@@ -659,6 +664,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "body": {
@@ -669,19 +678,26 @@
               "raw": "{{baseUrl}}/api/products/{{productId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "products", "{{productId}}"]
-            }
+            },
+            "description": "Update product. Requires admin authentication. Admin can only update products from their branch."
           }
         },
         {
           "name": "Delete Product",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/products/{{productId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "products", "{{productId}}"]
-            }
+            },
+            "description": "Delete product. Requires admin authentication. Admin can only delete products from their branch."
           }
         },
         {
@@ -1406,24 +1422,36 @@
           "name": "Get All Orders",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/orders",
               "host": ["{{baseUrl}}"],
               "path": ["api", "orders"]
-            }
+            },
+            "description": "Get all orders filtered by admin's branch. Requires authentication."
           }
         },
         {
           "name": "Get Order by ID",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/orders/{{orderId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "orders", "{{orderId}}"]
-            }
+            },
+            "description": "Get single order. Admin can only access orders from their branch."
           }
         },
         {
@@ -1525,6 +1553,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "body": {
@@ -1535,7 +1567,8 @@
               "raw": "{{baseUrl}}/api/orders/{{orderId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "orders", "{{orderId}}"]
-            }
+            },
+            "description": "Update order status. Admin can only update orders from their branch."
           }
         },
         {
@@ -1552,345 +1585,12 @@
               "raw": "{{baseUrl}}/api/orders/myorders",
               "host": ["{{baseUrl}}"],
               "path": ["api", "orders", "myorders"]
-            }
+            },
+            "description": "Get orders for authenticated user."
           }
         },
         {
           "name": "Get Today's Orders",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/orders/today",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "orders", "today"]
-            }
-          }
-        },
-        {
-          "name": "Delete Order",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/orders/{{orderId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "orders", "{{orderId}}"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "9. User Management",
-      "item": [
-        {
-          "name": "Get All Users",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/users?page=1&limit=10&role=user",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users"],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                },
-                {
-                  "key": "role",
-                  "value": "user"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get User by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
-            }
-          }
-        },
-        {
-          "name": "Create User",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+1234567891\",\n  \"address\": {\n    \"street\": \"456 Oak St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10003\",\n    \"country\": \"USA\"\n  },\n  \"roleId\": \"{{roleId}}\",\n  \"isActive\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users"]
-            }
-          }
-        },
-        {
-          "name": "Update User",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Smith Updated\",\n  \"phone\": \"+1234567892\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
-            }
-          }
-        },
-        {
-          "name": "Delete User",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "10. Role Management",
-      "item": [
-        {
-          "name": "Get All Roles",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/roles",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles"]
-            }
-          }
-        },
-        {
-          "name": "Get Role by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles", "{{roleId}}"]
-            }
-          }
-        },
-        {
-          "name": "Create Role",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.environment.set('roleId', jsonData.data.id);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Kitchen Staff\",\n  \"slug\": \"kitchen-staff\",\n  \"description\": \"Kitchen staff members with access to order management\",\n  \"permissions\": [\n    \"view_orders\",\n    \"update_order_status\",\n    \"view_products\",\n    \"update_inventory\"\n  ],\n  \"isActive\": true,\n  \"level\": 2\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/roles",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles"]
-            }
-          }
-        },
-        {
-          "name": "Update Role",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Senior Kitchen Staff\",\n  \"description\": \"Senior kitchen staff with additional permissions\",\n  \"permissions\": [\n    \"view_orders\",\n    \"update_order_status\",\n    \"view_products\",\n    \"update_inventory\",\n    \"manage_recipes\"\n  ],\n  \"level\": 3\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles", "{{roleId}}"]
-            }
-          }
-        },
-        {
-          "name": "Delete Role",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "roles", "{{roleId}}"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "11. Reservation Management",
-      "item": [
-        {
-          "name": "Get All Reservations",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reservations?date=2024-01-15&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reservations"],
-              "query": [
-                {
-                  "key": "date",
-                  "value": "2024-01-15"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Reservation by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reservations/{{reservationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reservations", "{{reservationId}}"]
-            }
-          }
-        },
-        {
-          "name": "Create Reservation",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.environment.set('reservationId', jsonData.data.id);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"date\": \"2024-01-15\",\n  \"time\": \"19:30\",\n  \"partySize\": 4,\n  \"specialRequests\": \"Birthday celebration - need a corner table\",\n  \"contactInfo\": {\n    \"name\": \"John Doe\",\n    \"phone\": \"+1234567890\",\n    \"email\": \"john.doe@example.com\"\n  },\n  \"tablePreference\": \"corner\",\n  \"occasion\": \"birthday\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/reservations",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reservations"]
-            }
-          }
-        },
-        {
-          "name": "Update Reservation Status",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"confirmed\",\n  \"notes\": \"Confirmed for corner table as requested\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/reservations/{{reservationId}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reservations", "{{reservationId}}", "status"]
-            }
-          }
-        },
-        {
-          "name": "Cancel Reservation",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reason\": \"Customer requested cancellation\",\n  \"notes\": \"Customer had to travel unexpectedly\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/reservations/{{reservationId}}/cancel",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reservations", "{{reservationId}}", "cancel"]
-            }
-          }
-        },
-        {
-          "name": "Get My Reservations",
           "request": {
             "method": "GET",
             "header": [
@@ -1900,84 +1600,35 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/reservations/myreservations",
+              "raw": "{{baseUrl}}/api/orders/today",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "reservations", "myreservations"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "12. Report Management",
-      "item": [
-        {
-          "name": "Get Dashboard Summary",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/reports/dashboard-summary?period=today&branchId={{branchId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "dashboard-summary"],
-              "query": [
-                {
-                  "key": "period",
-                  "value": "today",
-                  "description": "today, yesterday, week, month, year"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                }
-              ]
-            }
+              "path": ["api", "orders", "today"]
+            },
+            "description": "Get today's orders filtered by admin's branch."
           }
         },
         {
-          "name": "Get Sales History",
+          "name": "Delete Order",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/reports/sales-history?startDate=2024-01-01&endDate=2024-01-31&branchId={{branchId}}&page=1&limit=50",
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "sales-history"],
-              "query": [
-                {
-                  "key": "startDate",
-                  "value": "2024-01-01",
-                  "description": "Start date (optional)"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2024-01-31",
-                  "description": "End date (optional)"
-                },
-                {
-                  "key": "branchId",
-                  "value": "{{branchId}}",
-                  "description": "Optional branch filter"
-                },
-                {
-                  "key": "page",
-                  "value": "1",
-                  "description": "Page number"
-                },
-                {
-                  "key": "limit",
-                  "value": "50",
-                  "description": "Items per page"
-                }
-              ]
-            }
+              "path": ["api", "orders", "{{orderId}}"]
+            },
+            "description": "Delete order. Requires admin privileges."
           }
         }
       ]
     },
     {
-      "name": "13. Ordering Times Management",
+      "name": "9. User Management",
       "item": [
         {
           "name": "Get Ordering Times",

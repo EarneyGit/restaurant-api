@@ -2,33 +2,24 @@ const Branch = require('../models/branch.model');
 
 // @desc    Get all branches
 // @route   GET /api/branches
-// @access  Public (with role-based filtering)
+// @access  Public (for branch selection)
 exports.getBranches = async (req, res, next) => {
   try {
+    // For public access, only show active branches
     let query = { isActive: true };
     
-    // For public access, we only show active branches
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // For manager/staff, only show their branch
-    if (userRole === 'manager' || userRole === 'staff') {
-      if (!req.user.branchId) {
-        return res.status(400).json({
-          success: false,
-          message: `${userRole} must be assigned to a branch`
-        });
-      }
-      query._id = req.user.branchId;
+    // Optional: Allow filtering by location/region if needed
+    if (req.query.region) {
+      query['address.state'] = req.query.region;
     }
     
-    // For admin, show all branches (including inactive if queried)
-    if (userRole === 'admin' && req.query.showAll === 'true') {
-      delete query.isActive;
+    if (req.query.city) {
+      query['address.city'] = { $regex: req.query.city, $options: 'i' };
     }
 
-    const branches = await Branch.find(query);
+    const branches = await Branch.find(query)
+      .select('name address contact location isActive isDefault') // Only return essential fields
+      .sort('name');
 
     res.status(200).json({
       success: true,
@@ -40,38 +31,29 @@ exports.getBranches = async (req, res, next) => {
   }
 };
 
-// @desc    Get single branch
-// @route   GET /api/branches/:id
-// @access  Public (with role-based control)
+// @desc    Get single branch (admin's assigned branch)
+// @route   GET /api/branches/my-branch
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.getBranch = async (req, res, next) => {
   try {
-    const branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    // Get the admin's assigned branch
+    const branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
-      });
-    }
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // For manager/staff, only allow access to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        req.user.branchId && 
-        branch._id.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this branch'
-      });
-    }
-    
-    // For regular users, only show active branches
-    if (!userRole && !branch.isActive) {
-      return res.status(404).json({
-        success: false,
-        message: 'Branch not found'
+        message: 'Your assigned branch not found'
       });
     }
 
@@ -86,17 +68,25 @@ exports.getBranch = async (req, res, next) => {
 
 // @desc    Create new branch
 // @route   POST /api/branches
-// @access  Private/Admin
+// @access  Private (Admin/Manager/Staff with branch verification)
 exports.createBranch = async (req, res, next) => {
   try {
     // Get user role from roleId
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
-    // Only admin can create branches
-    if (userRole !== 'admin') {
+    // Allow admin, manager, and staff to create branches
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to create branches'
+        message: 'Only admin, manager, or staff users can create branches'
+      });
+    }
+    
+    // User must be assigned to a branch (for audit purposes)
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
       });
     }
 
@@ -104,95 +94,109 @@ exports.createBranch = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      data: branch
+      data: branch,
+      message: 'Branch created successfully'
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Update branch
-// @route   PUT /api/branches/:id
-// @access  Private/Admin/Manager
+// @desc    Update branch (admin's assigned branch)
+// @route   PUT /api/branches/my-branch
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.updateBranch = async (req, res, next) => {
   try {
-    let branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    // Allow admin, manager, and staff to update branches
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can update branches'
+      });
+    }
+
+    // Get the user's assigned branch
+    let branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
+        message: 'Your assigned branch not found'
       });
     }
     
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Staff cannot update branches
-    if (userRole === 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff are not authorized to update branches'
-      });
-    }
-    
-    // For manager, allow updates only to their branch, and restrict certain fields
-    if (userRole === 'manager') {
-      if (branch._id.toString() !== req.user.branchId.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to update other branches'
-        });
-      }
-      
-      // Managers cannot change critical branch properties like isActive
+    // For manager and staff, restrict certain fields
+    if (userRole === 'manager' || userRole === 'staff') {
+      // Managers and staff cannot change critical branch properties like isActive
       const restrictedFields = ['isActive', 'isDefault'];
       for (const field of restrictedFields) {
         if (req.body[field] !== undefined && req.body[field] !== branch[field]) {
           return res.status(403).json({
             success: false,
-            message: `Managers cannot modify the ${field} property`
+            message: `${userRole} cannot modify the ${field} property`
           });
         }
       }
     }
 
-    branch = await Branch.findByIdAndUpdate(req.params.id, req.body, {
+    // Update the branch
+    branch = await Branch.findByIdAndUpdate(req.user.branchId, req.body, {
       new: true,
       runValidators: true
     });
 
     res.status(200).json({
       success: true,
-      data: branch
+      data: branch,
+      message: 'Branch updated successfully'
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Delete branch
-// @route   DELETE /api/branches/:id
-// @access  Private/Admin
+// @desc    Delete branch (admin's assigned branch)
+// @route   DELETE /api/branches/my-branch
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.deleteBranch = async (req, res, next) => {
   try {
-    const branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Allow admin, manager, and staff to delete branches
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can delete branches'
+      });
+    }
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    // Get the user's assigned branch
+    const branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
-      });
-    }
-    
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Only admin can delete branches
-    if (userRole !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete branches'
+        message: 'Your assigned branch not found'
       });
     }
     
@@ -209,7 +213,7 @@ exports.deleteBranch = async (req, res, next) => {
     const Category = require('../models/category.model');
     const User = require('../models/user.model');
     
-    const products = await Product.countDocuments({ branchId: req.params.id });
+    const products = await Product.countDocuments({ branchId: req.user.branchId });
     if (products > 0) {
       return res.status(400).json({
         success: false,
@@ -217,7 +221,7 @@ exports.deleteBranch = async (req, res, next) => {
       });
     }
     
-    const categories = await Category.countDocuments({ branchId: req.params.id });
+    const categories = await Category.countDocuments({ branchId: req.user.branchId });
     if (categories > 0) {
       return res.status(400).json({
         success: false,
@@ -225,7 +229,7 @@ exports.deleteBranch = async (req, res, next) => {
       });
     }
     
-    const users = await User.countDocuments({ branchId: req.params.id });
+    const users = await User.countDocuments({ branchId: req.user.branchId });
     if (users > 0) {
       return res.status(400).json({
         success: false,
@@ -237,7 +241,8 @@ exports.deleteBranch = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: {}
+      data: {},
+      message: 'Branch deleted successfully'
     });
   } catch (error) {
     next(error);
@@ -277,9 +282,9 @@ exports.getBranchesInRadius = async (req, res, next) => {
   }
 };
 
-// @desc    Update branch settings
-// @route   PATCH /api/branches/:id/settings
-// @access  Private/Admin
+// @desc    Update branch settings (admin's assigned branch)
+// @route   PATCH /api/branches/settings
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.updateBranchSettings = async (req, res, next) => {
   try {
     const { isCollectionEnabled, isDeliveryEnabled, isTableOrderingEnabled } = req.body;
@@ -294,12 +299,32 @@ exports.updateBranchSettings = async (req, res, next) => {
       });
     }
 
-    let branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Allow admin, manager, and staff to update branch settings
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can update branch settings'
+      });
+    }
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    // Get the user's assigned branch
+    let branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
+        message: 'Your assigned branch not found'
       });
     }
 
@@ -320,7 +345,7 @@ exports.updateBranchSettings = async (req, res, next) => {
 
     // Update only the settings fields
     branch = await Branch.findByIdAndUpdate(
-      req.params.id, 
+      req.user.branchId, 
       { $set: updateSettings },
       { new: true, runValidators: true }
     ).populate('manager', 'name email');
@@ -344,30 +369,29 @@ const geocodeAddress = async (zipcode) => {
   };
 };
 
-// @desc    Get outlet settings
-// @route   GET /api/branches/:id/outlet-settings
-// @access  Private/Admin/Manager
+// @desc    Get outlet settings (admin's assigned branch)
+// @route   GET /api/branches/outlet-settings
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.getOutletSettings = async (req, res, next) => {
   try {
-    const branch = await Branch.findById(req.params.id).populate('manager', 'name email');
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    // Get the admin's assigned branch
+    const branch = await Branch.findById(req.user.branchId).populate('manager', 'name email');
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
-      });
-    }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // For manager/staff, only allow access to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        req.user.branchId && 
-        branch._id.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this branch settings'
+        message: 'Your assigned branch not found'
       });
     }
 
@@ -414,41 +438,40 @@ exports.getOutletSettings = async (req, res, next) => {
   }
 };
 
-// @desc    Update outlet details
-// @route   PUT /api/branches/:id/outlet-details
-// @access  Private/Admin/Manager
+// @desc    Update outlet details (admin's assigned branch)
+// @route   PUT /api/branches/outlet-details
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.updateOutletDetails = async (req, res, next) => {
   try {
     const { name, aboutUs, email, contactNumber, telephone } = req.body;
 
-    let branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    // Allow admin, manager, and staff to update outlet details
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can update outlet details'
+      });
+    }
+
+    // Get the user's assigned branch
+    let branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
+        message: 'Your assigned branch not found'
       });
-    }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Staff cannot update outlet details
-    if (userRole === 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff are not authorized to update outlet details'
-      });
-    }
-    
-    // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
-      if (branch._id.toString() !== req.user.branchId.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to update other branch details'
-        });
-      }
     }
 
     // Prepare update object
@@ -461,7 +484,7 @@ exports.updateOutletDetails = async (req, res, next) => {
     if (telephone !== undefined) updateData['contact.telephone'] = telephone;
 
     branch = await Branch.findByIdAndUpdate(
-      req.params.id,
+      req.user.branchId,
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -476,41 +499,40 @@ exports.updateOutletDetails = async (req, res, next) => {
   }
 };
 
-// @desc    Update outlet location
-// @route   PUT /api/branches/:id/outlet-location
-// @access  Private/Admin/Manager
+// @desc    Update outlet location (admin's assigned branch)
+// @route   PUT /api/branches/outlet-location
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.updateOutletLocation = async (req, res, next) => {
   try {
     const { street, addressLine2, city, county, state, postcode, country } = req.body;
 
-    let branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    // Allow admin, manager, and staff to update location
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can update outlet location'
+      });
+    }
+
+    // Get the user's assigned branch
+    let branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
+        message: 'Your assigned branch not found'
       });
-    }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Staff cannot update location
-    if (userRole === 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff are not authorized to update outlet location'
-      });
-    }
-    
-    // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
-      if (branch._id.toString() !== req.user.branchId.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to update other branch location'
-        });
-      }
     }
 
     // Prepare update object
@@ -525,7 +547,7 @@ exports.updateOutletLocation = async (req, res, next) => {
     if (country !== undefined) updateData['address.country'] = country;
 
     branch = await Branch.findByIdAndUpdate(
-      req.params.id,
+      req.user.branchId,
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -540,41 +562,40 @@ exports.updateOutletLocation = async (req, res, next) => {
   }
 };
 
-// @desc    Update outlet ordering options
-// @route   PUT /api/branches/:id/outlet-ordering-options
-// @access  Private/Admin/Manager
+// @desc    Update outlet ordering options (admin's assigned branch)
+// @route   PUT /api/branches/outlet-ordering-options
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.updateOutletOrderingOptions = async (req, res, next) => {
   try {
     const { collection, delivery } = req.body;
 
-    let branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    // Allow admin, manager, and staff to update ordering options
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can update ordering options'
+      });
+    }
+
+    // Get the user's assigned branch
+    let branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
+        message: 'Your assigned branch not found'
       });
-    }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Staff cannot update ordering options
-    if (userRole === 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff are not authorized to update ordering options'
-      });
-    }
-    
-    // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
-      if (branch._id.toString() !== req.user.branchId.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to update other branch ordering options'
-        });
-      }
     }
 
     // Prepare update object
@@ -599,7 +620,7 @@ exports.updateOutletOrderingOptions = async (req, res, next) => {
     }
 
     branch = await Branch.findByIdAndUpdate(
-      req.params.id,
+      req.user.branchId,
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -614,41 +635,40 @@ exports.updateOutletOrderingOptions = async (req, res, next) => {
   }
 };
 
-// @desc    Update outlet pre-ordering settings
-// @route   PUT /api/branches/:id/outlet-pre-ordering
-// @access  Private/Admin/Manager
+// @desc    Update outlet pre-ordering settings (admin's assigned branch)
+// @route   PUT /api/branches/outlet-pre-ordering
+// @access  Private (Admin/Manager/Staff - their assigned branch)
 exports.updateOutletPreOrdering = async (req, res, next) => {
   try {
     const { allowCollectionPreOrders, allowDeliveryPreOrders } = req.body;
 
-    let branch = await Branch.findById(req.params.id);
+    // Get user role and branch from authenticated user
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    // Allow admin, manager, and staff to update pre-ordering settings
+    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can update pre-ordering settings'
+      });
+    }
+
+    // Get the user's assigned branch
+    let branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: `Branch not found with id of ${req.params.id}`
+        message: 'Your assigned branch not found'
       });
-    }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
-    // Staff cannot update pre-ordering settings
-    if (userRole === 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff are not authorized to update pre-ordering settings'
-      });
-    }
-    
-    // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
-      if (branch._id.toString() !== req.user.branchId.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to update other branch pre-ordering settings'
-        });
-      }
     }
 
     // Prepare update object
@@ -663,7 +683,7 @@ exports.updateOutletPreOrdering = async (req, res, next) => {
     }
 
     branch = await Branch.findByIdAndUpdate(
-      req.params.id,
+      req.user.branchId,
       { $set: updateData },
       { new: true, runValidators: true }
     );

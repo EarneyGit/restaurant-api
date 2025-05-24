@@ -6,14 +6,38 @@ const mongoose = require('mongoose');
 
 // @desc    Get all categories
 // @route   GET /api/categories
-// @access  Public
+// @access  Public (Branch-based)
 exports.getCategories = async (req, res, next) => {
   try {
     let query = {};
+    let targetBranchId = null;
     
-    // Filter by branch if specified
-    if (req.query.branch) {
-      query.branchId = req.query.branch;
+    // Determine user role and authentication status
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (isAdmin) {
+      // Admin users: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      targetBranchId = req.user.branchId;
+      query.branchId = targetBranchId;
+    } else {
+      // Regular users and guests: Use branch from query parameter
+      if (!req.query.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      targetBranchId = req.query.branchId;
+      query.branchId = targetBranchId;
     }
 
     // Search functionality
@@ -47,7 +71,8 @@ exports.getCategories = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: transformedCategories.length,
-      data: transformedCategories
+      data: transformedCategories,
+      branchId: targetBranchId
     });
   } catch (error) {
     next(error);
@@ -56,7 +81,7 @@ exports.getCategories = async (req, res, next) => {
 
 // @desc    Get single category
 // @route   GET /api/categories/:id
-// @access  Public
+// @access  Public (Branch-based)
 exports.getCategory = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id)
@@ -71,6 +96,47 @@ exports.getCategory = async (req, res, next) => {
         success: false,
         message: `Category not found with id of ${req.params.id}`
       });
+    }
+
+    // Determine user role and authentication status
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch verification based on user type
+    if (isAdmin) {
+      // Admin users: Check if category belongs to their branch
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      
+      if (category.branchId._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Category not found in your branch'
+        });
+      }
+    } else {
+      // Regular users and guests: Check branch from query parameter
+      const requestedBranchId = req.query.branchId;
+      
+      if (!requestedBranchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      
+      // Check if category belongs to the requested branch
+      if (category.branchId._id.toString() !== requestedBranchId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Category not found in the selected branch'
+        });
+      }
     }
 
     // Transform data to match frontend structure
@@ -193,8 +259,8 @@ exports.updateCategory = async (req, res, next) => {
     // Get user role from roleId
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
-    // For manager/staff, check if category belongs to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
+    // For manager/staff/admin, check if category belongs to their branch
+    if ((userRole === 'manager' || userRole === 'staff' || userRole === 'admin') && 
         category.branchId && 
         req.user.branchId && 
         category.branchId.toString() !== req.user.branchId.toString()) {
@@ -204,9 +270,9 @@ exports.updateCategory = async (req, res, next) => {
       });
     }
     
-    // Prevent changing branchId for manager/staff
+    // Prevent changing branchId for manager/staff/admin
     if (req.body.branchId && 
-        (userRole === 'manager' || userRole === 'staff') && 
+        (userRole === 'manager' || userRole === 'staff' || userRole === 'admin') && 
         req.body.branchId.toString() !== category.branchId.toString()) {
       return res.status(403).json({
         success: false,
@@ -284,8 +350,8 @@ exports.deleteCategory = async (req, res, next) => {
       });
     }
     
-    // For manager, check if category belongs to their branch
-    if (userRole === 'manager' && 
+    // For manager/admin, check if category belongs to their branch
+    if ((userRole === 'manager' || userRole === 'admin') && 
         category.branchId && 
         req.user.branchId && 
         category.branchId.toString() !== req.user.branchId.toString()) {

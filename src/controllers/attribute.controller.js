@@ -3,14 +3,38 @@ const Branch = require('../models/branch.model');
 
 // @desc    Get all attributes
 // @route   GET /api/attributes
-// @access  Public
+// @access  Public (Branch-based)
 exports.getAttributes = async (req, res, next) => {
   try {
     let query = { isActive: true };
+    let targetBranchId = null;
     
-    // Filter by branch if specified
-    if (req.query.branchId) {
-      query.branchId = req.query.branchId;
+    // Determine user role and authentication status
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (isAdmin) {
+      // Admin users: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      targetBranchId = req.user.branchId;
+      query.branchId = targetBranchId;
+    } else {
+      // Regular users and guests: Use branch from query parameter
+      if (!req.query.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      targetBranchId = req.query.branchId;
+      query.branchId = targetBranchId;
     }
 
     // Search by name if specified
@@ -25,7 +49,8 @@ exports.getAttributes = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: attributes.length,
-      data: attributes
+      data: attributes,
+      branchId: targetBranchId
     });
   } catch (error) {
     next(error);

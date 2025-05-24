@@ -186,10 +186,80 @@ const user = async (req, res, next) => {
   }
 };
 
+// Optional authentication middleware - allows both authenticated and unauthenticated access
+const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+    // Check for token in authorization header
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    // If no token, continue without authentication
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+
+    try {
+      // Verify JWT token
+      const decoded = jwt.verify(token, JWT_SECRET);
+
+      // Check if token exists in database and is valid
+      const tokenRecord = await Token.findOne({
+        token,
+        type: 'login',
+        purpose: 'login',
+        used: false,
+        expiresAt: { $gt: new Date() }
+      });
+
+      if (!tokenRecord) {
+        // Invalid token, continue without authentication
+        req.user = null;
+        return next();
+      }
+
+      // Get user details
+      const user = await User.findById(decoded.id)
+        .populate('roleId', 'name slug permissions')
+        .populate('branchId', 'name');
+
+      if (!user || !user.isActive) {
+        // User not found or inactive, continue without authentication
+        req.user = null;
+        return next();
+      }
+
+      // Add user to request object
+      req.user = {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.roleId ? user.roleId.slug : 'user',
+        roleId: user.roleId,
+        branchId: user.branchId ? user.branchId._id : null,
+        permissions: user.roleId ? user.roleId.permissions : []
+      };
+
+      next();
+    } catch (error) {
+      // Token verification failed, continue without authentication
+      req.user = null;
+      next();
+    }
+  } catch (error) {
+    // Server error, continue without authentication
+    req.user = null;
+    next();
+  }
+};
+
 module.exports = { 
   protect, 
   admin, 
   manager, 
   staff,
-  user
+  user,
+  optionalAuth
 }; 

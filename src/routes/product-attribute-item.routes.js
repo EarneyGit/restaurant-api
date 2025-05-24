@@ -13,7 +13,7 @@ const {
 } = require('../controllers/product-attribute-item.controller');
 
 // Import authentication middleware
-const { protect, admin } = require('../middleware/auth.middleware');
+const { protect, admin, optionalAuth } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -28,18 +28,20 @@ const upload = multer({
 
 // Basic CRUD routes
 router.route('/')
-  .get(getProductAttributeItems)
-  .post(protect, admin, upload.single('image'), createProductAttributeItem);
+  .get(optionalAuth, getProductAttributeItems)
+  .post(protect, upload.single('image'), createProductAttributeItem);
 
 router.route('/:id')
-  .get(getProductAttributeItem)
-  .put(protect, admin, upload.single('image'), updateProductAttributeItem)
-  .delete(protect, admin, deleteProductAttributeItem);
+  .get(optionalAuth, getProductAttributeItem)
+  .put(protect, upload.single('image'), updateProductAttributeItem)
+  .delete(protect, deleteProductAttributeItem);
 
 // Special routes
 router.get('/product/:productId', getAttributeItemsByProduct);
 router.get('/attribute/:attributeId', getAttributeItemsByAttribute);
-router.post('/bulk', protect, admin, bulkCreateAttributeItems);
-router.put('/:id/stock', protect, admin, updateAttributeItemStock);
+
+// Bulk operations and stock management - allow admin, manager, staff
+router.post('/bulk', protect, bulkCreateAttributeItems);
+router.put('/:id/stock', protect, updateAttributeItemStock);
 
 module.exports = router; 

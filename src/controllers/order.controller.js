@@ -5,93 +5,115 @@ const { checkStockAvailability, deductStock, restoreStock } = require('../utils/
 
 // @desc    Get all orders
 // @route   GET /api/orders
-// @access  Public (temporarily)
+// @access  Public/Private (Branch-based)
 exports.getOrders = async (req, res, next) => {
   try {
     let query = {};
-    
-    // Temporarily removed role-based filtering
-    /*
-    // Get user role from roleId
+    let targetBranchId = null;
+    // Determine user role and authentication status
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isRegularUser = userRole === 'user' || userRole === null;
     
-    // Regular users can only see their own orders
-    if (!userRole || userRole === 'user') {
-      query.user = req.user._id;
-    }
-    
-    // For manager/staff, only show orders from their branch
-    if (userRole === 'manager' || userRole === 'staff') {
+    // Handle branch determination based on user type
+    if (isAdmin) {
+      // Admin users: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
           message: `${userRole} must be assigned to a branch`
         });
       }
-      query.branchId = req.user.branchId;
-    }
-    */
-    
-    // Filter by branch if specified
-    if (req.query.branch) {
-      query.branchId = req.query.branch;
-    }
-
-    // Filter today's orders if today=true
-    if (req.query.today === 'true') {
-      const today = new Date();
-      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+      targetBranchId = req.user.branchId;
       
-      query.createdAt = {
-        $gte: startOfDay,
-        $lte: endOfDay
-      };
-    }
-
-    // Handle specific search parameters
-    if (req.query.orderNumber) {
-      query.orderNumber = { $regex: req.query.orderNumber, $options: 'i' };
-    }
-
-    if (req.query.userName) {
-      // Find users matching the name
-      const users = await User.find({
-        name: { $regex: req.query.userName, $options: 'i' }
-      }).select('_id');
+      // Admin can only see orders from their branch
+      query.branchId = targetBranchId;
       
-      const userIds = users.map(user => user._id);
-      query.user = { $in: userIds };
-    }
-
-    if (req.query.mobileNumber) {
-      // Find users matching the phone number
-      const users = await User.find({
-        phone: { $regex: req.query.mobileNumber, $options: 'i' }
-      }).select('_id');
+      // Regular users can only see their own orders when authenticated
+      if (userRole === 'user') {
+        query.user = req.user._id;
+      }
+    } else {
+      // Regular users and guests: Use branch from query parameter
+      if (!req.query.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
       
-      const userIds = users.map(user => user._id);
-      query.user = { $in: userIds };
+      targetBranchId = req.query.branchId;
+      query.branchId = targetBranchId;
+      
+      // If authenticated regular user, only show their orders
+      if (isAuthenticated && isRegularUser) {
+        query.user = req.user._id;
+      } else if (!isAuthenticated) {
+        // Guest users cannot see orders - return empty result
+        return res.status(403).json({
+          success: false,
+          message: 'Authentication required to view orders'
+        });
+      }
     }
 
-    if (req.query.postCode) {
-      query['deliveryAddress.postalCode'] = { $regex: req.query.postCode, $options: 'i' };
-    }
-    
-    // Other filters
-    if (req.query.status) {
-      query.status = req.query.status;
-    }
-    
-    if (req.query.startDate && req.query.endDate) {
-      query.createdAt = {
-        $gte: new Date(req.query.startDate),
-        $lte: new Date(req.query.endDate)
-      };
+    // Additional filters for admin users only
+    if (isAdmin) {
+      // Filter today's orders if today=true
+      if (req.query.today === 'true') {
+        const today = new Date();
+        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+        
+        query.createdAt = {
+          $gte: startOfDay,
+          $lte: endOfDay
+        };
+      }
+
+      // Handle specific search parameters
+      if (req.query.orderNumber) {
+        query.orderNumber = { $regex: req.query.orderNumber, $options: 'i' };
+      }
+
+      if (req.query.userName) {
+        const users = await User.find({
+          name: { $regex: req.query.userName, $options: 'i' }
+        }).select('_id');
+        
+        const userIds = users.map(user => user._id);
+        query.user = { $in: userIds };
+      }
+
+      if (req.query.mobileNumber) {
+        const users = await User.find({
+          phone: { $regex: req.query.mobileNumber, $options: 'i' }
+        }).select('_id');
+        
+        const userIds = users.map(user => user._id);
+        query.user = { $in: userIds };
+      }
+
+      if (req.query.postCode) {
+        query['deliveryAddress.postalCode'] = { $regex: req.query.postCode, $options: 'i' };
+      }
+      
+      // Other filters
+      if (req.query.status) {
+        query.status = req.query.status;
+      }
+      
+      if (req.query.startDate && req.query.endDate) {
+        query.createdAt = {
+          $gte: new Date(req.query.startDate),
+          $lte: new Date(req.query.endDate)
+        };
+      }
     }
 
     const orders = await Order.find(query)
-      .populate('user', 'name email phone')  // Added phone to user population
+      .populate('user', 'name email phone')
       .populate('branchId', 'name address')
       .populate('products.product', 'name price')
       .populate('assignedTo', 'name email')
@@ -100,7 +122,8 @@ exports.getOrders = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: orders.length,
-      data: orders
+      data: orders,
+      branchId: targetBranchId
     });
   } catch (error) {
     next(error);
@@ -109,7 +132,7 @@ exports.getOrders = async (req, res, next) => {
 
 // @desc    Get single order
 // @route   GET /api/orders/:id
-// @access  Public (temporarily)
+// @access  Public/Private (Branch-based)
 exports.getOrder = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -125,30 +148,71 @@ exports.getOrder = async (req, res, next) => {
       });
     }
     
-    // Temporarily removed role-based access control
-    /*
-    // Get user role from roleId
+    // Determine user role and authentication status
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isRegularUser = userRole === 'user' || userRole === null;
     
-    // For manager/staff, check if order belongs to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        order.branchId && 
-        req.user.branchId && 
-        order.branchId._id.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this order'
-      });
+    // Handle access control based on user type
+    if (isAdmin) {
+      // Admin users: Check if order belongs to their branch
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      
+      if (order.branchId._id.toString() !== req.user.branchId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this order'
+        });
+      }
+      
+      // Regular users can only view their own orders
+      if (userRole === 'user' && order.user._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to view this order'
+        });
+      }
+    } else {
+      // Regular users and guests: Check branch and ownership
+      const requestedBranchId = req.query.branchId;
+      
+      if (!requestedBranchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      
+      // Check if order belongs to the requested branch
+      if (order.branchId._id.toString() !== requestedBranchId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Order not found in the selected branch'
+        });
+      }
+      
+      // Authentication and ownership check
+      if (!isAuthenticated) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required to view orders'
+        });
+      }
+      
+      // Regular users can only view their own orders
+      if (isRegularUser && order.user._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to view this order'
+        });
+      }
     }
-    
-    // Regular users can only view their own orders
-    if ((!userRole || userRole === 'user') && order.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to view this order'
-      });
-    }
-    */
 
     res.status(200).json({
       success: true,
@@ -161,18 +225,42 @@ exports.getOrder = async (req, res, next) => {
 
 // @desc    Create new order
 // @route   POST /api/orders
-// @access  Public (temporarily)
+// @access  Public/Private (Branch-based)
 exports.createOrder = async (req, res, next) => {
   try {
-    // Temporarily removed user assignment
-    // req.body.user = req.user._id;
+    // Determine user role and authentication status
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAuthenticated = !!req.user;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isRegularUser = userRole === 'user' || userRole === null;
     
-    // Validate branch assignment
-    if (!req.body.branchId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Branch ID is required'
-      });
+    let targetBranchId = null;
+    
+    // Handle branch determination based on user type
+    if (isAdmin) {
+      // Admin users: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      targetBranchId = req.user.branchId;
+      req.body.branchId = targetBranchId; // Override any provided branchId
+    } else {
+      // Regular users and guests: Use branch from request body
+      if (!req.body.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      targetBranchId = req.body.branchId;
+    }
+    
+    // Set user if authenticated
+    if (isAuthenticated) {
+      req.body.user = req.user._id;
     }
     
     // Verify products exist and belong to the specified branch
@@ -204,10 +292,10 @@ exports.createOrder = async (req, res, next) => {
         });
       }
       
-      if (product.branchId.toString() !== req.body.branchId.toString()) {
+      if (product.branchId.toString() !== targetBranchId.toString()) {
         return res.status(400).json({
           success: false,
-          message: `Product ${product.name} does not belong to the specified branch`
+          message: `Product ${product.name} does not belong to the selected branch`
         });
       }
       
@@ -216,7 +304,8 @@ exports.createOrder = async (req, res, next) => {
         product: item.product,
         quantity: item.quantity,
         price: product.price,
-        notes: item.notes
+        notes: item.notes,
+        selectedAttributes: item.selectedAttributes || []
       });
     }
 
@@ -235,7 +324,7 @@ exports.createOrder = async (req, res, next) => {
     // Update the products array with validated data
     req.body.products = validatedProducts;
 
-    // Create the order first
+    // Create the order
     const order = await Order.create(req.body);
 
     // Deduct stock for managed products after successful order creation
@@ -251,7 +340,8 @@ exports.createOrder = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: populatedOrder,
-      stockDeduction: stockDeduction.updated
+      stockDeduction: stockDeduction.updated,
+      branchId: targetBranchId
     });
   } catch (error) {
     next(error);
@@ -260,7 +350,7 @@ exports.createOrder = async (req, res, next) => {
 
 // @desc    Update order
 // @route   PUT /api/orders/:id
-// @access  Public (temporarily)
+// @access  Private (Admin/Manager/Staff only)
 exports.updateOrder = async (req, res, next) => {
   try {
     let order = await Order.findById(req.params.id);
@@ -269,6 +359,33 @@ exports.updateOrder = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: `Order not found with id of ${req.params.id}`
+      });
+    }
+
+    // Determine user role and authentication status
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Only admin users can update orders
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can update orders'
+      });
+    }
+    
+    // Admin users: Check if order belongs to their branch
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    if (order.branchId.toString() !== req.user.branchId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update orders from other branches'
       });
     }
 
@@ -341,18 +458,57 @@ exports.deleteOrder = async (req, res, next) => {
 
 // @desc    Get user orders
 // @route   GET /api/orders/myorders
-// @access  Public (temporarily)
+// @access  Private (Authenticated users only)
 exports.getMyOrders = async (req, res, next) => {
   try {
-    // Temporarily removed user filtering
-    const orders = await Order.find()
+    // Authentication required
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+    
+    // Determine user role and branch
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    let targetBranchId = null;
+    
+    let query = { user: req.user._id };
+    
+    // Handle branch determination based on user type
+    if (isAdmin) {
+      // Admin users: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      targetBranchId = req.user.branchId;
+      query.branchId = targetBranchId;
+    } else {
+      // Regular users: Use branch from query parameter
+      if (!req.query.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+      targetBranchId = req.query.branchId;
+      query.branchId = targetBranchId;
+    }
+    
+    const orders = await Order.find(query)
       .populate('branchId', 'name address')
+      .populate('products.product', 'name price')
       .sort('-createdAt');
     
     res.status(200).json({
       success: true,
       count: orders.length,
-      data: orders
+      data: orders,
+      branchId: targetBranchId
     });
   } catch (error) {
     next(error);
@@ -361,16 +517,45 @@ exports.getMyOrders = async (req, res, next) => {
 
 // @desc    Get today's orders
 // @route   GET /api/orders/today
-// @access  Public (temporarily)
+// @access  Private (Admin only)
 exports.getTodayOrders = async (req, res, next) => {
   try {
+    // Authentication required
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+    
+    // Determine user role
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Only admin users can access today's orders
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can access today\'s orders'
+      });
+    }
+    
+    // Admin users: Use their assigned branchId
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
     // Get today's date range
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
     const endOfDay = new Date(today.setHours(23, 59, 59, 999));
     
-    // Initialize query with date filter
+    // Initialize query with date filter and branch filter
     let query = {
+      branchId: req.user.branchId,
       createdAt: {
         $gte: startOfDay,
         $lte: endOfDay
@@ -392,7 +577,8 @@ exports.getTodayOrders = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: orders.length,
-      data: orders
+      data: orders,
+      branchId: req.user.branchId
     });
   } catch (error) {
     next(error);

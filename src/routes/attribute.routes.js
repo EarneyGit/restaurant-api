@@ -10,22 +10,29 @@ const {
 } = require('../controllers/attribute.controller');
 
 // Import authentication middleware
-const { protect, admin } = require('../middleware/auth.middleware');
+const { protect, admin, optionalAuth } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// Basic CRUD routes
+// Public routes with optional authentication (branch-based)
 router.route('/')
-  .get(getAttributes)
-  .post(protect, admin, createAttribute);
+  .get(optionalAuth, getAttributes);
 
 router.route('/:id')
-  .get(getAttribute)
-  .put(protect, admin, updateAttribute)
-  .delete(protect, admin, deleteAttribute);
+  .get(optionalAuth, getAttribute);
 
-// Special routes
-router.get('/branch/:branchId', getAttributesByBranch);
-router.put('/reorder', protect, admin, reorderAttributes);
+// Special public routes
+router.get('/branch/:branchId', optionalAuth, getAttributesByBranch);
+
+// Protected routes (write operations) - allow admin, manager, staff
+router.route('/')
+  .get(optionalAuth, getAttributes) // Public read with branch filtering
+  .post(protect, createAttribute);
+
+router.route('/:id')
+  .put(protect, updateAttribute)
+  .delete(protect, deleteAttribute);
+
+router.put('/reorder', protect, reorderAttributes);
 
 module.exports = router; 

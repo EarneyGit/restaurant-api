@@ -13,6 +13,9 @@ const {
 } = require('../controllers/product.controller');
 const { ALLOWED_FILE_TYPES } = require('../utils/fileUpload');
 
+// Import authentication middleware
+const { protect, admin, optionalAuth } = require('../middleware/auth.middleware');
+
 const router = express.Router();
 
 // Configure multer for handling file uploads
@@ -31,15 +34,17 @@ const upload = multer({
   }
 });
 
-// All routes are public
-router.get('/popular', getPopularProducts);
-router.get('/recommended', getRecommendedProducts);
-router.get('/stock/status', getStockStatus);
-router.put('/stock/bulk-update', bulkUpdateStock);
-router.get('/', getProducts);
-router.get('/:id', getProduct);
-router.post('/', upload.array('images', 10), createProduct);
-router.put('/:id', upload.array('images', 10), updateProduct);
-router.delete('/:id', deleteProduct);
+// Public routes with optional authentication (branch-based)
+router.get('/popular', optionalAuth, getPopularProducts);
+router.get('/recommended', optionalAuth, getRecommendedProducts);
+router.get('/stock/status', optionalAuth, getStockStatus);
+router.get('/', optionalAuth, getProducts);
+router.get('/:id', optionalAuth, getProduct);
+
+// Protected routes (write operations) - allow admin, manager, staff
+router.put('/stock/bulk-update', protect, bulkUpdateStock);
+router.post('/', protect, upload.array('images', 10), createProduct);
+router.put('/:id', protect, upload.array('images', 10), updateProduct);
+router.delete('/:id', protect, deleteProduct);
 
 module.exports = router; 
