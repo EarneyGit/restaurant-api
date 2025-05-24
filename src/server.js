@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
 const connectDB = require('./config/db');
+const { initSocket } = require('./utils/socket');
 
 // Load environment variables if dotenv is available
 try {
@@ -25,11 +27,17 @@ const orderingTimesRoutes = require('./routes/ordering-times.routes');
 const attributeRoutes = require('./routes/attribute.routes');
 const productAttributeItemRoutes = require('./routes/product-attribute-item.routes');
 const leadTimesRoutes = require('./routes/lead-times.routes');
+const pushNotificationRoutes = require('./routes/push-notification.routes');
+const repeatingPushNotificationRoutes = require('./routes/repeating-push-notification.routes');
 
 // Initialize Express
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
+
+// Initialize Socket.IO
+const io = initSocket(server);
 
 // Connect to MongoDB
 connectDB();
@@ -63,6 +71,8 @@ app.use('/api/ordering-times', orderingTimesRoutes);
 app.use('/api/attributes', attributeRoutes);
 app.use('/api/product-attribute-items', productAttributeItemRoutes);
 app.use('/api/settings/lead-times', leadTimesRoutes);
+app.use('/api/push-notifications', pushNotificationRoutes);
+app.use('/api/repeating-push-notifications', repeatingPushNotificationRoutes);
 
 // Call initRoles to create default roles if they don't exist
 const initRoles = require('./utils/initRoles');
@@ -85,10 +95,11 @@ app.use((err, req, res, next) => {
 
 // Start server
 if (require.main === module) {
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`Backend URL: ${BACKEND_URL}`);
+    console.log('Socket.IO server is ready for connections');
   });
 }
 
-module.exports = app; 
+module.exports = { app, server, io }; 
