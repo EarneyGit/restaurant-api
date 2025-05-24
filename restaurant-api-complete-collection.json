@@ -1452,8 +1452,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"price\": 18.99,\n      \"notes\": \"Medium spice level\"\n    }\n  ],\n  \"deliveryMethod\": \"delivery\",\n  \"deliveryAddress\": {\n    \"street\": \"123 Customer St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"card\",\n  \"paymentStatus\": \"pending\",
-  \"customerNotes\": \"Ring doorbell twice\"\n}"
+              "raw": "{\n  \"user\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"price\": 18.99,\n      \"notes\": \"Medium spice level\"\n    }\n  ],\n  \"deliveryMethod\": \"delivery\",\n  \"deliveryAddress\": {\n    \"street\": \"123 Customer St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"card\",\n  \"paymentStatus\": \"pending\",\n  \"customerNotes\": \"Ring doorbell twice\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/orders",
