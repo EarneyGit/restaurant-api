@@ -15,7 +15,7 @@ exports.getBranches = async (req, res, next) => {
     
     if (req.query.city) {
       query['address.city'] = { $regex: req.query.city, $options: 'i' };
-    }
+      }
 
     const branches = await Branch.find(query)
       .select('name address contact location isActive isDefault') // Only return essential fields
@@ -46,7 +46,7 @@ exports.getBranch = async (req, res, next) => {
         message: `${userRole} must be assigned to a branch`
       });
     }
-
+    
     // Get the admin's assigned branch
     const branch = await Branch.findById(req.user.branchId);
 
@@ -109,7 +109,7 @@ exports.updateBranch = async (req, res, next) => {
   try {
     // Get user role and branch from authenticated user
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
+
     // Ensure user has branch assignment
     if (!req.user.branchId) {
       return res.status(400).json({
@@ -125,17 +125,17 @@ exports.updateBranch = async (req, res, next) => {
         message: 'Only admin, manager, or staff users can update branches'
       });
     }
-
+    
     // Get the user's assigned branch
     let branch = await Branch.findById(req.user.branchId);
 
     if (!branch) {
       return res.status(404).json({
-        success: false,
+          success: false,
         message: 'Your assigned branch not found'
-      });
-    }
-    
+        });
+      }
+      
     // For manager and staff, restrict certain fields
     if (userRole === 'manager' || userRole === 'staff') {
       // Managers and staff cannot change critical branch properties like isActive
@@ -173,7 +173,7 @@ exports.deleteBranch = async (req, res, next) => {
   try {
     // Get user role and branch from authenticated user
     const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
-    
+
     // Allow admin, manager, and staff to delete branches
     if (!['admin', 'manager', 'staff'].includes(userRole)) {
       return res.status(403).json({

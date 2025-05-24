@@ -2,11 +2,33 @@ const OrderingTimes = require('../models/ordering-times.model');
 const Branch = require('../models/branch.model');
 
 // @desc    Get ordering times for a branch
-// @route   GET /api/ordering-times/:branchId
+// @route   GET /api/ordering-times/:branchId or GET /api/ordering-times (for admin users)
 // @access  Private/Admin/Manager
 exports.getOrderingTimes = async (req, res, next) => {
   try {
-    const { branchId } = req.params;
+    let branchId = req.params.branchId;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Check if branch exists
     const branch = await Branch.findById(branchId);
@@ -16,14 +38,11 @@ exports.getOrderingTimes = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // For manager/staff, only allow access to their branch
     if ((userRole === 'manager' || userRole === 'staff') && 
         req.user.branchId && 
-        branchId !== req.user.branchId.toString()) {
+        branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this branch ordering times'
@@ -48,12 +67,34 @@ exports.getOrderingTimes = async (req, res, next) => {
 };
 
 // @desc    Update weekly schedule for ordering times
-// @route   PUT /api/ordering-times/:branchId/weekly-schedule
+// @route   PUT /api/ordering-times/:branchId/weekly-schedule or PUT /api/ordering-times/weekly-schedule (for admin users)
 // @access  Private/Admin/Manager
 exports.updateWeeklySchedule = async (req, res, next) => {
   try {
-    const { branchId } = req.params;
+    let branchId = req.params.branchId;
     const { weeklySchedule } = req.body;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Check if branch exists
     const branch = await Branch.findById(branchId);
@@ -63,9 +104,6 @@ exports.updateWeeklySchedule = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // Staff cannot update ordering times
     if (userRole === 'staff') {
@@ -77,7 +115,7 @@ exports.updateWeeklySchedule = async (req, res, next) => {
     
     // For manager, allow updates only to their branch
     if (userRole === 'manager') {
-      if (branchId !== req.user.branchId.toString()) {
+      if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to update other branch ordering times'
@@ -110,12 +148,35 @@ exports.updateWeeklySchedule = async (req, res, next) => {
 };
 
 // @desc    Update specific day ordering times
-// @route   PUT /api/ordering-times/:branchId/day/:dayName
+// @route   PUT /api/ordering-times/:branchId/day/:dayName or PUT /api/ordering-times/day/:dayName (for admin users)
 // @access  Private/Admin/Manager
 exports.updateDaySchedule = async (req, res, next) => {
   try {
-    const { branchId, dayName } = req.params;
+    let branchId = req.params.branchId;
+    const { dayName } = req.params;
     const daySettings = req.body;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     if (!validDays.includes(dayName.toLowerCase())) {
@@ -133,9 +194,6 @@ exports.updateDaySchedule = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // Staff cannot update ordering times
     if (userRole === 'staff') {
@@ -147,7 +205,7 @@ exports.updateDaySchedule = async (req, res, next) => {
     
     // For manager, allow updates only to their branch
     if (userRole === 'manager') {
-      if (branchId !== req.user.branchId.toString()) {
+      if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to update other branch ordering times'
@@ -178,11 +236,33 @@ exports.updateDaySchedule = async (req, res, next) => {
 };
 
 // @desc    Get closed dates for a branch
-// @route   GET /api/ordering-times/:branchId/closed-dates
+// @route   GET /api/ordering-times/:branchId/closed-dates or GET /api/ordering-times/closed-dates (for admin users)
 // @access  Private/Admin/Manager
 exports.getClosedDates = async (req, res, next) => {
   try {
-    const { branchId } = req.params;
+    let branchId = req.params.branchId;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Check if branch exists
     const branch = await Branch.findById(branchId);
@@ -192,14 +272,11 @@ exports.getClosedDates = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // For manager/staff, only allow access to their branch
     if ((userRole === 'manager' || userRole === 'staff') && 
         req.user.branchId && 
-        branchId !== req.user.branchId.toString()) {
+        branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this branch closed dates'
@@ -231,12 +308,34 @@ exports.getClosedDates = async (req, res, next) => {
 };
 
 // @desc    Add closed date(s)
-// @route   POST /api/ordering-times/:branchId/closed-dates
+// @route   POST /api/ordering-times/:branchId/closed-dates or POST /api/ordering-times/closed-dates (for admin users)
 // @access  Private/Admin/Manager
 exports.addClosedDate = async (req, res, next) => {
   try {
-    const { branchId } = req.params;
+    let branchId = req.params.branchId;
     const { date, type, endDate, reason } = req.body;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Validate required fields
     if (!date || !type) {
@@ -261,9 +360,6 @@ exports.addClosedDate = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // Staff cannot add closed dates
     if (userRole === 'staff') {
@@ -275,7 +371,7 @@ exports.addClosedDate = async (req, res, next) => {
     
     // For manager, allow updates only to their branch
     if (userRole === 'manager') {
-      if (branchId !== req.user.branchId.toString()) {
+      if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to add closed dates for other branches'
@@ -313,11 +409,34 @@ exports.addClosedDate = async (req, res, next) => {
 };
 
 // @desc    Delete closed date
-// @route   DELETE /api/ordering-times/:branchId/closed-dates/:closedDateId
+// @route   DELETE /api/ordering-times/:branchId/closed-dates/:closedDateId or DELETE /api/ordering-times/closed-dates/:closedDateId (for admin users)
 // @access  Private/Admin/Manager
 exports.deleteClosedDate = async (req, res, next) => {
   try {
-    const { branchId, closedDateId } = req.params;
+    let branchId = req.params.branchId;
+    const { closedDateId } = req.params;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Check if branch exists
     const branch = await Branch.findById(branchId);
@@ -327,9 +446,6 @@ exports.deleteClosedDate = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // Staff cannot delete closed dates
     if (userRole === 'staff') {
@@ -341,7 +457,7 @@ exports.deleteClosedDate = async (req, res, next) => {
     
     // For manager, allow updates only to their branch
     if (userRole === 'manager') {
-      if (branchId !== req.user.branchId.toString()) {
+      if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to delete closed dates for other branches'
@@ -382,11 +498,33 @@ exports.deleteClosedDate = async (req, res, next) => {
 };
 
 // @desc    Delete all closed dates
-// @route   DELETE /api/ordering-times/:branchId/closed-dates
+// @route   DELETE /api/ordering-times/:branchId/closed-dates or DELETE /api/ordering-times/closed-dates (for admin users)
 // @access  Private/Admin/Manager
 exports.deleteAllClosedDates = async (req, res, next) => {
   try {
-    const { branchId } = req.params;
+    let branchId = req.params.branchId;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Check if branch exists
     const branch = await Branch.findById(branchId);
@@ -396,9 +534,6 @@ exports.deleteAllClosedDates = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // Staff cannot delete closed dates
     if (userRole === 'staff') {
@@ -410,7 +545,7 @@ exports.deleteAllClosedDates = async (req, res, next) => {
     
     // For manager, allow updates only to their branch
     if (userRole === 'manager') {
-      if (branchId !== req.user.branchId.toString()) {
+      if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to delete closed dates for other branches'
@@ -440,11 +575,33 @@ exports.deleteAllClosedDates = async (req, res, next) => {
 };
 
 // @desc    Get order restrictions for a branch
-// @route   GET /api/ordering-times/:branchId/restrictions
+// @route   GET /api/ordering-times/:branchId/restrictions or GET /api/ordering-times/restrictions (for admin users)
 // @access  Private/Admin/Manager
 exports.getOrderRestrictions = async (req, res, next) => {
   try {
-    const { branchId } = req.params;
+    let branchId = req.params.branchId;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Check if branch exists
     const branch = await Branch.findById(branchId);
@@ -454,17 +611,14 @@ exports.getOrderRestrictions = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // For manager/staff, only allow access to their branch
     if ((userRole === 'manager' || userRole === 'staff') && 
         req.user.branchId && 
-        branchId !== req.user.branchId.toString()) {
+        branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this branch restrictions'
+        message: 'Not authorized to access this branch order restrictions'
       });
     }
 
@@ -484,12 +638,34 @@ exports.getOrderRestrictions = async (req, res, next) => {
 };
 
 // @desc    Update order restrictions
-// @route   PUT /api/ordering-times/:branchId/restrictions
+// @route   PUT /api/ordering-times/:branchId/restrictions or PUT /api/ordering-times/restrictions (for admin users)
 // @access  Private/Admin/Manager
 exports.updateOrderRestrictions = async (req, res, next) => {
   try {
-    const { branchId } = req.params;
+    let branchId = req.params.branchId;
     const { restrictions } = req.body;
+    
+    // Get user role from roleId
+    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
+    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    
+    // Handle branch determination based on user type
+    if (!branchId && isAdmin) {
+      // Admin users without branchId in URL: Use their assigned branchId
+      if (!req.user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: `${userRole} must be assigned to a branch`
+        });
+      }
+      branchId = req.user.branchId;
+    } else if (!branchId) {
+      // Non-admin users must provide branchId
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required'
+      });
+    }
 
     // Check if branch exists
     const branch = await Branch.findById(branchId);
@@ -499,9 +675,6 @@ exports.updateOrderRestrictions = async (req, res, next) => {
         message: 'Branch not found'
       });
     }
-
-    // Get user role from roleId
-    const userRole = req.user && req.user.roleId ? req.user.roleId.slug : null;
     
     // Staff cannot update restrictions
     if (userRole === 'staff') {
@@ -513,7 +686,7 @@ exports.updateOrderRestrictions = async (req, res, next) => {
     
     // For manager, allow updates only to their branch
     if (userRole === 'manager') {
-      if (branchId !== req.user.branchId.toString()) {
+      if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to update restrictions for other branches'
