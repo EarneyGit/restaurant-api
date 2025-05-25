@@ -29,6 +29,10 @@ const productAttributeItemRoutes = require('./routes/product-attribute-item.rout
 const leadTimesRoutes = require('./routes/lead-times.routes');
 const pushNotificationRoutes = require('./routes/push-notification.routes');
 const repeatingPushNotificationRoutes = require('./routes/repeating-push-notification.routes');
+const priceChangesRoutes = require('./routes/price-changes.routes');
+const smsEmailMessageRoutes = require('./routes/sms-email-message.routes');
+const addressRoutes = require('./routes/address.routes');
+const customerRoutes = require('./routes/customer.routes');
 
 // Initialize Express
 const app = express();
@@ -73,6 +77,10 @@ app.use('/api/product-attribute-items', productAttributeItemRoutes);
 app.use('/api/settings/lead-times', leadTimesRoutes);
 app.use('/api/push-notifications', pushNotificationRoutes);
 app.use('/api/repeating-push-notifications', repeatingPushNotificationRoutes);
+app.use('/api/price-changes', priceChangesRoutes);
+app.use('/api/sms-email-messages', smsEmailMessageRoutes);
+app.use('/api/addresses', addressRoutes);
+app.use('/api/customers', customerRoutes);
 
 // Call initRoles to create default roles if they don't exist
 const initRoles = require('./utils/initRoles');
