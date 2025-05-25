@@ -175,16 +175,59 @@ exports.createCategory = async (req, res, next) => {
       categoryData.imageUrl = imagePath;
     }
 
+    // Parse availability data if it's a string
+    if (typeof categoryData.availability === 'string') {
+      try {
+        categoryData.availability = JSON.parse(categoryData.availability);
+      } catch (e) {
+        console.error('Error parsing availability:', e);
+      }
+    }
+
+    // Process availability data to ensure proper structure
+    if (categoryData.availability) {
+      const processedAvailability = {};
+      const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      
+      daysOfWeek.forEach(day => {
+        if (categoryData.availability[day]) {
+          // If it's a string (old format), convert to new format
+          if (typeof categoryData.availability[day] === 'string') {
+            processedAvailability[day] = {
+              type: categoryData.availability[day],
+              startTime: null,
+              endTime: null
+            };
+          } else {
+            // New format with type, startTime, endTime
+            processedAvailability[day] = {
+              type: categoryData.availability[day].type || 'All Day',
+              startTime: categoryData.availability[day].startTime || null,
+              endTime: categoryData.availability[day].endTime || null
+            };
+          }
+        } else {
+          processedAvailability[day] = {
+            type: 'All Day',
+            startTime: null,
+            endTime: null
+          };
+        }
+      });
+      
+      categoryData.availability = processedAvailability;
+    }
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     
     // Default to user's branch if not specified
-    if (!req.body.branchId && (userRole === 'manager' || userRole === 'staff')) {
-      req.body.branchId = req.user.branchId;
+    if (!categoryData.branchId && (userRole === 'admin' || userRole === 'manager' || userRole === 'staff')) {
+      categoryData.branchId = req.user.branchId;
     }
     
     // Validate branch assignment
-    if (!req.body.branchId) {
+    if (!categoryData.branchId) {
       return res.status(400).json({
         success: false,
         message: 'Branch ID is required'
@@ -192,7 +235,7 @@ exports.createCategory = async (req, res, next) => {
     }
     
     // Verify branch exists
-    const branch = await Branch.findById(req.body.branchId);
+    const branch = await Branch.findById(categoryData.branchId);
     if (!branch) {
       return res.status(404).json({
         success: false,
@@ -200,9 +243,9 @@ exports.createCategory = async (req, res, next) => {
       });
     }
     
-    // For manager/staff, ensure they're creating for their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        req.body.branchId.toString() !== req.user.branchId.toString()) {
+    // For admin/manager/staff, ensure they're creating for their branch
+    if ((userRole === 'admin' || userRole === 'manager' || userRole === 'staff') && 
+        categoryData.branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to create categories for other branches'
@@ -245,6 +288,49 @@ exports.updateCategory = async (req, res, next) => {
     if (req.file) {
       const imagePath = await saveSingleFile(req.file, 'categories');
       updateData.imageUrl = imagePath;
+    }
+
+    // Parse availability data if it's a string
+    if (typeof updateData.availability === 'string') {
+      try {
+        updateData.availability = JSON.parse(updateData.availability);
+      } catch (e) {
+        console.error('Error parsing availability:', e);
+      }
+    }
+
+    // Process availability data to ensure proper structure
+    if (updateData.availability) {
+      const processedAvailability = {};
+      const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      
+      daysOfWeek.forEach(day => {
+        if (updateData.availability[day]) {
+          // If it's a string (old format), convert to new format
+          if (typeof updateData.availability[day] === 'string') {
+            processedAvailability[day] = {
+              type: updateData.availability[day],
+              startTime: null,
+              endTime: null
+            };
+          } else {
+            // New format with type, startTime, endTime
+            processedAvailability[day] = {
+              type: updateData.availability[day].type || 'All Day',
+              startTime: updateData.availability[day].startTime || null,
+              endTime: updateData.availability[day].endTime || null
+            };
+          }
+        } else {
+          processedAvailability[day] = {
+            type: 'All Day',
+            startTime: null,
+            endTime: null
+          };
+        }
+      });
+      
+      updateData.availability = processedAvailability;
     }
 
     let category = await Category.findById(req.params.id);

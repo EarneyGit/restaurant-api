@@ -381,7 +381,8 @@ exports.login = async (req, res, next) => {
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() })
       .select('+password')
-      .populate('roleId', 'name slug permissions');
+      .populate('roleId', 'name slug permissions')
+      .populate('branchId', 'name address');
 
     if (!user) {
       return res.status(401).json({
@@ -412,7 +413,8 @@ exports.login = async (req, res, next) => {
       { 
         id: user._id,
         email: user.email,
-        role: user.roleId ? user.roleId.slug : 'user'
+        role: user.roleId ? user.roleId.slug : 'user',
+        branchId: user.branchId ? user.branchId._id : null
       },
       '24h'
     );
@@ -443,6 +445,17 @@ exports.login = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.roleId ? user.roleId.slug : 'user',
+        roleDetails: user.roleId ? {
+          id: user.roleId._id,
+          name: user.roleId.name,
+          slug: user.roleId.slug
+        } : null,
+        branchId: user.branchId ? user.branchId._id : null,
+        branch: user.branchId ? {
+          id: user.branchId._id,
+          name: user.branchId.name,
+          address: user.branchId.address
+        } : null,
         permissions: user.roleId ? user.roleId.permissions : []
       }
     });

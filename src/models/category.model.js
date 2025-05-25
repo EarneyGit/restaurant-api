@@ -5,39 +5,109 @@ const { deleteFile } = require('../utils/fileUpload');
 // Define the availability schema
 const availabilitySchema = new mongoose.Schema({
   Monday: {
-    type: String,
-    enum: ['All Day', 'Specific Times', 'Not Available'],
-    default: 'All Day'
+    type: {
+      type: String,
+      enum: ['All Day', 'Specific Times', 'Not Available'],
+      default: 'All Day'
+    },
+    startTime: {
+      type: String,
+      default: null
+    },
+    endTime: {
+      type: String,
+      default: null
+    }
   },
   Tuesday: {
-    type: String,
-    enum: ['All Day', 'Specific Times', 'Not Available'],
-    default: 'All Day'
+    type: {
+      type: String,
+      enum: ['All Day', 'Specific Times', 'Not Available'],
+      default: 'All Day'
+    },
+    startTime: {
+      type: String,
+      default: null
+    },
+    endTime: {
+      type: String,
+      default: null
+    }
   },
   Wednesday: {
-    type: String,
-    enum: ['All Day', 'Specific Times', 'Not Available'],
-    default: 'All Day'
+    type: {
+      type: String,
+      enum: ['All Day', 'Specific Times', 'Not Available'],
+      default: 'All Day'
+    },
+    startTime: {
+      type: String,
+      default: null
+    },
+    endTime: {
+      type: String,
+      default: null
+    }
   },
   Thursday: {
-    type: String,
-    enum: ['All Day', 'Specific Times', 'Not Available'],
-    default: 'All Day'
+    type: {
+      type: String,
+      enum: ['All Day', 'Specific Times', 'Not Available'],
+      default: 'All Day'
+    },
+    startTime: {
+      type: String,
+      default: null
+    },
+    endTime: {
+      type: String,
+      default: null
+    }
   },
   Friday: {
-    type: String,
-    enum: ['All Day', 'Specific Times', 'Not Available'],
-    default: 'All Day'
+    type: {
+      type: String,
+      enum: ['All Day', 'Specific Times', 'Not Available'],
+      default: 'All Day'
+    },
+    startTime: {
+      type: String,
+      default: null
+    },
+    endTime: {
+      type: String,
+      default: null
+    }
   },
   Saturday: {
-    type: String,
-    enum: ['All Day', 'Specific Times', 'Not Available'],
-    default: 'All Day'
+    type: {
+      type: String,
+      enum: ['All Day', 'Specific Times', 'Not Available'],
+      default: 'All Day'
+    },
+    startTime: {
+      type: String,
+      default: null
+    },
+    endTime: {
+      type: String,
+      default: null
+    }
   },
   Sunday: {
-    type: String,
-    enum: ['All Day', 'Specific Times', 'Not Available'],
-    default: 'All Day'
+    type: {
+      type: String,
+      enum: ['All Day', 'Specific Times', 'Not Available'],
+      default: 'All Day'
+    },
+    startTime: {
+      type: String,
+      default: null
+    },
+    endTime: {
+      type: String,
+      default: null
+    }
   }
 }, { _id: false });
 
@@ -80,13 +150,13 @@ const categorySchema = new mongoose.Schema(
     availability: {
       type: availabilitySchema,
       default: () => ({
-        Monday: 'All Day',
-        Tuesday: 'All Day',
-        Wednesday: 'All Day',
-        Thursday: 'All Day',
-        Friday: 'All Day',
-        Saturday: 'All Day',
-        Sunday: 'All Day'
+        Monday: { type: 'All Day', startTime: null, endTime: null },
+        Tuesday: { type: 'All Day', startTime: null, endTime: null },
+        Wednesday: { type: 'All Day', startTime: null, endTime: null },
+        Thursday: { type: 'All Day', startTime: null, endTime: null },
+        Friday: { type: 'All Day', startTime: null, endTime: null },
+        Saturday: { type: 'All Day', startTime: null, endTime: null },
+        Sunday: { type: 'All Day', startTime: null, endTime: null }
       })
     },
     printers: [{
