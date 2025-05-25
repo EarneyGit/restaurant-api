@@ -16,34 +16,42 @@ const { protect } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// Public route for checking availability
+// Public route for checking availability (before auth middleware)
 router.post('/:branchId/check-availability', checkOrderingAvailability);
 
 // Apply authentication middleware to all routes below
 router.use(protect);
 
-// Main ordering times routes - admin users don't need branchId in URL
-router.get('/', getOrderingTimes); // For admin users, gets their branch
-router.get('/:branchId', getOrderingTimes); // For specific branch access
-router.put('/weekly-schedule', updateWeeklySchedule); // For admin users
-router.put('/:branchId/weekly-schedule', updateWeeklySchedule); // For specific branch
-router.put('/day/:dayName', updateDaySchedule); // For admin users
-router.put('/:branchId/day/:dayName', updateDaySchedule); // For specific branch
+// SPECIFIC ROUTES MUST COME BEFORE PARAMETERIZED ROUTES
+// Main ordering times routes for admin users (no branchId needed)
+router.get('/', getOrderingTimes);
+router.put('/weekly-schedule', updateWeeklySchedule);
+router.put('/day/:dayName', updateDaySchedule);
 
-// Closed dates management - admin users don't need branchId in URL
-router.get('/closed-dates', getClosedDates); // For admin users
-router.get('/:branchId/closed-dates', getClosedDates); // For specific branch
-router.post('/closed-dates', addClosedDate); // For admin users
-router.post('/:branchId/closed-dates', addClosedDate); // For specific branch
-router.delete('/closed-dates/:closedDateId', deleteClosedDate); // For admin users
-router.delete('/:branchId/closed-dates/:closedDateId', deleteClosedDate); // For specific branch
-router.delete('/closed-dates', deleteAllClosedDates); // For admin users
-router.delete('/:branchId/closed-dates', deleteAllClosedDates); // For specific branch
+// Closed dates management for admin users (no branchId needed)
+router.get('/closed-dates', getClosedDates);
+router.post('/closed-dates', addClosedDate);
+router.delete('/closed-dates/:closedDateId', deleteClosedDate);
+router.delete('/closed-dates', deleteAllClosedDates);
 
-// Order restrictions management - admin users don't need branchId in URL
-router.get('/restrictions', getOrderRestrictions); // For admin users
-router.get('/:branchId/restrictions', getOrderRestrictions); // For specific branch
-router.put('/restrictions', updateOrderRestrictions); // For admin users
-router.put('/:branchId/restrictions', updateOrderRestrictions); // For specific branch
+// Order restrictions management for admin users (no branchId needed)
+router.get('/restrictions', getOrderRestrictions);
+router.put('/restrictions', updateOrderRestrictions);
+
+// PARAMETERIZED ROUTES COME LAST
+// Main ordering times routes for specific branch access
+router.get('/:branchId', getOrderingTimes);
+router.put('/:branchId/weekly-schedule', updateWeeklySchedule);
+router.put('/:branchId/day/:dayName', updateDaySchedule);
+
+// Closed dates management for specific branch access
+router.get('/:branchId/closed-dates', getClosedDates);
+router.post('/:branchId/closed-dates', addClosedDate);
+router.delete('/:branchId/closed-dates/:closedDateId', deleteClosedDate);
+router.delete('/:branchId/closed-dates', deleteAllClosedDates);
+
+// Order restrictions management for specific branch access
+router.get('/:branchId/restrictions', getOrderRestrictions);
+router.put('/:branchId/restrictions', updateOrderRestrictions);
 
 module.exports = router; 

@@ -88,6 +88,32 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true
     },
+    // Discount information
+    discount: {
+      discountId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Discount'
+      },
+      code: String,
+      name: String,
+      discountType: {
+        type: String,
+        enum: ['percentage', 'fixed']
+      },
+      discountValue: Number,
+      discountAmount: {
+        type: Number,
+        default: 0
+      },
+      originalTotal: Number
+    },
+    // Final total after discount
+    finalTotal: {
+      type: Number,
+      default: function() {
+        return this.totalAmount - (this.discount?.discountAmount || 0);
+      }
+    },
     paymentMethod: {
       type: String,
       enum: ['cash', 'card', 'online'],

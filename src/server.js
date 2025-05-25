@@ -33,6 +33,14 @@ const priceChangesRoutes = require('./routes/price-changes.routes');
 const smsEmailMessageRoutes = require('./routes/sms-email-message.routes');
 const addressRoutes = require('./routes/address.routes');
 const customerRoutes = require('./routes/customer.routes');
+const discountRoutes = require('./routes/discount.routes');
+const businessOfferRoutes = require('./routes/business-offer.routes');
+
+// Settings routes
+const outletsRoutes = require('./routes/settings/outlets.routes');
+const deliveryChargesRoutes = require('./routes/settings/delivery-charges.routes');
+const serviceChargesRoutes = require('./routes/settings/service-charges.routes');
+const tableOrderingRoutes = require('./routes/settings/table-ordering.routes');
 
 // Initialize Express
 const app = express();
@@ -81,6 +89,12 @@ app.use('/api/price-changes', priceChangesRoutes);
 app.use('/api/sms-email-messages', smsEmailMessageRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/discounts', discountRoutes);
+app.use('/api/business-offers', businessOfferRoutes);
+app.use('/api/settings/outlets', outletsRoutes);
+app.use('/api/settings/delivery-charges', deliveryChargesRoutes);
+app.use('/api/settings/service-charges', serviceChargesRoutes);
+app.use('/api/settings/table-ordering', tableOrderingRoutes);
 
 // Call initRoles to create default roles if they don't exist
 const initRoles = require('./utils/initRoles');

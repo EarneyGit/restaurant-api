@@ -126,6 +126,32 @@ const cartSchema = new mongoose.Schema({
     min: [0, 'Total cannot be negative']
   },
   
+  // Discount information
+  discount: {
+    discountId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Discount'
+    },
+    code: String,
+    name: String,
+    discountType: {
+      type: String,
+      enum: ['percentage', 'fixed']
+    },
+    discountValue: Number,
+    discountAmount: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  // Final total after discount
+  finalTotal: {
+    type: Number,
+    default: 0,
+    min: [0, 'Final total cannot be negative']
+  },
+  
   // Cart metadata
   status: {
     type: String,
@@ -197,6 +223,10 @@ cartSchema.pre('save', function(next) {
   
   // Calculate total
   this.total = this.subtotal + this.deliveryFee;
+  
+  // Calculate final total with discount
+  const discountAmount = this.discount?.discountAmount || 0;
+  this.finalTotal = Math.max(0, this.total - discountAmount);
   
   // Update expiration
   this.expiresAt = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)); // 30 days from now
@@ -325,6 +355,43 @@ cartSchema.methods._compareAttributes = function(attributes1, attributes2) {
   }
   
   return true;
+};
+
+// Method to apply discount to cart
+cartSchema.methods.applyDiscount = async function(discount) {
+  // Create mock order for validation
+  const mockOrder = {
+    totalAmount: this.total,
+    deliveryMethod: this.orderType === 'pickup' ? 'pickup' : 
+                   this.orderType === 'dine-in' ? 'dine_in' : 'delivery'
+  };
+  
+  // Validate discount
+  const validation = discount.isValidForOrder(mockOrder);
+  if (!validation.valid) {
+    throw new Error(validation.reason);
+  }
+  
+  // Calculate discount amount
+  const discountAmount = discount.calculateDiscount(this.total);
+  
+  // Apply discount
+  this.discount = {
+    discountId: discount._id,
+    code: discount.code,
+    name: discount.name,
+    discountType: discount.discountType,
+    discountValue: discount.discountValue,
+    discountAmount: discountAmount
+  };
+  
+  return this.save();
+};
+
+// Method to remove discount from cart
+cartSchema.methods.removeDiscount = async function() {
+  this.discount = undefined;
+  return this.save();
 };
 
 const Cart = mongoose.model('Cart', cartSchema);
