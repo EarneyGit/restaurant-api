@@ -15,13 +15,17 @@ const attributeSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['single', 'multiple', 'multiple-times'],
+      enum: ['single', 'multiple'],
       required: [true, 'Attribute type is required'],
       default: 'single'
     },
     requiresSelection: {
       type: Boolean,
       default: true
+    },
+    description: {
+      type: String,
+      maxlength: [500, 'Description cannot be more than 500 characters']
     },
     availableDays: [{
       type: String,
@@ -35,10 +39,6 @@ const attributeSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
-    },
-    description: {
-      type: String,
-      maxlength: [500, 'Description cannot be more than 500 characters']
     }
   },
   {

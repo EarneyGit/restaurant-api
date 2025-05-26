@@ -190,6 +190,10 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    allowAddWithoutChoices: {
+      type: Boolean,
+      default: false
+    },
     // Stock Management fields
     stockManagement: {
       isManaged: {

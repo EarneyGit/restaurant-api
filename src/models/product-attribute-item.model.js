@@ -34,6 +34,14 @@ const productAttributeItemSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    hiddenForToday: {
+      type: Boolean,
+      default: false
+    },
+    fullyHidden: {
+      type: Boolean,
+      default: false
+    },
     description: {
       type: String,
       maxlength: [500, 'Description cannot be more than 500 characters']

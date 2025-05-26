@@ -9,7 +9,11 @@ const {
   getAttributeItemsByProduct,
   getAttributeItemsByAttribute,
   bulkCreateAttributeItems,
-  updateAttributeItemStock
+  updateAttributeItemStock,
+  copyAttributesBetweenProducts,
+  copyAttributesToCategory,
+  getAttributeOptions,
+  updateAttributeItemHiddenStatus
 } = require('../controllers/product-attribute-item.controller');
 
 // Import authentication middleware
@@ -36,12 +40,22 @@ router.route('/:id')
   .put(protect, upload.single('image'), updateProductAttributeItem)
   .delete(protect, deleteProductAttributeItem);
 
-// Special routes
-router.get('/product/:productId', getAttributeItemsByProduct);
-router.get('/attribute/:attributeId', getAttributeItemsByAttribute);
+// Specialized routes
+router.get('/product/:productId', optionalAuth, getAttributeItemsByProduct);
+router.get('/attribute/:attributeId', optionalAuth, getAttributeItemsByAttribute);
+router.get('/attribute/:attributeId/options', optionalAuth, getAttributeOptions);
 
-// Bulk operations and stock management - allow admin, manager, staff
+// Bulk operations
 router.post('/bulk', protect, bulkCreateAttributeItems);
-router.put('/:id/stock', protect, updateAttributeItemStock);
+
+// Copy operations
+router.post('/copy', protect, copyAttributesBetweenProducts);
+router.post('/copy-to-category', protect, copyAttributesToCategory);
+
+// Stock management
+router.patch('/:id/stock', protect, updateAttributeItemStock);
+
+// Hidden status management
+router.patch('/:id/hidden-status', protect, updateAttributeItemHiddenStatus);
 
 module.exports = router; 

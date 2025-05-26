@@ -89,6 +89,7 @@ exports.getProducts = async (req, res, next) => {
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
       hidePrice: product.hidePrice || false,
+      allowAddWithoutChoices: product.allowAddWithoutChoices || false,
       stockManagement: product.stockManagement || {
         isManaged: false,
         quantity: 0,
@@ -200,6 +201,7 @@ exports.getProduct = async (req, res, next) => {
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
       hidePrice: product.hidePrice || false,
+      allowAddWithoutChoices: product.allowAddWithoutChoices || false,
       stockManagement: product.stockManagement || {
         isManaged: false,
         quantity: 0,
@@ -286,7 +288,7 @@ exports.createProduct = async (req, res, next) => {
     }
 
     // Convert string boolean values to actual booleans
-    const booleanFields = ['hideItem', 'delivery', 'collection', 'dineIn', 'freeDelivery', 'collectionOnly', 'deleted', 'hidePrice'];
+    const booleanFields = ['hideItem', 'delivery', 'collection', 'dineIn', 'freeDelivery', 'collectionOnly', 'deleted', 'hidePrice', 'allowAddWithoutChoices'];
     booleanFields.forEach(field => {
       if (req.body[field] !== undefined) {
         req.body[field] = req.body[field] === 'true' || req.body[field] === true;
@@ -335,6 +337,7 @@ exports.createProduct = async (req, res, next) => {
       collectionOnly: populatedProduct.collectionOnly || false,
       deleted: populatedProduct.deleted || false,
       hidePrice: populatedProduct.hidePrice || false,
+      allowAddWithoutChoices: populatedProduct.allowAddWithoutChoices || false,
       stockManagement: populatedProduct.stockManagement || {
         isManaged: false,
         quantity: 0,
@@ -444,7 +447,7 @@ exports.updateProduct = async (req, res, next) => {
     }
 
     // Convert string boolean values to actual booleans
-    const booleanFields = ['hideItem', 'delivery', 'collection', 'dineIn', 'freeDelivery', 'collectionOnly', 'deleted', 'hidePrice'];
+    const booleanFields = ['hideItem', 'delivery', 'collection', 'dineIn', 'freeDelivery', 'collectionOnly', 'deleted', 'hidePrice', 'allowAddWithoutChoices'];
     booleanFields.forEach(field => {
       if (req.body[field] !== undefined) {
         req.body[field] = req.body[field] === 'true' || req.body[field] === true;
@@ -492,6 +495,7 @@ exports.updateProduct = async (req, res, next) => {
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
       hidePrice: product.hidePrice || false,
+      allowAddWithoutChoices: product.allowAddWithoutChoices || false,
       stockManagement: product.stockManagement || {
         isManaged: false,
         quantity: 0,
@@ -586,6 +590,7 @@ exports.getPopularProducts = async (req, res, next) => {
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
       hidePrice: product.hidePrice || false,
+      allowAddWithoutChoices: product.allowAddWithoutChoices || false,
       stockManagement: product.stockManagement || {
         isManaged: false,
         quantity: 0,
@@ -649,6 +654,7 @@ exports.getRecommendedProducts = async (req, res, next) => {
       collectionOnly: product.collectionOnly || false,
       deleted: product.deleted || false,
       hidePrice: product.hidePrice || false,
+      allowAddWithoutChoices: product.allowAddWithoutChoices || false,
       stockManagement: product.stockManagement || {
         isManaged: false,
         quantity: 0,
