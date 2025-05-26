@@ -10,7 +10,7 @@ const orderSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'User is required']
+      required: false // Allow guest orders without user
     },
     products: [
       {
