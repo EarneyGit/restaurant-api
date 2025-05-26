@@ -1,6 +1,7 @@
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
+const OrderingTimes = require('../models/ordering-times.model');
 const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
 
 // @desc    Get all orders
@@ -324,6 +325,50 @@ exports.createOrder = async (req, res, next) => {
     // Update the products array with validated data
     req.body.products = validatedProducts;
 
+    // Get estimated time to complete based on ordering times configuration
+    let estimatedTimeToComplete = 45; // Default 45 minutes
+    
+    try {
+      // Get current day of the week
+      const currentDate = new Date();
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const currentDay = dayNames[currentDate.getDay()];
+      
+      // Find ordering times for the branch
+      const orderingTimes = await OrderingTimes.findOne({ branchId: targetBranchId });
+      
+      if (orderingTimes && orderingTimes.weeklySchedule && orderingTimes.weeklySchedule[currentDay]) {
+        const daySettings = orderingTimes.weeklySchedule[currentDay];
+        
+        // Map delivery method to ordering times field
+        let orderType = '';
+        switch (req.body.deliveryMethod) {
+          case 'pickup':
+            orderType = 'collection';
+            break;
+          case 'delivery':
+            orderType = 'delivery';
+            break;
+          case 'dine_in':
+            orderType = 'tableOrdering';
+            break;
+          default:
+            orderType = 'collection';
+        }
+        
+        // Get lead time based on order type
+        if (daySettings[orderType] && typeof daySettings[orderType].leadTime === 'number') {
+          estimatedTimeToComplete = daySettings[orderType].leadTime;
+        }
+      }
+    } catch (error) {
+      // If there's an error fetching ordering times, use default value
+      console.log('Error fetching ordering times, using default lead time:', error.message);
+    }
+    
+    // Set the estimated time to complete
+    req.body.estimatedTimeToComplete = estimatedTimeToComplete;
+
     // Create the order
     const order = await Order.create(req.body);
 
@@ -441,8 +486,7 @@ exports.deleteOrder = async (req, res, next) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order not found with id of ${req.params.id}`
-      });
+        message: `Order not found with id of ${req.params.id}`      });
     }
 
     await order.deleteOne();

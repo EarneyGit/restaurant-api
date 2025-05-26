@@ -138,6 +138,11 @@ const orderSchema = new mongoose.Schema(
       notes: String
     },
     estimatedDeliveryTime: Date,
+    estimatedTimeToComplete: {
+      type: Number,
+      default: 45,
+      min: [0, 'Estimated time to complete cannot be negative']
+    },
     actualDeliveryTime: Date,
     customerNotes: String,
     internalNotes: String
