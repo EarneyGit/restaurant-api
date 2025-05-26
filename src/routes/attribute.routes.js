@@ -12,26 +12,26 @@ const {
 } = require('../controllers/attribute.controller');
 
 // Import authentication middleware
-const { protect, admin, optionalAuth } = require('../middleware/auth.middleware');
+const { protect, admin, staff, optionalAuth } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
 // Special routes that must come before parameterized routes
-router.get('/offline', protect, getOfflineAttributes);
+router.get('/offline', protect, staff, getOfflineAttributes);
 router.get('/branch/:branchId', optionalAuth, getAttributesByBranch);
-router.put('/reorder', protect, reorderAttributes);
+router.put('/reorder', protect, staff, reorderAttributes);
 
 // Public routes with optional authentication (branch-based)
 router.route('/')
   .get(optionalAuth, getAttributes)
-  .post(protect, createAttribute);
+  .post(protect, staff, createAttribute);
 
 // Parameterized routes (must come after specific routes)
 router.route('/:id')
   .get(optionalAuth, getAttribute)
-  .put(protect, updateAttribute)
-  .delete(protect, deleteAttribute);
+  .put(protect, staff, updateAttribute)
+  .delete(protect, staff, deleteAttribute);
 
-router.patch('/:id/toggle-offline', protect, toggleAttributeOffline);
+router.patch('/:id/toggle-offline', protect, staff, toggleAttributeOffline);
 
 module.exports = router; 

@@ -83,22 +83,50 @@ exports.getAttribute = async (req, res, next) => {
 
 // @desc    Create new attribute
 // @route   POST /api/attributes
-// @access  Private (Admin only)
+// @access  Private (Staff and above)
 exports.createAttribute = async (req, res, next) => {
   try {
-    // Get branchId from authenticated admin user
-    if (!req.user || !req.user.branchId) {
-      return res.status(400).json({
+    // Get branchId from authenticated user
+    console.log('🔄 Request Headers:', req.headers);
+    console.log('🔄 Request Body:', req.body);
+    console.log('🔄 User:', req.user);
+
+    if (!req.user) {
+      return res.status(401).json({
         success: false,
-        message: 'Admin user must be associated with a branch'
+        message: 'Authentication required'
       });
     }
 
-    // Set branchId from authenticated user
-    req.body.branchId = req.user.branchId;
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User must be associated with a branch'
+      });
+    }
+
+    // Initialize request body if it doesn't exist
+    const attributeData = {
+      name: req.body?.name,
+      type: req.body?.type || 'single',
+      requiresSelection: req.body?.requiresSelection === undefined ? true : req.body.requiresSelection,
+      description: req.body?.description || '',
+      displayOrder: req.body?.displayOrder || 0,
+      branchId: req.user.branchId,
+      isActive: true
+    };
+
+    // Validate required fields
+    if (!attributeData.name) {
+      console.log('❌ Name validation failed:', attributeData);
+      return res.status(400).json({
+        success: false,
+        message: 'Name is required for the attribute'
+      });
+    }
 
     // Validate branch exists
-    const branch = await Branch.findById(req.body.branchId);
+    const branch = await Branch.findById(attributeData.branchId);
     if (!branch) {
       return res.status(404).json({
         success: false,
@@ -106,22 +134,20 @@ exports.createAttribute = async (req, res, next) => {
       });
     }
 
-    // Set default availableDays if not provided
-    if (!req.body.availableDays || req.body.availableDays.length === 0) {
-      req.body.availableDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    }
-
-    const attribute = await Attribute.create(req.body);
+    console.log('✅ Creating attribute with data:', attributeData);
+    const attribute = await Attribute.create(attributeData);
     
     // Fetch the populated attribute to return
     const populatedAttribute = await Attribute.findById(attribute._id)
       .populate('branchId', 'name address');
 
+    console.log('✅ Created attribute:', populatedAttribute);
     res.status(201).json({
       success: true,
       data: populatedAttribute
     });
   } catch (error) {
+    console.error('❌ Error in createAttribute:', error);
     next(error);
   }
 };

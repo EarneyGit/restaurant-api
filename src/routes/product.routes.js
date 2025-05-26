@@ -17,7 +17,7 @@ const {
 const { ALLOWED_FILE_TYPES } = require('../utils/fileUpload');
 
 // Import authentication middleware
-const { protect, admin, optionalAuth } = require('../middleware/auth.middleware');
+const { protect, admin, staff, optionalAuth } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -41,20 +41,18 @@ const upload = multer({
 router.get('/popular', optionalAuth, getPopularProducts);
 router.get('/recommended', optionalAuth, getRecommendedProducts);
 router.get('/stock/status', optionalAuth, getStockStatus);
-
-// Protected routes for offline management (admin, manager, staff only)
-router.get('/offline', protect, getOfflineProducts);
-router.patch('/toggle-all-offline', protect, toggleAllProductsOffline);
-
-// General product routes
 router.get('/', optionalAuth, getProducts);
 router.get('/:id', optionalAuth, getProduct);
-router.patch('/:id/toggle-offline', protect, toggleProductOffline);
 
-// Protected routes (write operations) - allow admin, manager, staff
-router.put('/stock/bulk-update', protect, bulkUpdateStock);
-router.post('/', protect, upload.array('images', 10), createProduct);
-router.put('/:id', protect, upload.array('images', 10), updateProduct);
-router.delete('/:id', protect, deleteProduct);
+// Protected routes for staff and above
+router.get('/offline', protect, staff, getOfflineProducts);
+router.patch('/toggle-all-offline', protect, staff, toggleAllProductsOffline);
+router.patch('/:id/toggle-offline', protect, staff, toggleProductOffline);
+router.put('/stock/bulk-update', protect, staff, bulkUpdateStock);
+
+// Protected routes for admin only
+router.post('/', protect, admin, upload.array('images', 10), createProduct);
+router.put('/:id', protect, admin, upload.array('images', 10), updateProduct);
+router.delete('/:id', protect, admin, deleteProduct);
 
 module.exports = router; 

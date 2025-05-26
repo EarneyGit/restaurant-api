@@ -1,6 +1,8 @@
 const Product = require('../models/product.model');
 const Category = require('../models/category.model');
 const Branch = require('../models/branch.model');
+const Attribute = require('../models/attribute.model');
+const ProductAttributeItem = require('../models/product-attribute-item.model');
 const { saveSingleFile, saveMultipleFiles, deleteFile } = require('../utils/fileUpload');
 
 // @desc    Get all products
@@ -17,27 +19,30 @@ exports.getProducts = async (req, res, next) => {
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
     
     // Handle branch determination based on user type
-    if (isAdmin) {
+    if (isAdmin && req.user.branchId) {
       // Admin users: Use their assigned branchId
-      if (!req.user.branchId) {
-        return res.status(400).json({
-          success: false,
-          message: `${userRole} must be assigned to a branch`
-        });
-      }
       targetBranchId = req.user.branchId;
-      query.branchId = targetBranchId;
-    } else {
+    } else if (req.query.branchId) {
       // Regular users and guests: Use branch from query parameter
-      if (!req.query.branchId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Branch ID is required. Please select a branch.'
-        });
-      }
       targetBranchId = req.query.branchId;
-      query.branchId = targetBranchId;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID is required. Please select a branch.'
+      });
     }
+
+    // Verify branch exists
+    const branch = await Branch.findById(targetBranchId);
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
+      });
+    }
+
+    // Set branch query
+    query.branchId = targetBranchId;
     
     // Apply additional filters if provided
     if (req.query.category) {
@@ -49,54 +54,92 @@ exports.getProducts = async (req, res, next) => {
       query.name = { $regex: req.query.searchText, $options: 'i' };
     }
 
+    // Get products with populated fields
     const products = await Product.find(query)
       .populate('category', 'name slug')
       .populate('branchId', 'name address')
       .populate('selectedItems', 'name price category')
       .sort('name');
 
-    // Transform products to match frontend structure
-    const transformedProducts = products.map(product => ({
-      id: product._id,
-      name: product.name,
-      price: product.price,
-      hideItem: product.hideItem ?? false,
-      delivery: product.delivery !== undefined ? product.delivery : true,
-      collection: product.collection !== undefined ? product.collection : true,
-      dineIn: product.dineIn !== undefined ? product.dineIn : true,
-      description: product.description,
-      weight: product.weight,
-      calorificValue: product.calorificValue,
-      calorieDetails: product.calorieDetails,
-      images: product.images || [],
-      availability: product.availability || {},
-      allergens: product.allergens || { contains: [], mayContain: [] },
-      priceChanges: product.priceChanges || [],
-      selectedItems: product.selectedItems?.map(item => item._id) || [],
-      itemSettings: product.itemSettings || {
-        showSelectedOnly: false,
-        showSelectedCategories: false,
-        limitSingleChoice: false,
-        addAttributeCharges: false,
-        useProductPrices: false,
-        showChoiceAsDropdown: false
-      },
-      category: product.category,
-      branch: product.branchId,
-      tillProviderProductId: product.tillProviderProductId || '',
-      cssClass: product.cssClass || '',
-      freeDelivery: product.freeDelivery || false,
-      collectionOnly: product.collectionOnly || false,
-      deleted: product.deleted || false,
-      hidePrice: product.hidePrice || false,
-      allowAddWithoutChoices: product.allowAddWithoutChoices || false,
-      stockManagement: product.stockManagement || {
-        isManaged: false,
-        quantity: 0,
-        lowStockThreshold: 10,
-        lastUpdated: new Date()
+    // Get product attributes for all products
+    const productIds = products.map(product => product._id);
+    const attributes = await Attribute.find({ branchId: targetBranchId });
+    const productAttributeItems = await ProductAttributeItem.find({
+      productId: { $in: productIds },
+      isActive: true
+    }).populate('attributeId');
+
+    // Group attribute items by product
+    const productAttributesMap = {};
+    productAttributeItems.forEach(item => {
+      if (item.productId) {  // Add null check
+        const productIdStr = item.productId.toString();
+        if (!productAttributesMap[productIdStr]) {
+          productAttributesMap[productIdStr] = [];
+        }
+        productAttributesMap[productIdStr].push(item);
       }
-    }));
+    });
+
+    // Transform products to match frontend structure
+    const transformedProducts = products.map(product => {
+      const productId = product._id.toString();
+      return {
+        id: product._id,
+        name: product.name,
+        price: product.price,
+        attributes: attributes.map(attr => ({
+          id: attr._id,
+          name: attr.name,
+          type: attr.type,
+          requiresSelection: attr.requiresSelection,
+          description: attr.description,
+          choices: (productAttributesMap[productId] || [])
+            .filter(item => item.attributeId && item.attributeId._id.toString() === attr._id.toString())
+            .map(item => ({
+              id: item._id,
+              name: item.name,
+              price: item.price
+            }))
+        })).filter(attr => attr.choices.length > 0),
+        hideItem: product.hideItem ?? false,
+        delivery: product.delivery !== undefined ? product.delivery : true,
+        collection: product.collection !== undefined ? product.collection : true,
+        dineIn: product.dineIn !== undefined ? product.dineIn : true,
+        description: product.description,
+        weight: product.weight,
+        calorificValue: product.calorificValue,
+        calorieDetails: product.calorieDetails,
+        images: product.images || [],
+        availability: product.availability || {},
+        allergens: product.allergens || { contains: [], mayContain: [] },
+        priceChanges: product.priceChanges || [],
+        selectedItems: product.selectedItems?.map(item => item._id) || [],
+        itemSettings: product.itemSettings || {
+          showSelectedOnly: false,
+          showSelectedCategories: false,
+          limitSingleChoice: false,
+          addAttributeCharges: false,
+          useProductPrices: false,
+          showChoiceAsDropdown: false
+        },
+        category: product.category,
+        branch: product.branchId,
+        tillProviderProductId: product.tillProviderProductId || '',
+        cssClass: product.cssClass || '',
+        freeDelivery: product.freeDelivery || false,
+        collectionOnly: product.collectionOnly || false,
+        deleted: product.deleted || false,
+        hidePrice: product.hidePrice || false,
+        allowAddWithoutChoices: product.allowAddWithoutChoices || false,
+        stockManagement: product.stockManagement || {
+          isManaged: false,
+          quantity: 0,
+          lowStockThreshold: 10,
+          lastUpdated: new Date()
+        }
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -105,6 +148,7 @@ exports.getProducts = async (req, res, next) => {
       branchId: targetBranchId
     });
   } catch (error) {
+    console.error('Error in getProducts:', error);
     next(error);
   }
 };
@@ -167,11 +211,41 @@ exports.getProduct = async (req, res, next) => {
       }
     }
 
+    // Get product attributes for the product
+    const productAttributes = await Attribute.find({ branchId: product.branchId });
+    const productAttributeItems = await ProductAttributeItem.find({
+      productId: product._id,
+      isActive: true
+    }).populate('attributeId');
+
+    // Group attribute items by product
+    const productAttributesMap = {};
+    productAttributeItems.forEach(item => {
+      if (!productAttributesMap[product._id]) {
+        productAttributesMap[product._id] = [];
+      }
+      productAttributesMap[product._id].push(item);
+    });
+
     // Transform product data to match frontend structure
     const transformedProduct = {
       id: product._id,
       name: product.name,
       price: product.price,
+      attributes: productAttributes.map(attr => ({
+        id: attr._id,
+        name: attr.name,
+        type: attr.type,
+        requiresSelection: attr.requiresSelection,
+        description: attr.description,
+        choices: (productAttributesMap[product._id] || [])
+          .filter(item => item.attributeId._id.toString() === attr._id.toString())
+          .map(item => ({
+            id: item._id,
+            name: item.name,
+            price: item.price
+          }))
+      })).filter(attr => attr.choices.length > 0),
       hideItem: product.hideItem ?? false,
       delivery: product.delivery !== undefined ? product.delivery : true,
       collection: product.collection !== undefined ? product.collection : true,
