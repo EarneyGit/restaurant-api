@@ -17,7 +17,7 @@ const {
 const { ALLOWED_FILE_TYPES } = require('../utils/fileUpload');
 
 // Import authentication middleware
-const { protect, admin, staff, optionalAuth } = require('../middleware/auth.middleware');
+const { protect, admin, staff, optionalAuth, manager } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -51,8 +51,8 @@ router.patch('/:id/toggle-offline', protect, staff, toggleProductOffline);
 router.put('/stock/bulk-update', protect, staff, bulkUpdateStock);
 
 // Protected routes for admin only
-router.post('/', protect, admin, upload.array('images', 10), createProduct);
-router.put('/:id', protect, admin, upload.array('images', 10), updateProduct);
-router.delete('/:id', protect, admin, deleteProduct);
+router.post('/', protect, staff, upload.array('images', 10), createProduct);
+router.put('/:id', protect, staff, upload.array('images', 10), updateProduct);
+router.delete('/:id', protect, staff, deleteProduct);
 
 module.exports = router; 
