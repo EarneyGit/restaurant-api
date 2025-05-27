@@ -1,6 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const Role = require('../models/role.model');
 
 let io;
 
@@ -38,7 +39,10 @@ const initSocket = (server) => {
         // Verify JWT token
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'restaurant_api_secret_key');
         const user = await User.findById(decoded.id).populate('branchId');
-
+        const roleDoc = await Role.findById(user.roleId);
+        if (roleDoc) {
+          user.role = roleDoc.slug;
+        }
         if (!user) {
           socket.emit('auth_error', { message: 'User not found' });
           return;
