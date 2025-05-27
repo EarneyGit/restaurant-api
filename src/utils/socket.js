@@ -1,4 +1,6 @@
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const User = require('../models/user.model');
 
 let io;
 
@@ -20,6 +22,57 @@ const initSocket = (server) => {
       if (branchId) {
         socket.join(`users_${branchId}`);
         console.log(`User socket ${socket.id} joined user room: users_${branchId}`);
+      }
+    });
+
+    // Handle restaurant staff joining their branch room
+    socket.on('join_restaurant', async (data) => {
+      try {
+        const { token } = data;
+        
+        if (!token) {
+          socket.emit('auth_error', { message: 'Token required' });
+          return;
+        }
+
+        // Verify JWT token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'restaurant_api_secret_key');
+        const user = await User.findById(decoded.id).populate('branchId');
+
+        if (!user) {
+          socket.emit('auth_error', { message: 'User not found' });
+          return;
+        }
+
+        // Check if user is restaurant staff
+        const allowedRoles = ['admin', 'manager', 'staff'];
+        if (!allowedRoles.includes(user.role)) {
+          socket.emit('auth_error', { message: 'Unauthorized role' });
+          return;
+        }
+
+        if (!user.branchId) {
+          socket.emit('auth_error', { message: 'User not assigned to a branch' });
+          return;
+        }
+
+        // Join restaurant room for their branch
+        const roomName = `restaurant_${user.branchId}`;
+        socket.join(roomName);
+        socket.userId = user._id;
+        socket.branchId = user.branchId;
+        socket.userRole = user.role;
+        
+        console.log(`Restaurant staff ${user.name} (${socket.id}) joined room: ${roomName}`);
+        socket.emit('joined_restaurant', { 
+          message: 'Successfully joined restaurant room',
+          branchId: user.branchId,
+          role: user.role 
+        });
+
+      } catch (error) {
+        console.error('Error in join_restaurant:', error);
+        socket.emit('auth_error', { message: 'Authentication failed' });
       }
     });
 
@@ -77,6 +130,47 @@ const emitToUsers = (branchId, event, data) => {
   }
 };
 
+// Utility function to emit to restaurant staff of specific branch
+const emitToRestaurant = (branchId, event, data) => {
+  if (io) {
+    io.to(`restaurant_${branchId}`).emit(event, data);
+    console.log(`Emitted ${event} to restaurant_${branchId}:`, data);
+  }
+};
+
+// Common function to emit order events - matches frontend 'order' event listener
+const emitOrderEvent = (branchId, eventType, orderData) => {
+  if (!io) return;
+  
+  // Create message based on event type
+  const eventMessages = {
+    'order_created': 'New order received',
+    'order_updated': 'Order updated', 
+    'order_cancelled': 'Order cancelled',
+    'order_deleted': 'Order deleted',
+    'order_status_changed': 'Order status changed'
+  };
+
+  const message = eventMessages[eventType] || 'Order event';
+
+  // Structure data exactly as frontend expects for 'order' event
+  const socketData = {
+    message,
+    type: eventType,
+    orderId: orderData.orderId,
+    orderNumber: orderData.orderNumber,
+    branchId: branchId,
+    timestamp: new Date().toISOString(),
+    // Include status information if provided
+    ...(orderData.oldStatus && { oldStatus: orderData.oldStatus }),
+    ...(orderData.newStatus && { newStatus: orderData.newStatus })
+  };
+
+  // Emit to the 'order' event that frontend is listening to
+  io.to(`restaurant_${branchId}`).emit('order', socketData);
+  console.log(`Emitted order event to restaurant_${branchId}:`, socketData);
+};
+
 // Utility function to get connected user sockets count for a branch
 const getUserSocketsCount = (branchId) => {
   if (!io) return 0;
@@ -85,9 +179,20 @@ const getUserSocketsCount = (branchId) => {
   return userRoom ? userRoom.size : 0;
 };
 
+// Utility function to get connected restaurant staff count for a branch
+const getRestaurantSocketsCount = (branchId) => {
+  if (!io) return 0;
+  
+  const restaurantRoom = io.sockets.adapter.rooms.get(`restaurant_${branchId}`);
+  return restaurantRoom ? restaurantRoom.size : 0;
+};
+
 module.exports = {
   initSocket,
   getIO,
   emitToUsers,
-  getUserSocketsCount
+  emitToRestaurant,
+  emitOrderEvent,
+  getUserSocketsCount,
+  getRestaurantSocketsCount
 }; 

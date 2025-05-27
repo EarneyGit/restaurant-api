@@ -3,6 +3,7 @@ const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const OrderingTimes = require('../models/ordering-times.model');
 const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
+const { getIO } = require('../utils/socket');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -382,6 +383,9 @@ exports.createOrder = async (req, res, next) => {
       .populate('products.product', 'name price')
       .populate('assignedTo', 'name email');
 
+    // Emit socket event to restaurant staff
+    getIO().emit("order", { event: "order_created" });
+
     res.status(201).json({
       success: true,
       data: populatedOrder,
@@ -450,6 +454,9 @@ exports.updateOrder = async (req, res, next) => {
         .populate('products.product', 'name price')
         .populate('assignedTo', 'name email');
 
+      // Emit socket event for cancelled order
+      getIO().emit("order", { event: "order_cancelled" });
+
       res.status(200).json({
         success: true,
         data: order,
@@ -464,6 +471,9 @@ exports.updateOrder = async (req, res, next) => {
         .populate('branchId', 'name address')
         .populate('products.product', 'name price')
         .populate('assignedTo', 'name email');
+
+      // Emit socket event for order update
+      getIO().emit("order", { event: "order_updated" });
 
       res.status(200).json({
         success: true,
@@ -481,15 +491,27 @@ exports.updateOrder = async (req, res, next) => {
 // @access  Public (temporarily)
 exports.deleteOrder = async (req, res, next) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id)
+      .populate('branchId', '_id name');
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order not found with id of ${req.params.id}`      });
+        message: `Order not found with id of ${req.params.id}`
+      });
     }
 
+    // Store order info before deletion
+    const orderInfo = {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      branchId: order.branchId._id
+    };
+
     await order.deleteOne();
+
+    // Emit socket event for order deletion
+    getIO().emit("order", { event: "order_deleted" });
 
     res.status(200).json({
       success: true,
