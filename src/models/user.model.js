@@ -98,6 +98,7 @@ userSchema.pre('save', async function(next) {
       }
       
       // For staff and manager roles, branch is required
+      // SuperAdmin and Admin don't require branch assignment
       if (['staff', 'manager'].includes(role.slug) && !this.branchId) {
         throw new Error(`Branch assignment is required for ${role.name} role`);
       }
@@ -162,8 +163,8 @@ userSchema.methods.matchPassword = async function(enteredPassword) {
 
 // Check if user has branch access
 userSchema.methods.hasBranchAccess = function(targetBranchId) {
-  // Admin has access to all branches
-  if (this.role === 'admin') {
+  // SuperAdmin and Admin have access to all branches
+  if (['superadmin', 'admin'].includes(this.role)) {
     return true;
   }
   

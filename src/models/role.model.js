@@ -11,7 +11,7 @@ const roleSchema = new mongoose.Schema(
     slug: {
       type: String,
       required: [true, 'Please add a role slug'],
-      enum: ['admin', 'manager', 'staff', 'user'],
+      enum: ['admin', 'manager', 'staff', 'user', 'superadmin'],
       unique: true
     },
     description: {
@@ -35,6 +35,11 @@ roleSchema.statics.createDefaultRoles = async function() {
     if (count === 0) {
       // Create default roles
       const defaultRoles = [
+        {
+          name: 'Super Admin',
+          slug: 'superadmin',
+          description: 'Super administrator with full system access including branch management'
+        },
         {
           name: 'Admin',
           slug: 'admin',

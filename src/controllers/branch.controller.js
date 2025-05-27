@@ -18,7 +18,7 @@ exports.getBranches = async (req, res, next) => {
       }
 
     const branches = await Branch.find(query)
-      .select('name address contact location isActive isDefault') // Only return essential fields
+      .select('name code address contact location isActive isDefault') // Only return essential fields
       .sort('name');
 
     res.status(200).json({

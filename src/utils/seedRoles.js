@@ -20,32 +20,39 @@ mongoose.connect(mongoURI)
 // Define default roles
 const defaultRoles = [
   {
+    name: 'Super Admin',
+    slug: 'superadmin',
+    description: 'Super Admin with full access',
+    isSystemRole: true,
+    displayOrder: 1
+  },
+  {
     name: 'Admin',
     slug: 'admin',
     description: 'System administrator with full access',
     isSystemRole: true,
-    displayOrder: 1
+    displayOrder: 2
   },
   {
     name: 'Manager',
     slug: 'manager',
     description: 'Branch manager with limited admin access',
     isSystemRole: true,
-    displayOrder: 2
+    displayOrder: 3
   },
   {
     name: 'Staff',
     slug: 'staff',
     description: 'Restaurant staff with operational access',
     isSystemRole: true,
-    displayOrder: 3
+    displayOrder: 4
   },
   {
     name: 'User',
     slug: 'user',
     description: 'Regular customer account',
     isSystemRole: true,
-    displayOrder: 4
+    displayOrder: 5
   }
 ];
 

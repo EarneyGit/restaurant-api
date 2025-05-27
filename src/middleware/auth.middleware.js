@@ -87,6 +87,32 @@ const protect = async (req, res, next) => {
   }
 };
 
+// Check if user has superadmin role
+const superadmin = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. Authentication required.'
+      });
+    }
+
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Super admin role required.'
+      });
+    }
+
+    next();
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server error in role check.'
+    });
+  }
+};
+
 // Check if user has admin role
 const admin = async (req, res, next) => {
   try {
@@ -97,10 +123,12 @@ const admin = async (req, res, next) => {
       });
     }
 
-    if (req.user.role !== 'admin') {
+    // Allow both superadmin and admin
+    const allowedRoles = ['superadmin', 'admin'];
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Admin role required.'
+        message: 'Access denied. Admin role or higher required.'
       });
     }
 
@@ -123,7 +151,7 @@ const manager = async (req, res, next) => {
       });
     }
 
-    const allowedRoles = ['admin', 'manager'];
+    const allowedRoles = ['superadmin', 'admin', 'manager'];
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -150,7 +178,7 @@ const staff = async (req, res, next) => {
       });
     }
 
-    const allowedRoles = ['admin', 'manager', 'staff'];
+    const allowedRoles = ['superadmin', 'admin', 'manager', 'staff'];
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -257,6 +285,7 @@ const optionalAuth = async (req, res, next) => {
 
 module.exports = { 
   protect, 
+  superadmin,
   admin, 
   manager, 
   staff,
