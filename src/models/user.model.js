@@ -7,6 +7,18 @@ const JWT_EXPIRE = process.env.JWT_EXPIRE || '30d';
 
 const userSchema = new mongoose.Schema(
   {
+    firstName: {
+      type: String,
+      required: [true, 'Please add a first name'],
+      trim: true,
+      maxlength: [50, 'First name cannot be more than 50 characters']
+    },
+    lastName: {
+      type: String,
+      required: [true, 'Please add a last name'],
+      trim: true,
+      maxlength: [50, 'Last name cannot be more than 50 characters']
+    },
     name: {
       type: String,
       required: [true, 'Please add a name'],
@@ -27,6 +39,42 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Please add a password'],
       minlength: [6, 'Password must be at least 6 characters'],
       select: false
+    },
+    mobileNumber: {
+      type: String,
+      maxlength: [20, 'Phone number cannot be longer than 20 characters']
+    },
+    addressLine1: {
+      type: String,
+      maxlength: [100, 'Address line 1 cannot be more than 100 characters']
+    },
+    addressLine2: {
+      type: String,
+      maxlength: [100, 'Address line 2 cannot be more than 100 characters']
+    },
+    city: {
+      type: String,
+      maxlength: [50, 'City cannot be more than 50 characters']
+    },
+    postalCode: {
+      type: String,
+      maxlength: [20, 'Postal code cannot be more than 20 characters']
+    },
+    emailNotifications: {
+      type: Boolean,
+      default: false
+    },
+    smsNotifications: {
+      type: Boolean,
+      default: false
+    },
+    preferredCommunicationEmail: {
+      type: Boolean,
+      default: false
+    },
+    preferredCommunicationSMS: {
+      type: Boolean,
+      default: false
     },
     phone: {
       type: String,
