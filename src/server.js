@@ -83,7 +83,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/ordering-times', orderingTimesRoutes);
 app.use('/api/attributes', attributeRoutes);
 app.use('/api/product-attribute-items', productAttributeItemRoutes);
-app.use('/api/lead-times', leadTimesRoutes);
+app.use('/api/settings/lead-times', leadTimesRoutes);
 app.use('/api/push-notifications', pushNotificationRoutes);
 app.use('/api/repeating-push-notifications', repeatingPushNotificationRoutes);
 app.use('/api/price-changes', priceChangesRoutes);
