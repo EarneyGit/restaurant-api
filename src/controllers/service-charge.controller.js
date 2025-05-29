@@ -1,5 +1,6 @@
 const ServiceCharge = require('../models/service-charge.model');
 const mongoose = require('mongoose');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get all service charges for a branch
 // @route   GET /api/settings/service-charges
@@ -7,7 +8,7 @@ const mongoose = require('mongoose');
 const getServiceCharges = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -74,7 +75,7 @@ const getServiceCharges = async (req, res) => {
 const getServiceCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -124,7 +125,7 @@ const getServiceCharge = async (req, res) => {
 const createServiceCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -182,7 +183,7 @@ const createServiceCharge = async (req, res) => {
 const updateServiceCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -243,7 +244,7 @@ const updateServiceCharge = async (req, res) => {
 const deleteServiceCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -328,7 +329,7 @@ const calculateServiceCharges = async (req, res) => {
 const getServiceChargeStats = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({

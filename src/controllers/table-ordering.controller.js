@@ -1,5 +1,6 @@
 const TableGroup = require('../models/table-ordering.model');
 const mongoose = require('mongoose');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get all table groups for a branch
 // @route   GET /api/settings/table-ordering
@@ -7,7 +8,7 @@ const mongoose = require('mongoose');
 const getTableGroups = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -74,7 +75,7 @@ const getTableGroups = async (req, res) => {
 const getTableGroup = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -124,7 +125,7 @@ const getTableGroup = async (req, res) => {
 const createTableGroup = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -182,7 +183,7 @@ const createTableGroup = async (req, res) => {
 const updateTableGroup = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -243,7 +244,7 @@ const updateTableGroup = async (req, res) => {
 const deleteTableGroup = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -294,7 +295,7 @@ const deleteTableGroup = async (req, res) => {
 const addTableToGroup = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -364,7 +365,7 @@ const addTableToGroup = async (req, res) => {
 const updateTableInGroup = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -441,7 +442,7 @@ const updateTableInGroup = async (req, res) => {
 const removeTableFromGroup = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -500,7 +501,7 @@ const removeTableFromGroup = async (req, res) => {
 const generateTableQR = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -632,7 +633,7 @@ const getTableByQR = async (req, res) => {
 const getTableOrderingStats = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({

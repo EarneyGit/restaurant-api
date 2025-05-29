@@ -4,6 +4,7 @@ const Branch = require('../models/branch.model');
 const Attribute = require('../models/attribute.model');
 const ProductAttributeItem = require('../models/product-attribute-item.model');
 const { saveSingleFile, saveMultipleFiles, deleteFile } = require('../utils/fileUpload');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -16,7 +17,7 @@ exports.getProducts = async (req, res, next) => {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (isAdmin && req.user.branchId) {
@@ -173,7 +174,7 @@ exports.getProduct = async (req, res, next) => {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch verification based on user type
     if (isAdmin) {
@@ -897,7 +898,7 @@ exports.getOfflineProducts = async (req, res, next) => {
   try {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -965,7 +966,7 @@ exports.toggleProductOffline = async (req, res, next) => {
 
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -1040,7 +1041,7 @@ exports.toggleAllProductsOffline = async (req, res, next) => {
 
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({

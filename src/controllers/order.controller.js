@@ -4,6 +4,7 @@
   const OrderingTimes = require('../models/ordering-times.model');
   const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
   const { getIO } = require('../utils/socket');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
   // @desc    Get all orders
   // @route   GET /api/orders
@@ -15,7 +16,7 @@
       // Determine user role and authentication status
       const userRole = req.user ? req.user.role : null;
       const isAuthenticated = !!req.user;
-      const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
       const isRegularUser = userRole === 'user' || userRole === null;
       
       // Handle branch determination based on user type
@@ -153,7 +154,7 @@
       // Determine user role and authentication status
       const userRole = req.user ? req.user.role : null;
       const isAuthenticated = !!req.user;
-      const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
       const isRegularUser = userRole === 'user' || userRole === null;
       
       // Handle access control based on user type
@@ -233,7 +234,7 @@
       // Determine user role and authentication status
       const userRole = req.user ? req.user.role : null;
       const isAuthenticated = !!req.user;
-      const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
       const isRegularUser = userRole === 'user' || userRole === null;
       
       let targetBranchId = null;
@@ -413,7 +414,7 @@
 
       // Determine user role and authentication status
       const userRole = req.user ? req.user.role : null;
-      const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
       
       // Only admin users can update orders
       if (!isAdmin) {
@@ -537,7 +538,7 @@
       
       // Determine user role and branch
       const userRole = req.user ? req.user.role : null;
-      const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
       let targetBranchId = null;
       
       let query = { user: req.user._id };
@@ -593,7 +594,7 @@
       
       // Determine user role
       const userRole = req.user ? req.user.role : null;
-      const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
       
       // Only admin users can access today's orders
       if (!isAdmin) {

@@ -1,4 +1,5 @@
 const BusinessOffer = require('../models/business-offer.model');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 const mongoose = require('mongoose');
 
 // @desc    Get all business offers for a branch
@@ -8,7 +9,7 @@ const getBusinessOffers = async (req, res) => {
   try {
     // Get user role and branch
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -72,7 +73,7 @@ const getBusinessOffers = async (req, res) => {
 const getBusinessOffer = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -122,7 +123,7 @@ const getBusinessOffer = async (req, res) => {
 const createBusinessOffer = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -180,7 +181,7 @@ const createBusinessOffer = async (req, res) => {
 const updateBusinessOffer = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -241,7 +242,7 @@ const updateBusinessOffer = async (req, res) => {
 const deleteBusinessOffer = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -384,7 +385,7 @@ const trackOfferClick = async (req, res) => {
 const getBusinessOfferStats = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({

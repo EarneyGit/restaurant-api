@@ -1,5 +1,6 @@
 const OrderingTimes = require('../models/ordering-times.model');
 const Branch = require('../models/branch.model');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get ordering times for a branch
 // @route   GET /api/ordering-times/:branchId or GET /api/ordering-times (for admin users)
@@ -10,7 +11,7 @@ exports.getOrderingTimes = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -76,7 +77,7 @@ exports.updateWeeklySchedule = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -167,7 +168,7 @@ exports.updateDaySchedule = async (req, res, next) => {
 
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -253,7 +254,7 @@ exports.getClosedDates = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -326,7 +327,7 @@ exports.addClosedDate = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -427,7 +428,7 @@ exports.deleteClosedDate = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -515,7 +516,7 @@ exports.deleteAllClosedDates = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -592,7 +593,7 @@ exports.getOrderRestrictions = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
@@ -656,7 +657,7 @@ exports.updateOrderRestrictions = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {

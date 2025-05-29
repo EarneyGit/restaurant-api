@@ -3,6 +3,7 @@ const Branch = require('../models/branch.model');
 const Product = require('../models/product.model');
 const { saveSingleFile } = require('../utils/fileUpload');
 const mongoose = require('mongoose');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get all categories
 // @route   GET /api/categories
@@ -15,7 +16,7 @@ exports.getCategories = async (req, res, next) => {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch determination based on user type
     if (isAdmin) {
@@ -101,7 +102,7 @@ exports.getCategory = async (req, res, next) => {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Handle branch verification based on user type
     if (isAdmin) {

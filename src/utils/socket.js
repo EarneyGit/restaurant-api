@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
+const { ALL_ROLES } = require('../constants/roles');
 
 let io;
 
@@ -49,7 +50,7 @@ const initSocket = (server) => {
         }
 
         // Check if user is restaurant staff
-        const allowedRoles = ['admin', 'manager', 'staff'];
+        const allowedRoles = ALL_ROLES;
         if (!allowedRoles.includes(user.role)) {
           socket.emit('auth_error', { message: 'Unauthorized role' });
           return;

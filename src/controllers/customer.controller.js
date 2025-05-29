@@ -1,6 +1,7 @@
 const Order = require('../models/order.model');
 const User = require('../models/user.model');
 const mongoose = require('mongoose');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get customers based on orders (branch-based)
 // @route   GET /api/customers
@@ -9,7 +10,7 @@ const getCustomers = async (req, res) => {
   try {
     // Get user role and branch
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Only admin users can access customer data
     if (!isAdmin) {
@@ -264,7 +265,7 @@ const getCustomer = async (req, res) => {
   try {
     // Get user role and branch
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Only admin users can access customer data
     if (!isAdmin) {
@@ -424,7 +425,7 @@ const getCustomerStats = async (req, res) => {
   try {
     // Get user role and branch
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Only admin users can access customer data
     if (!isAdmin) {

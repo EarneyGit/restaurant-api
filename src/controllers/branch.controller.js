@@ -1,5 +1,6 @@
 const Branch = require('../models/branch.model');
 const OrderingTimes = require('../models/ordering-times.model');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get all branches
 // @route   GET /api/branches
@@ -93,7 +94,7 @@ exports.createBranch = async (req, res, next) => {
     const userRole = req.user ? req.user.role : null;
     
     // Allow admin, manager, and staff to create branches
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can create branches'
@@ -137,7 +138,7 @@ exports.updateBranch = async (req, res, next) => {
     }
     
     // Allow admin, manager, and staff to update branches
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can update branches'
@@ -193,7 +194,7 @@ exports.deleteBranch = async (req, res, next) => {
     const userRole = req.user ? req.user.role : null;
 
     // Allow admin, manager, and staff to delete branches
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can delete branches'
@@ -321,7 +322,7 @@ exports.updateBranchSettings = async (req, res, next) => {
     const userRole = req.user ? req.user.role : null;
     
     // Allow admin, manager, and staff to update branch settings
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can update branch settings'
@@ -475,7 +476,7 @@ exports.updateOutletDetails = async (req, res, next) => {
     }
     
     // Allow admin, manager, and staff to update outlet details
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can update outlet details'
@@ -536,7 +537,7 @@ exports.updateOutletLocation = async (req, res, next) => {
     }
     
     // Allow admin, manager, and staff to update location
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can update outlet location'
@@ -599,7 +600,7 @@ exports.updateOutletOrderingOptions = async (req, res, next) => {
     }
     
     // Allow admin, manager, and staff to update ordering options
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can update ordering options'
@@ -672,7 +673,7 @@ exports.updateOutletPreOrdering = async (req, res, next) => {
     }
     
     // Allow admin, manager, and staff to update pre-ordering settings
-    if (!['admin', 'manager', 'staff'].includes(userRole)) {
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Only admin, manager, or staff users can update pre-ordering settings'

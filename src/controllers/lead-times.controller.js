@@ -21,7 +21,7 @@ exports.getLeadTimes = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Admin users use their assigned branchId
     if (isAdmin) {
@@ -84,7 +84,7 @@ exports.updateLeadTimes = async (req, res, next) => {
     
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     // Admin users use their assigned branchId
     if (isAdmin) {

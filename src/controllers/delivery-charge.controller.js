@@ -1,5 +1,6 @@
 const { DeliveryCharge, PriceOverride, PostcodeExclusion } = require('../models/delivery-charge.model');
 const mongoose = require('mongoose');
+const { MANAGEMENT_ROLES } = require('../constants/roles');
 
 // @desc    Get all delivery charges for a branch
 // @route   GET /api/settings/delivery-charges
@@ -7,7 +8,7 @@ const mongoose = require('mongoose');
 const getDeliveryCharges = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -71,7 +72,7 @@ const getDeliveryCharges = async (req, res) => {
 const getDeliveryCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -121,7 +122,7 @@ const getDeliveryCharge = async (req, res) => {
 const createDeliveryCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -179,7 +180,7 @@ const createDeliveryCharge = async (req, res) => {
 const updateDeliveryCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -240,7 +241,7 @@ const updateDeliveryCharge = async (req, res) => {
 const deleteDeliveryCharge = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -289,7 +290,7 @@ const deleteDeliveryCharge = async (req, res) => {
 const createBulkDeliveryCharges = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -357,7 +358,7 @@ const createBulkDeliveryCharges = async (req, res) => {
 const getPriceOverrides = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -421,7 +422,7 @@ const getPriceOverrides = async (req, res) => {
 const createPriceOverride = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -486,7 +487,7 @@ const createPriceOverride = async (req, res) => {
 const updatePriceOverride = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -554,7 +555,7 @@ const updatePriceOverride = async (req, res) => {
 const deletePriceOverride = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -605,7 +606,7 @@ const deletePriceOverride = async (req, res) => {
 const getPostcodeExclusions = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -669,7 +670,7 @@ const getPostcodeExclusions = async (req, res) => {
 const createPostcodeExclusion = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -734,7 +735,7 @@ const createPostcodeExclusion = async (req, res) => {
 const updatePostcodeExclusion = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -802,7 +803,7 @@ const updatePostcodeExclusion = async (req, res) => {
 const deletePostcodeExclusion = async (req, res) => {
   try {
     const userRole = req.user ? req.user.role : null;
-    const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     
     if (!isAdmin) {
       return res.status(403).json({
