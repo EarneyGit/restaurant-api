@@ -35,6 +35,7 @@ const addressRoutes = require('./routes/address.routes');
 const customerRoutes = require('./routes/customer.routes');
 const discountRoutes = require('./routes/discount.routes');
 const businessOfferRoutes = require('./routes/business-offer.routes');
+const profileRoutes = require('./routes/profile.routes');
 
 // Settings routes
 const outletsRoutes = require('./routes/settings/outlets.routes');
@@ -82,7 +83,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/ordering-times', orderingTimesRoutes);
 app.use('/api/attributes', attributeRoutes);
 app.use('/api/product-attribute-items', productAttributeItemRoutes);
-app.use('/api/settings/lead-times', leadTimesRoutes);
+app.use('/api/lead-times', leadTimesRoutes);
 app.use('/api/push-notifications', pushNotificationRoutes);
 app.use('/api/repeating-push-notifications', repeatingPushNotificationRoutes);
 app.use('/api/price-changes', priceChangesRoutes);
@@ -91,6 +92,7 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/business-offers', businessOfferRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/settings/outlets', outletsRoutes);
 app.use('/api/settings/delivery-charges', deliveryChargesRoutes);
 app.use('/api/settings/service-charges', serviceChargesRoutes);
