@@ -36,6 +36,35 @@ const daySettingsSchema = new mongoose.Schema({
       }
     }
   },
+  breakTime: {
+    enabled: {
+      type: Boolean,
+      default: false,
+      required: true
+    },
+    start: {
+      type: String,
+      required: true,
+      default: "15:00",
+      validate: {
+        validator: function(v) {
+          return !v || /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+        },
+        message: 'Time must be in HH:MM format'
+      }
+    },
+    end: {
+      type: String,
+      required: true,
+      default: "16:00",
+      validate: {
+        validator: function(v) {
+          return !v || /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+        },
+        message: 'Time must be in HH:MM format'
+      }
+    }
+  },
   collection: {
     leadTime: {
       type: Number,
@@ -249,6 +278,11 @@ orderingTimesSchema.pre('save', function(next) {
       defaultTimes: {
         start: "11:45",
         end: "21:50"
+      },
+      breakTime: {
+        enabled: false,
+        start: "15:00",
+        end: "16:00"
       },
       collection: {
         leadTime: 20,
