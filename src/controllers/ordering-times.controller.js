@@ -156,6 +156,15 @@ exports.updateDaySchedule = async (req, res, next) => {
     const { dayName } = req.params;
     const daySettings = req.body;
     
+    // Ensure breakTime has all required fields
+    if (daySettings.breakTime) {
+      daySettings.breakTime = {
+        enabled: daySettings.breakTime.enabled || false,
+        start: daySettings.breakTime.start || "15:00",
+        end: daySettings.breakTime.end || "16:00"
+      };
+    }
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && ['admin', 'manager', 'staff'].includes(userRole);
