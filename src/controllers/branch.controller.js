@@ -1,4 +1,5 @@
 const Branch = require('../models/branch.model');
+const OrderingTimes = require('../models/ordering-times.model');
 
 // @desc    Get all branches
 // @route   GET /api/branches
@@ -15,16 +16,33 @@ exports.getBranches = async (req, res, next) => {
     
     if (req.query.city) {
       query['address.city'] = { $regex: req.query.city, $options: 'i' };
-      }
+    }
 
     const branches = await Branch.find(query)
-      .select('name code address contact location isActive isDefault') // Only return essential fields
+      .select('name code address contact location isActive isDefault')
       .sort('name');
+
+    // Get ordering times for all branches
+    const branchIds = branches.map(branch => branch._id);
+    const orderingTimes = await OrderingTimes.find({ branchId: { $in: branchIds } });
+
+    // Create a map of branchId to orderingTimes for easy lookup
+    const orderingTimesMap = orderingTimes.reduce((map, times) => {
+      map[times.branchId.toString()] = times;
+      return map;
+    }, {});
+
+    // Add ordering times to each branch
+    const branchesWithTimes = branches.map(branch => {
+      const branchObj = branch.toObject();
+      branchObj.orderingTimes = orderingTimesMap[branch._id.toString()] || null;
+      return branchObj;
+    });
 
     res.status(200).json({
       success: true,
-      count: branches.length,
-      data: branches
+      count: branchesWithTimes.length,
+      data: branchesWithTimes
     });
   } catch (error) {
     next(error);
