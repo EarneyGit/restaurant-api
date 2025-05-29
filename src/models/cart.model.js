@@ -99,7 +99,9 @@ const cartSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'User ID is required']
+    required: function() {
+      return !this.sessionId; // userId is only required if there's no sessionId
+    }
   },
   sessionId: {
     type: String,
@@ -235,19 +237,30 @@ cartSchema.pre('save', function(next) {
 });
 
 // Static method to find or create cart for user
-cartSchema.statics.findOrCreateCart = async function(userId, sessionId = null, branchId = null) {
-  let cart = await this.findOne({ 
-    $or: [
-      { userId: userId, status: 'active' },
-      ...(sessionId ? [{ sessionId: sessionId, status: 'active' }] : [])
-    ]
-  }).populate('items.productId', 'name price images category');
+cartSchema.statics.findOrCreateCart = async function(userId = null, sessionId = null, branchId = null) {
+  let query = { status: 'active' };
+  
+  if (userId) {
+    query.userId = userId;
+  } else if (sessionId) {
+    query.sessionId = sessionId;
+  } else {
+    throw new Error('Either userId or sessionId is required');
+  }
+
+  // Add branchId to query if provided
+  if (branchId) {
+    query.branchId = branchId;
+  }
+
+  let cart = await this.findOne(query)
+    .populate('items.productId', 'name price images category');
   
   if (!cart) {
     cart = new this({
-      userId,
-      sessionId,
-      branchId,
+      ...(userId && { userId }),
+      ...(sessionId && { sessionId }),
+      ...(branchId && { branchId }),
       items: [],
       status: 'active'
     });
@@ -259,30 +272,49 @@ cartSchema.statics.findOrCreateCart = async function(userId, sessionId = null, b
 
 // Method to add item to cart (updated to support attributes)
 cartSchema.methods.addItem = async function(productId, quantity, selectedOptions = {}, specialRequirements = '', priceAtTime, selectedAttributes = []) {
-  // Check if item with same product, options, and attributes already exists
-  const existingItemIndex = this.items.findIndex(item => 
-    item.productId.toString() === productId.toString() && 
-    this._compareOptions(item.selectedOptions, selectedOptions) &&
-    this._compareAttributes(item.selectedAttributes, selectedAttributes)
-  );
-  
-  if (existingItemIndex >= 0) {
-    // Update existing item quantity
-    this.items[existingItemIndex].quantity += quantity;
-    this.items[existingItemIndex].specialRequirements = specialRequirements; // Update special requirements
-  } else {
-    // Add new item
-    this.items.push({
-      productId,
-      quantity,
-      selectedOptions: new Map(Object.entries(selectedOptions)),
-      specialRequirements,
-      priceAtTime,
-      selectedAttributes
-    });
+  try {
+    // Check if item with same product, options, and attributes already exists
+    const existingItemIndex = this.items.findIndex(item => 
+      item.productId.toString() === productId.toString() && 
+      this._compareOptions(item.selectedOptions, selectedOptions) &&
+      this._compareAttributes(item.selectedAttributes, selectedAttributes)
+    );
+    
+    if (existingItemIndex >= 0) {
+      // Update existing item quantity
+      this.items[existingItemIndex].quantity += quantity;
+      this.items[existingItemIndex].specialRequirements = specialRequirements;
+    } else {
+      // Calculate initial itemTotal (will be recalculated in pre-save)
+      const initialItemTotal = priceAtTime * quantity;
+      
+      // Add new item
+      this.items.push({
+        productId,
+        quantity,
+        selectedOptions: new Map(Object.entries(selectedOptions)),
+        specialRequirements,
+        priceAtTime,
+        selectedAttributes: selectedAttributes.map(attr => ({
+          attributeId: attr.attributeId,
+          attributeName: attr.attributeName || 'Attribute',
+          attributeType: attr.attributeType || 'single',
+          selectedItems: attr.selectedItems.map(item => ({
+            itemId: item.itemId,
+            itemName: item.itemName || 'Item',
+            itemPrice: item.itemPrice || 0,
+            quantity: item.quantity
+          }))
+        })),
+        itemTotal: initialItemTotal // Set initial itemTotal
+      });
+    }
+    
+    return await this.save();
+  } catch (error) {
+    console.error('Error in addItem:', error);
+    throw error;
   }
-  
-  return this.save();
 };
 
 // Method to update item quantity
