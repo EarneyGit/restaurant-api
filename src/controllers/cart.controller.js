@@ -14,6 +14,7 @@ const transformCartForResponse = (cart) => {
       id: item._id,
       productId: item.productId._id || item.productId,
       name: item.productId.name || 'Unknown Product',
+      description: item.productId.description || '',
       price: item.priceAtTime,
       quantity: item.quantity,
       selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
@@ -41,6 +42,7 @@ exports.getCart = async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const sessionId = req.headers['x-session-id'] || req.query.sessionId;
+    const branchId = req.query.branchId;
     
     if (!userId && !sessionId) {
       return res.status(400).json({
@@ -54,6 +56,11 @@ exports.getCart = async (req, res, next) => {
       query.userId = userId;
     } else {
       query.sessionId = sessionId;
+    }
+
+    // Add branchId to query if provided
+    if (branchId) {
+      query.branchId = branchId;
     }
     
     const cart = await Cart.findOne(query)
@@ -74,7 +81,7 @@ exports.getCart = async (req, res, next) => {
           total: 0,
           itemCount: 0,
           orderType: 'delivery',
-          branchId: null,
+          branchId: branchId || null,
           status: 'active'
         }
       });
@@ -134,54 +141,68 @@ exports.addToCart = async (req, res, next) => {
         message: 'Quantity must be at least 1'
       });
     }
+
+    // Process attributes and get their details
+    const Attribute = require('../models/attribute.model');
+    const ProductAttributeItem = require('../models/product-attribute-item.model');
     
-    // Validate selected attributes if provided
-    if (selectedAttributes && selectedAttributes.length > 0) {
-      const Attribute = require('../models/attribute.model');
-      const ProductAttributeItem = require('../models/product-attribute-item.model');
+    const processedAttributes = [];
+    
+    for (const attr of selectedAttributes) {
+      // Validate attribute exists
+      const attribute = await Attribute.findById(attr.attributeId);
+      if (!attribute) {
+        return res.status(400).json({
+          success: false,
+          message: `Attribute not found: ${attr.attributeId}`
+        });
+      }
+
+      const processedItems = [];
       
-      for (const attr of selectedAttributes) {
-        // Validate attribute exists
-        const attribute = await Attribute.findById(attr.attributeId);
-        if (!attribute) {
+      // Validate and process each selected item
+      for (const selectedItem of attr.selectedItems) {
+        const attributeItem = await ProductAttributeItem.findOne({
+          _id: selectedItem.itemId,
+          productId: productId,
+          attributeId: attr.attributeId
+        });
+        
+        if (!attributeItem) {
           return res.status(400).json({
             success: false,
-            message: `Attribute not found: ${attr.attributeId}`
+            message: `Attribute item not found or not available for this product: ${selectedItem.itemId}`
           });
         }
         
-        // Validate selected items exist and belong to the product
-        for (const selectedItem of attr.selectedItems) {
-          const attributeItem = await ProductAttributeItem.findOne({
-            _id: selectedItem.itemId,
-            productId: productId,
-            attributeId: attr.attributeId,
-            isActive: true
-          });
-          
-          if (!attributeItem) {
-            return res.status(400).json({
-              success: false,
-              message: `Attribute item not found or not available for this product: ${selectedItem.itemId}`
-            });
-          }
-          
-          // Update the item with current price and name
-          selectedItem.itemPrice = attributeItem.price;
-          selectedItem.itemName = attributeItem.name;
-        }
-        
-        // Update attribute details
-        attr.attributeName = attribute.name;
-        attr.attributeType = attribute.type;
+        processedItems.push({
+          itemId: attributeItem._id,
+          itemName: attributeItem.name,
+          itemPrice: attributeItem.price,
+          quantity: selectedItem.quantity
+        });
       }
+
+      processedAttributes.push({
+        attributeId: attribute._id,
+        attributeName: attribute.name,
+        attributeType: attribute.type,
+        selectedItems: processedItems
+      });
     }
     
     // Find or create cart
     let cart = await Cart.findOrCreateCart(userId, sessionId, branchId);
     
-    // Add item to cart with attributes
-    await cart.addItem(productId, quantity, selectedOptions, specialRequirements, product.price, selectedAttributes);
+    // Add item to cart with processed attributes
+    await cart.addItem(
+      productId,
+      quantity,
+      selectedOptions,
+      specialRequirements,
+      product.price,
+      processedAttributes
+    );
     
     // Populate cart items for response
     await cart.populate('items.productId', 'name price images category description allergens');
@@ -192,6 +213,7 @@ exports.addToCart = async (req, res, next) => {
       data: transformCartForResponse(cart)
     });
   } catch (error) {
+    console.error('Error in addToCart:', error);
     next(error);
   }
 };
@@ -202,7 +224,7 @@ exports.addToCart = async (req, res, next) => {
 exports.updateCartItem = async (req, res, next) => {
   try {
     const { itemId } = req.params;
-    const { quantity, specialRequirements } = req.body;
+    const { quantity, specialRequirements, branchId } = req.body;
     const userId = req.user?.id;
     const sessionId = req.headers['x-session-id'] || req.body.sessionId;
     
@@ -226,6 +248,11 @@ exports.updateCartItem = async (req, res, next) => {
       query.userId = userId;
     } else {
       query.sessionId = sessionId;
+    }
+
+    // Add branchId to query if provided
+    if (branchId) {
+      query.branchId = branchId;
     }
     
     const cart = await Cart.findOne(query);
@@ -282,6 +309,7 @@ exports.removeFromCart = async (req, res, next) => {
     const { itemId } = req.params;
     const userId = req.user?.id;
     const sessionId = req.headers['x-session-id'] || req.query.sessionId;
+    const branchId = req.query.branchId || req.body.branchId;
     
     if (!userId && !sessionId) {
       return res.status(400).json({
@@ -296,6 +324,11 @@ exports.removeFromCart = async (req, res, next) => {
       query.userId = userId;
     } else {
       query.sessionId = sessionId;
+    }
+
+    // Add branchId to query if provided
+    if (branchId) {
+      query.branchId = branchId;
     }
     
     const cart = await Cart.findOne(query);
