@@ -1,0 +1,550 @@
+{
+  "info": {
+    "_postman_id": "e5a3c9d0-8f3a-4b3c-9d1e-9b2b3c4d5e6f",
+    "name": "Restaurant API - Orders",
+    "description": "Collection for order-related endpoints in the Restaurant API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get All Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text",
+            "description": "Optional - Required for admin access"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders?branchId={{branchId}}&status={{status}}&orderNumber={{orderNumber}}&userName={{userName}}&mobileNumber={{mobileNumber}}&postCode={{postCode}}&startDate={{startDate}}&endDate={{endDate}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders"],
+          "query": [
+            {
+              "key": "branchId",
+              "value": "{{branchId}}",
+              "description": "Required for non-admin users"
+            },
+            {
+              "key": "status",
+              "value": "{{status}}",
+              "description": "Optional - Filter by order status"
+            },
+            {
+              "key": "orderNumber",
+              "value": "{{orderNumber}}",
+              "description": "Optional - Search by order number"
+            },
+            {
+              "key": "userName",
+              "value": "{{userName}}",
+              "description": "Optional - Search by customer name"
+            },
+            {
+              "key": "mobileNumber",
+              "value": "{{mobileNumber}}",
+              "description": "Optional - Search by customer phone"
+            },
+            {
+              "key": "postCode",
+              "value": "{{postCode}}",
+              "description": "Optional - Search by delivery postcode"
+            },
+            {
+              "key": "startDate",
+              "value": "{{startDate}}",
+              "description": "Optional - Filter by start date"
+            },
+            {
+              "key": "endDate",
+              "value": "{{endDate}}",
+              "description": "Optional - Filter by end date"
+            }
+          ]
+        },
+        "description": "Get all orders with optional filters"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?branchId={{branchId}}"
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": {
+            "success": true,
+            "count": 2,
+            "data": [
+              {
+                "_id": "order_id_1",
+                "orderNumber": "ORD001",
+                "user": {
+                  "_id": "user_id_1",
+                  "name": "John Doe",
+                  "email": "john@example.com",
+                  "phone": "1234567890"
+                },
+                "branchId": {
+                  "_id": "branch_id_1",
+                  "name": "Downtown Branch",
+                  "address": "123 Main St"
+                },
+                "products": [
+                  {
+                    "product": {
+                      "_id": "product_id_1",
+                      "name": "Burger",
+                      "price": 9.99
+                    },
+                    "quantity": 2,
+                    "price": 9.99
+                  }
+                ],
+                "status": "pending",
+                "totalAmount": 19.98,
+                "createdAt": "2024-03-20T10:00:00.000Z"
+              }
+            ],
+            "branchId": "branch_id_1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Single Order",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text",
+            "description": "Optional - Required for admin access"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}?branchId={{branchId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "{{orderId}}"],
+          "query": [
+            {
+              "key": "branchId",
+              "value": "{{branchId}}",
+              "description": "Required for non-admin users"
+            }
+          ]
+        },
+        "description": "Get details of a specific order"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}?branchId={{branchId}}"
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": {
+            "success": true,
+            "data": {
+              "_id": "order_id_1",
+              "orderNumber": "ORD001",
+              "user": {
+                "_id": "user_id_1",
+                "name": "John Doe",
+                "email": "john@example.com"
+              },
+              "branchId": {
+                "_id": "branch_id_1",
+                "name": "Downtown Branch",
+                "address": "123 Main St"
+              },
+              "products": [
+                {
+                  "product": {
+                    "_id": "product_id_1",
+                    "name": "Burger",
+                    "price": 9.99
+                  },
+                  "quantity": 2,
+                  "price": 9.99
+                }
+              ],
+              "status": "pending",
+              "totalAmount": 19.98,
+              "createdAt": "2024-03-20T10:00:00.000Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text",
+            "description": "Optional - For authenticated users"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"product_id_1\",\n      \"quantity\": 2,\n      \"notes\": \"Extra cheese\",\n      \"selectedAttributes\": []\n    }\n  ],\n  \"deliveryAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"card\",\n  \"orderType\": \"delivery\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders"]
+        },
+        "description": "Create a new order"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders"
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": {
+            "success": true,
+            "data": {
+              "_id": "new_order_id",
+              "orderNumber": "ORD002",
+              "status": "pending",
+              "totalAmount": 19.98,
+              "createdAt": "2024-03-20T10:00:00.000Z"
+            },
+            "stockDeduction": {
+              "product_id_1": 2
+            },
+            "branchId": "branch_id_1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Update Order",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text",
+            "description": "Required - Admin access only"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"completed\",\n  \"assignedTo\": \"staff_id_1\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "{{orderId}}"]
+        },
+        "description": "Update an existing order (Admin only)"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}"
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": {
+            "success": true,
+            "data": {
+              "_id": "order_id_1",
+              "status": "completed",
+              "assignedTo": {
+                "_id": "staff_id_1",
+                "name": "Staff Member",
+                "email": "staff@example.com"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete Order",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text",
+            "description": "Required - Admin access only"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "{{orderId}}"]
+        },
+        "description": "Delete an order (Admin only)"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}"
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": {
+            "success": true,
+            "data": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get My Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text",
+            "description": "Required - User authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/myorders?branchId={{branchId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "myorders"],
+          "query": [
+            {
+              "key": "branchId",
+              "value": "{{branchId}}",
+              "description": "Optional - Filter by branch"
+            }
+          ]
+        },
+        "description": "Get all orders for the authenticated user"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/myorders"
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": {
+            "success": true,
+            "count": 1,
+            "data": [
+              {
+                "_id": "order_id_1",
+                "orderNumber": "ORD001",
+                "branchId": {
+                  "_id": "branch_id_1",
+                  "name": "Downtown Branch",
+                  "address": "123 Main St"
+                },
+                "products": [
+                  {
+                    "product": {
+                      "_id": "product_id_1",
+                      "name": "Burger",
+                      "price": 9.99
+                    },
+                    "quantity": 2,
+                    "price": 9.99
+                  }
+                ],
+                "status": "pending",
+                "totalAmount": 19.98,
+                "createdAt": "2024-03-20T10:00:00.000Z"
+              }
+            ],
+            "branchId": "branch_id_1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Today's Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text",
+            "description": "Required - Admin access only"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/today?status={{status}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "today"],
+          "query": [
+            {
+              "key": "status",
+              "value": "{{status}}",
+              "description": "Optional - Filter by order status"
+            }
+          ]
+        },
+        "description": "Get all orders for today (Admin only)"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/today"
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "cookie": [],
+          "body": {
+            "success": true,
+            "count": 1,
+            "data": [
+              {
+                "_id": "order_id_1",
+                "orderNumber": "ORD001",
+                "user": {
+                  "_id": "user_id_1",
+                  "name": "John Doe",
+                  "email": "john@example.com"
+                },
+                "branchId": {
+                  "_id": "branch_id_1",
+                  "name": "Downtown Branch",
+                  "address": "123 Main St"
+                },
+                "products": [
+                  {
+                    "product": {
+                      "_id": "product_id_1",
+                      "name": "Burger",
+                      "price": 9.99
+                    },
+                    "quantity": 2,
+                    "price": 9.99
+                  }
+                ],
+                "status": "pending",
+                "totalAmount": 19.98,
+                "createdAt": "2024-03-20T10:00:00.000Z"
+              }
+            ],
+            "branchId": "branch_id_1"
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "branchId",
+      "value": "branch_id_here",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "order_id_here",
+      "type": "string"
+    }
+  ]
+} 
