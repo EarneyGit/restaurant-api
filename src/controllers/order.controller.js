@@ -138,11 +138,17 @@ const { MANAGEMENT_ROLES } = require('../constants/roles');
   // @access  Public/Private (Branch-based)
   exports.getOrder = async (req, res, next) => {
     try {
-      const order = await Order.findById(req.params.id)
-        .populate('user', 'name email')
-        .populate('branchId', 'name address')
-        .populate('products.product', 'name price')
-        .populate('assignedTo', 'name email');
+      // First validate the branch ID
+      const requestedBranchId = req.query.branchId;
+      if (!requestedBranchId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Branch ID is required. Please select a branch.'
+        });
+      }
+
+      // Find the order without populating user details first
+      const order = await Order.findById(req.params.id).lean();
 
       if (!order) {
         return res.status(404).json({
@@ -150,78 +156,112 @@ const { MANAGEMENT_ROLES } = require('../constants/roles');
           message: `Order not found with id of ${req.params.id}`
         });
       }
-      
-      // Determine user role and authentication status
-      const userRole = req.user ? req.user.role : null;
-      const isAuthenticated = !!req.user;
-      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-      const isRegularUser = userRole === 'user' || userRole === null;
-      
-      // Handle access control based on user type
-      if (isAdmin) {
-        // Admin users: Check if order belongs to their branch
-        if (!req.user.branchId) {
-          return res.status(400).json({
-            success: false,
-            message: `${userRole} must be assigned to a branch`
-          });
-        }
-        
-        if (order.branchId._id.toString() !== req.user.branchId.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: 'Not authorized to access this order'
-          });
-        }
-        
-        // Regular users can only view their own orders
-        if (userRole === 'user' && order.user._id.toString() !== req.user._id.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: 'Not authorized to view this order'
-          });
-        }
-      } else {
-        // Regular users and guests: Check branch and ownership
-        const requestedBranchId = req.query.branchId;
-        
-        if (!requestedBranchId) {
-          return res.status(400).json({
-            success: false,
-            message: 'Branch ID is required. Please select a branch.'
-          });
-        }
-        
-        // Check if order belongs to the requested branch
-        if (order.branchId._id.toString() !== requestedBranchId) {
-          return res.status(403).json({
-            success: false,
-            message: 'Order not found in the selected branch'
-          });
-        }
-        
-        // Authentication and ownership check
-        if (!isAuthenticated) {
+
+      // Check if order belongs to the requested branch
+      if (order.branchId.toString() !== requestedBranchId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Order not found in the selected branch'
+        });
+      }
+
+      // Check if this is a guest order (no user associated)
+      const isGuestOrder = !order.user;
+
+      // If it's a user's order (not guest), require authentication
+      if (!isGuestOrder) {
+        // Check if user is authenticated
+        if (!req.user) {
           return res.status(401).json({
             success: false,
-            message: 'Authentication required to view orders'
+            message: 'Please login to view this order',
+            requiresAuth: true
           });
         }
-        
-        // Regular users can only view their own orders
-        if (isRegularUser && order.user._id.toString() !== req.user._id.toString()) {
+
+        // Determine user role
+        const userRole = req.user.role;
+        const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
+
+        // Admin users: Check if order belongs to their branch
+        if (isAdmin) {
+          if (!req.user.branchId) {
+            return res.status(403).json({
+              success: false,
+              message: `${userRole} must be assigned to a branch`
+            });
+          }
+          
+          if (order.branchId.toString() !== req.user.branchId.toString()) {
+            return res.status(403).json({
+              success: false,
+              message: 'You do not have permission to view this order'
+            });
+          }
+        } 
+        // Regular users: Can only view their own orders
+        else if (order.user.toString() !== req.user._id.toString()) {
           return res.status(403).json({
             success: false,
-            message: 'Not authorized to view this order'
+            message: 'You do not have permission to view this order'
           });
         }
       }
 
-      res.status(200).json({
+      // Now populate the necessary fields based on the access type
+      const populatedOrder = await Order.findById(order._id)
+        .populate('branchId', 'name address')
+        .populate('products.product', 'name price');
+
+      // Add user details only for authenticated requests
+      if (!isGuestOrder && req.user) {
+        await populatedOrder
+          .populate('user', 'name email')
+          .populate('assignedTo', 'name email');
+      }
+
+      // For guest orders or unauthorized access: Return public tracking info
+      if (isGuestOrder || !req.user) {
+        const publicOrderData = {
+          _id: populatedOrder._id,
+          orderNumber: populatedOrder.orderNumber,
+          status: populatedOrder.status,
+          estimatedTimeToComplete: populatedOrder.estimatedTimeToComplete,
+          createdAt: populatedOrder.createdAt,
+          products: populatedOrder.products.map(p => ({
+            quantity: p.quantity,
+            product: {
+              name: p.product.name
+            }
+          })),
+          branchId: {
+            _id: populatedOrder.branchId._id,
+            name: populatedOrder.branchId.name
+          },
+          deliveryAddress: populatedOrder.deliveryAddress ? {
+            street: populatedOrder.deliveryAddress.street,
+            city: populatedOrder.deliveryAddress.city,
+            postalCode: populatedOrder.deliveryAddress.postalCode
+          } : null,
+          totalAmount: populatedOrder.totalAmount,
+          finalTotal: populatedOrder.finalTotal
+        };
+        
+        return res.status(200).json({
+          success: true,
+          data: publicOrderData,
+          isGuestOrder
+        });
+      }
+
+      // Return full order details for authenticated users
+      return res.status(200).json({
         success: true,
-        data: order
+        data: populatedOrder,
+        isGuestOrder
       });
     } catch (error) {
+      console.error('Order retrieval error:', error);
       next(error);
     }
   };
