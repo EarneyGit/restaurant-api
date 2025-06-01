@@ -1,59 +1,23 @@
 const mongoose = require('mongoose');
 
 const timeSlotSchema = new mongoose.Schema({
-  start: String,
-  end: String
+  start: {
+    type: String,
+    required: true
+  },
+  end: {
+    type: String,
+    required: true
+  }
 }, { _id: false });
 
 const dayAvailabilitySchema = new mongoose.Schema({
-  isAvailable: {
-    type: Boolean,
-    default: true
-  },
-  type: {
+  available: {
     type: String,
     enum: ['All Day', 'Specific Times', 'Not Available'],
     default: 'All Day'
   },
   times: [timeSlotSchema]
-}, { _id: false });
-
-const priceChangeSchema = new mongoose.Schema({
-  id: {
-    type: String,
-    required: true
-  },
-  name: {
-    type: String,
-    required: true
-  },
-  type: {
-    type: String,
-    enum: ['increase', 'decrease', 'fixed'],
-    required: true
-  },
-  value: {
-    type: Number,
-    required: true
-  },
-  startDate: {
-    type: String,
-    required: true
-  },
-  endDate: {
-    type: String,
-    required: true
-  },
-  daysOfWeek: [{
-    type: String,
-    enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-  }],
-  timeStart: String,
-  timeEnd: String,
-  active: {
-    type: Boolean,
-    default: true
-  }
 }, { _id: false });
 
 const itemSettingsSchema = new mongoose.Schema({
@@ -99,6 +63,18 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Please add a price'],
       min: [0, 'Price must be at least 0']
+    },
+    // Caching fields for better performance
+    currentEffectivePrice: {
+      type: Number,
+      default: function() { return this.price; }
+    },
+    hasActivePriceChanges: {
+      type: Boolean,
+      default: false
+    },
+    activePriceChangeId: {
+      type: String
     },
     hideItem: {
       type: Boolean,
@@ -157,7 +133,6 @@ const productSchema = new mongoose.Schema(
         enum: ['celery', 'crustaceans', 'eggs', 'fish', 'gluten', 'lupin', 'milk', 'molluscs', 'mustard', 'nuts', 'peanuts', 'sesame', 'soya', 'sulphites']
       }]
     },
-    priceChanges: [priceChangeSchema],
     selectedItems: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product'
