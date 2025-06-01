@@ -2,7 +2,9 @@ const express = require('express');
 const {
   getCustomers,
   getCustomer,
-  getCustomerStats
+  getCustomerStats,
+  updateCustomer,
+  getCustomersList
 } = require('../controllers/customer.controller');
 
 // Import authentication middleware
@@ -10,13 +12,11 @@ const { protect, admin } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// All routes require authentication and admin privileges
-router.use(protect);
-router.use(admin);
-
 // Customer routes
-router.get('/', getCustomers);
-router.get('/stats', getCustomerStats);
-router.get('/:id', getCustomer);
+router.get('/', protect, admin, getCustomers); // Deprecated - keeping for backward compatibility
+router.post('/list', getCustomersList); // Public - no auth needed
+router.get('/stats', protect, admin, getCustomerStats); // Protected
+router.get('/:id', getCustomer); // Public - no auth needed for customer details
+router.put('/:id', protect, admin, updateCustomer); // Protected
 
 module.exports = router; 
