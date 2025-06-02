@@ -71,6 +71,19 @@ const priceChangeSchema = new mongoose.Schema({
   },
   deletedAt: {
     type: Date
+  },
+  // Audit Log Fields
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
   timestamps: true

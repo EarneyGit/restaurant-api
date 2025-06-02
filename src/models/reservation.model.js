@@ -64,6 +64,22 @@ const reservationSchema = new mongoose.Schema(
       type: String,
       enum: ['birthday', 'anniversary', 'business', 'other'],
       default: 'other'
+    },
+    // Audit Log Fields
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   {

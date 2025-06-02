@@ -43,6 +43,17 @@ const pushNotificationSchema = new mongoose.Schema({
     ref: 'User',
     required: [true, 'Creator is required']
   },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deletedAt: {
+    type: Date
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   metadata: {
     totalRecipients: {
       type: Number,

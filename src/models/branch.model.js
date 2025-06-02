@@ -221,6 +221,22 @@ const branchSchema = new mongoose.Schema(
     maxCapacity: {
       type: Number,
       min: [1, 'Capacity must be at least 1']
+    },
+    // Audit Log Fields
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   {

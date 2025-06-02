@@ -145,7 +145,23 @@ const orderSchema = new mongoose.Schema(
     },
     actualDeliveryTime: Date,
     customerNotes: String,
-    internalNotes: String
+    internalNotes: String,
+    // Audit Log Fields
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   },
   {
     timestamps: true,

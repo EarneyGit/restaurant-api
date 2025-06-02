@@ -106,7 +106,23 @@ const userSchema = new mongoose.Schema(
     emailVerificationOtp: String,
     emailVerificationOtpExpire: Date,
     passwordResetOtp: String,
-    passwordResetOtpExpire: Date
+    passwordResetOtpExpire: Date,
+    // Audit Log Fields
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   },
   {
     timestamps: true,
