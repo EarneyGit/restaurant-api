@@ -715,4 +715,105 @@ exports.updateOutletPreOrdering = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+// @desc    Get public outlet settings (all branches or specific branch)
+// @route   GET /api/branches/public-outlet-settings/:branchId?
+// @access  Public
+exports.getPublicOutletSettings = async (req, res, next) => {
+  try {
+    const { branchId } = req.params;
+
+    // Function to transform branch data to outlet settings format
+    const transformToOutletSettings = (branch) => ({
+      id: branch._id,
+      name: branch.name,
+      aboutUs: branch.aboutUs || '',
+      email: branch.contact.email,
+      contactNumber: branch.contact.phone,
+      telephone: branch.contact.telephone || '',
+      address: {
+        street: branch.address.street,
+        addressLine2: branch.address.addressLine2 || '',
+        city: branch.address.city,
+        county: branch.address.county || '',
+        state: branch.address.state,
+        postcode: branch.address.postalCode,
+        country: branch.address.country
+      },
+      location: branch.location,
+      openingTimes: branch.openingTimes || {},
+      orderingOptions: {
+        collection: {
+          displayFormat: branch.orderingOptions?.collection?.displayFormat || 'TimeOnly',
+          timeslotLength: branch.orderingOptions?.collection?.timeslotLength || 15,
+          isEnabled: branch.isCollectionEnabled
+        },
+        delivery: {
+          displayFormat: branch.orderingOptions?.delivery?.displayFormat || 'TimeOnly',
+          timeslotLength: branch.orderingOptions?.delivery?.timeslotLength || 15,
+          isEnabled: branch.isDeliveryEnabled
+        },
+        tableOrdering: {
+          isEnabled: branch.isTableOrderingEnabled
+        }
+      },
+      preOrdering: {
+        allowCollectionPreOrders: branch.preOrdering?.allowCollectionPreOrders || false,
+        allowDeliveryPreOrders: branch.preOrdering?.allowDeliveryPreOrders || false
+      },
+      isActive: branch.isActive,
+      isDefault: branch.isDefault
+    });
+
+    if (branchId) {
+      // Get specific branch
+      const branch = await Branch.findById(branchId);
+
+      if (!branch) {
+        return res.status(404).json({
+          success: false,
+          message: 'Branch not found'
+        });
+      }
+
+      // Get ordering times for the branch
+      const orderingTimes = await OrderingTimes.findOne({ branchId: branch._id });
+      const outletSettings = transformToOutletSettings(branch);
+      outletSettings.orderingTimes = orderingTimes || null;
+
+      return res.status(200).json({
+        success: true,
+        data: outletSettings
+      });
+    } else {
+      // Get all active branches
+      const branches = await Branch.find({ isActive: true });
+      
+      // Get ordering times for all branches
+      const branchIds = branches.map(branch => branch._id);
+      const orderingTimes = await OrderingTimes.find({ branchId: { $in: branchIds } });
+
+      // Create a map of branchId to orderingTimes
+      const orderingTimesMap = orderingTimes.reduce((map, times) => {
+        map[times.branchId.toString()] = times;
+        return map;
+      }, {});
+
+      // Transform all branches and add their ordering times
+      const outletSettings = branches.map(branch => {
+        const settings = transformToOutletSettings(branch);
+        settings.orderingTimes = orderingTimesMap[branch._id.toString()] || null;
+        return settings;
+      });
+
+      return res.status(200).json({
+        success: true,
+        count: outletSettings.length,
+        data: outletSettings
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
 }; 
