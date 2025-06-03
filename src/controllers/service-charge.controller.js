@@ -140,6 +140,52 @@ const createServiceCharge = async (req, res) => {
         message: `${userRole} must be assigned to a branch`
       });
     }
+
+    // Check if min and max spend are provided
+    if (req.body.minSpend === undefined || req.body.maxSpend === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both minimum spend and maximum spend are required'
+      });
+    }
+
+    const { minSpend, maxSpend, orderType } = req.body;
+    const branchId = req.user.branchId;
+
+    // Check for overlapping price ranges for the same branch and order type
+    const overlappingCharges = await ServiceCharge.find({
+      branchId,
+      orderType,
+      $or: [
+        // New range completely contains an existing range
+        { 
+          minSpend: { $gte: minSpend }, 
+          maxSpend: { $lte: maxSpend } 
+        },
+        // New range's min is within an existing range
+        { 
+          minSpend: { $lte: minSpend }, 
+          maxSpend: { $gte: minSpend } 
+        },
+        // New range's max is within an existing range
+        { 
+          minSpend: { $lte: maxSpend }, 
+          maxSpend: { $gte: maxSpend } 
+        },
+        // New range is completely within an existing range
+        { 
+          minSpend: { $lte: minSpend }, 
+          maxSpend: { $gte: maxSpend } 
+        }
+      ]
+    });
+
+    if (overlappingCharges.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Price range overlaps with an existing service charge'
+      });
+    }
     
     // Create charge
     const chargeData = {

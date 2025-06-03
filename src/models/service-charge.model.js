@@ -31,7 +31,7 @@ const serviceChargeSchema = new mongoose.Schema(
     },
     maxSpend: {
       type: Number,
-      default: 0,
+      required: [true, 'Maximum spend is required'],
       min: [0, 'Maximum spend cannot be negative']
     },
     optional: {
