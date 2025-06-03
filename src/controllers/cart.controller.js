@@ -10,19 +10,47 @@ const transformCartForResponse = (cart) => {
     id: cart._id,
     userId: cart.userId,
     sessionId: cart.sessionId,
-    items: cart.items.map(item => ({
-      id: item._id,
-      productId: item.productId._id || item.productId,
-      name: item.productId.name || 'Unknown Product',
-      description: item.productId.description || '',
-      price: item.priceAtTime,
-      quantity: item.quantity,
-      selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
-      specialRequirements: item.specialRequirements || '',
-      images: item.productId.images || [],
-      itemTotal: item.itemTotal,
-      category: item.productId.category || null
-    })),
+    items: cart.items.map(item => {
+      // Calculate attribute prices
+      const attributePrices = item.selectedAttributes ? item.selectedAttributes.reduce((total, attr) => {
+        const attrTotal = attr.selectedItems.reduce((sum, selectedItem) => {
+          return sum + (selectedItem.itemPrice * selectedItem.quantity);
+        }, 0);
+        return total + attrTotal;
+      }, 0) : 0;
+
+      // Calculate total price per item including attributes
+      const totalPricePerItem = item.priceAtTime + attributePrices;
+
+      return {
+        id: item._id,
+        productId: item.productId._id || item.productId,
+        name: item.productId.name || 'Unknown Product',
+        description: item.productId.description || '',
+        price: {
+          base: item.priceAtTime,
+          attributes: attributePrices,
+          total: totalPricePerItem
+        },
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
+        specialRequirements: item.specialRequirements || '',
+        images: item.productId.images || [],
+        itemTotal: item.itemTotal,
+        category: item.productId.category || null,
+        selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
+          attributeId: attr.attributeId,
+          attributeName: attr.attributeName,
+          attributeType: attr.attributeType,
+          selectedItems: attr.selectedItems.map(item => ({
+            itemId: item.itemId,
+            itemName: item.itemName,
+            itemPrice: item.itemPrice,
+            quantity: item.quantity
+          }))
+        })) : []
+      };
+    }),
     subtotal: cart.subtotal,
     deliveryFee: cart.deliveryFee,
     total: cart.total,
