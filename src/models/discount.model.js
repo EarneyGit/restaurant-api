@@ -44,8 +44,14 @@ const discountSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Maximum spend cannot be negative']
     },
-    // Outlet availability (branch-based but can be extended for multi-branch)
+    // Outlets availability - updated to support branch IDs
     outlets: {
+      type: Map,
+      of: Boolean,
+      default: {}
+    },
+    // Keep legacy outlet format for backward compatibility
+    legacyOutlets: {
       dunfermline: { type: Boolean, default: true },
       edinburgh: { type: Boolean, default: true },
       glasgow: { type: Boolean, default: true }
@@ -112,6 +118,18 @@ const discountSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Created by is required']
+    },
+    // Audit Log Fields
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   {
@@ -141,10 +159,41 @@ discountSchema.virtual('isCurrentlyValid').get(function() {
 });
 
 // Method to check if discount is valid for a specific order
-discountSchema.methods.isValidForOrder = function(order, user = null) {
+discountSchema.methods.isValidForOrder = function(order, user = null, checkBranchId = null) {
   // Check if discount is active and currently valid
   if (!this.isCurrentlyValid) {
     return { valid: false, reason: 'Discount is not currently active' };
+  }
+  
+  // Check if discount is available for the branch (if a branch ID is provided)
+  if (checkBranchId) {
+    let isBranchEnabled = true;
+    
+    // Check new outlets format first (Map)
+    if (this.outlets && this.outlets.size > 0) {
+      // If we have specific branch entries, check if this branch is enabled
+      if (this.outlets.has(checkBranchId)) {
+        isBranchEnabled = this.outlets.get(checkBranchId);
+      } else {
+        // If the branch isn't in the list, default to false
+        isBranchEnabled = false;
+      }
+    } else if (this.legacyOutlets) {
+      // Fall back to legacy format if no new format data
+      const branchNameMap = {
+        // This should be replaced with actual logic to map branchId to name
+        // For now, using dummy mapping for backward compatibility
+      };
+      
+      const branchName = branchNameMap[checkBranchId];
+      if (branchName && this.legacyOutlets[branchName] === false) {
+        isBranchEnabled = false;
+      }
+    }
+    
+    if (!isBranchEnabled) {
+      return { valid: false, reason: 'Discount not available at this branch' };
+    }
   }
   
   // Check minimum spend

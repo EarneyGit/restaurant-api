@@ -1,9 +1,9 @@
 {
   "info": {
-    "name": "Restaurant API - Complete Collection v2.0",
-    "description": "Complete collection for Restaurant Management System API with all modules including Attributes and sample payloads",
+    "name": "Restaurant API - Complete Collection v3.0",
+    "description": "Complete collection for Restaurant Management System API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   "variables": [
     {
@@ -27,57 +27,7 @@
       "type": "string"
     },
     {
-      "key": "productId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "categoryId",
-      "value": "",
-      "type": "string"
-    },
-    {
       "key": "branchId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "orderId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "reservationId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "roleId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "tempToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "resetToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "attributeId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "attributeItemId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "cartItemId",
       "value": "",
       "type": "string"
     }
@@ -92,6 +42,39 @@
       }
     ]
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-generate session ID if not set",
+          "if (!pm.environment.get('sessionId')) {",
+          "    pm.environment.set('sessionId', 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test scripts",
+          "pm.test('Response time is less than 2000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "",
+          "pm.test('Response has proper JSON structure', function () {",
+          "    if (pm.response.code !== 204) {",
+          "        pm.response.to.have.jsonBody();",
+          "        pm.expect(pm.response.json()).to.have.property('success');",
+          "    }",
+          "});"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "1. Authentication",
@@ -1480,7 +1463,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"price\": 18.99,\n      \"notes\": \"Medium spice level\"\n    }\n  ],\n  \"deliveryMethod\": \"delivery\",\n  \"deliveryAddress\": {\n    \"street\": \"123 Customer St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"card\",\n  \"paymentStatus\": \"pending\",\n  \"customerNotes\": \"Ring doorbell twice\"\n}"
+              "raw": "{\"user\":\"{{userId}}\",\"branchId\":\"{{branchId}}\",\"products\":[{\"product\":\"{{productId}}\",\"quantity\":2,\"price\":18.99,\"notes\":\"Medium spice level\"}],\"deliveryMethod\":\"delivery\",\"deliveryAddress\":{\"street\":\"123 Customer St\",\"city\":\"New York\",\"state\":\"NY\",\"postalCode\":\"10001\",\"country\":\"USA\"},\"paymentMethod\":\"card\",\"paymentStatus\":\"pending\",\"customerNotes\":\"Ring doorbell twice\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/orders",
@@ -1673,39 +1656,659 @@
           }
         }
       ]
-    }
-  ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "// Auto-generate session ID if not set",
-          "if (!pm.environment.get('sessionId')) {",
-          "    pm.environment.set('sessionId', 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));",
-          "}"
-        ]
-      }
     },
     {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "// Global test scripts",
-          "pm.test('Response time is less than 2000ms', function () {",
-          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
-          "});",
-          "",
-          "pm.test('Response has proper JSON structure', function () {",
-          "    if (pm.response.code !== 204) {",
-          "        pm.response.to.have.jsonBody();",
-          "        pm.expect(pm.response.json()).to.have.property('success');",
-          "    }",
-          "});"
-        ]
-      }
+      "name": "10. Service Charges",
+      "item": [
+        {
+          "name": "Get All Service Charges",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/service-charges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "settings", "service-charges"]
+            }
+          }
+        },
+        {
+          "name": "Create Service Charge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"orderType\": \"All\",\n  \"chargeType\": \"Percentage\",\n  \"value\": 10,\n  \"minSpend\": 20,\n  \"maxSpend\": 0,\n  \"optional\": false,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/service-charges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "service-charges"]
+            }
+          }
+        },
+        {
+          "name": "Update Service Charge",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 12.5,\n  \"minSpend\": 25,\n  \"optional\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/service-charges/{{serviceChargeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "settings", "service-charges", "{{serviceChargeId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Delivery Charges",
+      "item": [
+        {
+          "name": "Get All Delivery Charges",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/delivery-charges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "settings", "delivery-charges"]
+            }
+          }
+        },
+        {
+          "name": "Create Delivery Charge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"maxDistance\": 5,\n  \"minSpend\": 15,\n  \"maxSpend\": 0,\n  \"charge\": 3.99,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery-charges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery-charges"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Business Offers",
+      "item": [
+        {
+          "name": "Get All Business Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/business-offers?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "business-offers"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Business Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"name\": \"Happy Hour Special\",\n  \"description\": \"20% off on all beverages\",\n  \"type\": \"percentage\",\n  \"value\": 20,\n  \"minSpend\": 0,\n  \"maxDiscount\": 50,\n  \"startDate\": \"2024-05-01T00:00:00Z\",\n  \"endDate\": \"2024-05-31T23:59:59Z\",\n  \"applicableProducts\": [],\n  \"applicableCategories\": [],\n  \"daysOfWeek\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"],\n  \"startTime\": \"16:00\",\n  \"endTime\": \"19:00\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/business-offers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "business-offers"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Discounts",
+      "item": [
+        {
+          "name": "Get All Discounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/discounts?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "discounts"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Discount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"WELCOME25\",\n  \"type\": \"percentage\",\n  \"value\": 25,\n  \"minSpend\": 50,\n  \"maxDiscount\": 100,\n  \"startDate\": \"2024-05-01T00:00:00Z\",\n  \"endDate\": \"2024-05-31T23:59:59Z\",\n  \"maxUses\": 1000,\n  \"maxUsesPerUser\": 1,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/discounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "discounts"]
+            }
+          }
+        },
+        {
+          "name": "Validate Discount Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME25\",\n  \"branchId\": \"{{branchId}}\",\n  \"orderTotal\": 75.50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/discounts/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "discounts", "validate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Table Ordering",
+      "item": [
+        {
+          "name": "Get All Tables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/table-ordering/tables",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "settings", "table-ordering", "tables"]
+            }
+          }
+        },
+        {
+          "name": "Create Table",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"tableNumber\": \"T101\",\n  \"capacity\": 4,\n  \"location\": \"Indoor\",\n  \"status\": \"available\",\n  \"qrCode\": \"https://example.com/qr/T101\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/table-ordering/tables",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "table-ordering", "tables"]
+            }
+          }
+        },
+        {
+          "name": "Start Table Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableNumber\": \"T101\",\n  \"branchId\": \"{{branchId}}\",\n  \"customerCount\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/table-ordering/sessions/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "settings", "table-ordering", "sessions", "start"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. SMS/Email Messages",
+      "item": [
+        {
+          "name": "Get All Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sms-email-messages?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sms-email-messages"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Message Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"name\": \"Order Confirmation\",\n  \"type\": \"email\",\n  \"subject\": \"Your order has been confirmed\",\n  \"content\": \"Dear {{customerName}},\\n\\nYour order #{{orderNumber}} has been confirmed and is being prepared.\\n\\nEstimated delivery time: {{deliveryTime}}\\n\\nThank you for choosing us!\\n\\nBest regards,\\n{{restaurantName}}\",\n  \"variables\": [\"customerName\", \"orderNumber\", \"deliveryTime\", \"restaurantName\"],\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sms-email-messages/templates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sms-email-messages", "templates"]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"templateId\": \"{{messageId}}\",\n  \"to\": \"customer@example.com\",\n  \"variables\": {\n    \"customerName\": \"John Doe\",\n    \"orderNumber\": \"ORD-123\",\n    \"deliveryTime\": \"7:30 PM\",\n    \"restaurantName\": \"Downtown Restaurant\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sms-email-messages/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sms-email-messages", "send"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Push Notifications",
+      "item": [
+        {
+          "name": "Get All Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/push-notifications?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "push-notifications"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Push Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"title\": \"Special Offer!\",\n  \"body\": \"Get 20% off on all orders today!\",\n  \"data\": {\n    \"type\": \"offer\",\n    \"offerId\": \"{{businessOfferId}}\"\n  },\n  \"topic\": \"all\",\n  \"image\": \"https://example.com/images/offer.jpg\",\n  \"scheduledFor\": \"2024-05-15T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/push-notifications/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "push-notifications", "send"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. Reports",
+      "item": [
+        {
+          "name": "Get Sales Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/sales?branchId={{branchId}}&startDate=2024-05-01&endDate=2024-05-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "sales"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-05-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-05-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Product Performance Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/products?branchId={{branchId}}&period=monthly",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "products"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                },
+                {
+                  "key": "period",
+                  "value": "monthly"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. Lead Times",
+      "item": [
+        {
+          "name": "Get Lead Times",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/lead-times?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lead-times"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Lead Times",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"delivery\": {\n    \"default\": 45,\n    \"busy\": 60,\n    \"quiet\": 30\n  },\n  \"collection\": {\n    \"default\": 20,\n    \"busy\": 30,\n    \"quiet\": 15\n  },\n  \"dineIn\": {\n    \"default\": 25,\n    \"busy\": 35,\n    \"quiet\": 20\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/lead-times",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lead-times"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. Customer Management",
+      "item": [
+        {
+          "name": "Get All Customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Customer Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Address Management",
+      "item": [
+        {
+          "name": "Get All Addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "addresses"]
+            }
+          }
+        },
+        {
+          "name": "Add New Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"country\": \"USA\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "addresses"]
+            }
+          }
+        }
+      ]
     }
   ]
 }

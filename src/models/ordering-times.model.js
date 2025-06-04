@@ -259,6 +259,22 @@ const orderingTimesSchema = new mongoose.Schema(
         friday: restrictionDaySettingsSchema,
         saturday: restrictionDaySettingsSchema
       }
+    },
+    // Audit Log Fields
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   {

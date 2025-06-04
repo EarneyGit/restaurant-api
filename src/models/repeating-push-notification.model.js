@@ -38,6 +38,17 @@ const repeatingPushNotificationSchema = new mongoose.Schema({
     ref: 'User',
     required: [true, 'Creator is required']
   },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deletedAt: {
+    type: Date
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   // Recurring configuration
   frequency: {
     type: String,

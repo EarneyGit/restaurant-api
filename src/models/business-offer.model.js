@@ -45,11 +45,24 @@ const businessOfferSchema = new mongoose.Schema(
       ref: 'User',
       required: [true, 'Created by is required']
     },
+    // Updated by admin user
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
     // View and interaction tracking
     stats: {
       views: { type: Number, default: 0 },
       clicks: { type: Number, default: 0 },
       lastViewed: { type: Date, default: null }
+    },
+    // Audit Log Fields
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   {

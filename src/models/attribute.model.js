@@ -39,6 +39,22 @@ const attributeSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
+    },
+    // Audit Log Fields
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   {

@@ -362,6 +362,24 @@ exports.createProduct = async (req, res, next) => {
       req.body.itemSettings = JSON.parse(req.body.itemSettings);
     }
 
+    // Transform availability data to match schema
+    if (req.body.availability) {
+      const transformedAvailability = {};
+      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      
+      days.forEach(day => {
+        if (req.body.availability[day]) {
+          transformedAvailability[day] = {
+            isAvailable: req.body.availability[day].isAvailable ?? true,
+            type: req.body.availability[day].type || 'All Day',
+            times: req.body.availability[day].times || []
+          };
+        }
+      });
+      
+      req.body.availability = transformedAvailability;
+    }
+
     // Convert string boolean values to actual booleans
     const booleanFields = ['hideItem', 'delivery', 'collection', 'dineIn', 'freeDelivery', 'collectionOnly', 'deleted', 'hidePrice', 'allowAddWithoutChoices'];
     booleanFields.forEach(field => {
@@ -519,6 +537,24 @@ exports.updateProduct = async (req, res, next) => {
     }
     if (typeof req.body.itemSettings === 'string') {
       req.body.itemSettings = JSON.parse(req.body.itemSettings);
+    }
+
+    // Transform availability data to match schema
+    if (req.body.availability) {
+      const transformedAvailability = {};
+      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      
+      days.forEach(day => {
+        if (req.body.availability[day]) {
+          transformedAvailability[day] = {
+            isAvailable: req.body.availability[day].isAvailable ?? true,
+            type: req.body.availability[day].type || 'All Day',
+            times: req.body.availability[day].times || []
+          };
+        }
+      });
+      
+      req.body.availability = transformedAvailability;
     }
 
     // Convert string boolean values to actual booleans

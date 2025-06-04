@@ -153,12 +153,20 @@ const createDiscount = async (req, res) => {
       });
     }
     
+    // Process outlets data from frontend
+    let outletsData = {};
+    if (req.body.outlets && typeof req.body.outlets === 'object') {
+      // Convert outlets object to Map format for MongoDB
+      outletsData = req.body.outlets;
+    }
+    
     // Create discount
     const discountData = {
       ...req.body,
       branchId: req.user.branchId,
       createdBy: req.user.id,
-      code: req.body.code?.toUpperCase()
+      code: req.body.code?.toUpperCase(),
+      outlets: outletsData
     };
     
     const discount = await Discount.create(discountData);
@@ -228,10 +236,14 @@ const updateDiscount = async (req, res) => {
       }
     }
     
-    const updateData = {
-      ...req.body,
-      code: req.body.code?.toUpperCase()
-    };
+    // Process outlets data from frontend
+    let updateData = { ...req.body };
+    if (req.body.outlets && typeof req.body.outlets === 'object') {
+      // Keep outlets data as is - MongoDB will handle the Map conversion
+      updateData.outlets = req.body.outlets;
+    }
+    
+    updateData.code = req.body.code?.toUpperCase();
     
     const discount = await Discount.findOneAndUpdate(
       { _id: req.params.id, branchId: req.user.branchId },
@@ -355,8 +367,8 @@ const validateDiscountCode = async (req, res) => {
       deliveryMethod: deliveryMethod
     };
     
-    // Validate discount
-    const validation = discount.isValidForOrder(mockOrder);
+    // Validate discount (pass branchId to check availability)
+    const validation = discount.isValidForOrder(mockOrder, null, branchId);
     
     if (!validation.valid) {
       return res.status(400).json({

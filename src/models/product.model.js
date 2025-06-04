@@ -12,7 +12,11 @@ const timeSlotSchema = new mongoose.Schema({
 }, { _id: false });
 
 const dayAvailabilitySchema = new mongoose.Schema({
-  available: {
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
+  type: {
     type: String,
     enum: ['All Day', 'Specific Times', 'Not Available'],
     default: 'All Day'
@@ -169,6 +173,44 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    // Price Changes
+    priceChanges: [{
+      id: {
+        type: String,
+        required: true
+      },
+      name: {
+        type: String,
+        default: ''
+      },
+      type: {
+        type: String,
+        enum: ['increase', 'decrease', 'fixed'],
+        required: true
+      },
+      value: {
+        type: Number,
+        required: true
+      },
+      startDate: {
+        type: String,
+        required: true
+      },
+      endDate: {
+        type: String,
+        required: true
+      },
+      daysOfWeek: [{
+        type: String,
+        enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+      }],
+      timeStart: String,
+      timeEnd: String,
+      active: {
+        type: Boolean,
+        default: true
+      }
+    }],
     // Stock Management fields
     stockManagement: {
       isManaged: {
@@ -188,6 +230,22 @@ const productSchema = new mongoose.Schema(
         type: Date,
         default: Date.now
       }
+    },
+    // Audit Log Fields
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   {
