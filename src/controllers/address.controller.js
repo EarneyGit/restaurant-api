@@ -32,11 +32,18 @@ const postcodeToAddress = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    // Add a note if using mock data
+    const responseData = {
       success: true,
       data: result.data,
       message: 'Address retrieved successfully'
-    });
+    };
+    
+    if (result.isMockData) {
+      responseData.note = 'Using mock data because Google Maps API key is not configured';
+    }
+
+    res.status(200).json(responseData);
 
   } catch (error) {
     console.error('Error in postcodeToAddress:', error);
@@ -80,11 +87,18 @@ const getAddressByPostcode = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    // Add a note if using mock data
+    const responseData = {
       success: true,
       data: result.data,
       message: 'Address retrieved successfully'
-    });
+    };
+    
+    if (result.isMockData) {
+      responseData.note = 'Using mock data because Google Maps API key is not configured';
+    }
+
+    res.status(200).json(responseData);
 
   } catch (error) {
     console.error('Error in getAddressByPostcode:', error);
@@ -173,13 +187,20 @@ const batchPostcodeToAddress = async (req, res) => {
     }
 
     // Process batch request
-    const results = await googleMapsService.batchPostcodeToAddress(postcodes);
+    const result = await googleMapsService.batchPostcodeToAddress(postcodes);
 
-    res.status(200).json({
+    const responseData = {
       success: true,
-      data: results,
-      message: `Processed ${results.length} postcodes`
-    });
+      data: result.results,
+      message: `Processed ${result.results.length} postcodes`
+    };
+
+    // Add a note if using mock data
+    if (result.hasMockData) {
+      responseData.note = 'Using mock data because Google Maps API key is not configured';
+    }
+
+    res.status(200).json(responseData);
 
   } catch (error) {
     console.error('Error in batchPostcodeToAddress:', error);
@@ -225,10 +246,61 @@ const getApiStatus = async (req, res) => {
   }
 };
 
+// @desc    Calculate distance between two coordinates
+// @route   POST /api/address/distance
+// @access  Public
+const calculateDistance = async (req, res) => {
+  try {
+    const { from, to, unit } = req.body;
+
+    // Validate required parameters
+    if (!from || !to || !from.lat || !from.lng || !to.lat || !to.lng) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid coordinates (lat, lng) are required for both from and to locations'
+      });
+    }
+
+    // Validate unit if provided
+    const validUnits = ['metric', 'imperial'];
+    if (unit && !validUnits.includes(unit)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unit must be either "metric" or "imperial"'
+      });
+    }
+
+    // Calculate distance using the Google Maps service
+    const result = googleMapsService.calculateDistance(from, to, unit || 'metric');
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      message: 'Distance calculated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error in calculateDistance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'production' ? null : error.message
+    });
+  }
+};
+
 module.exports = {
   postcodeToAddress,
   getAddressByPostcode,
   validatePostcode,
   batchPostcodeToAddress,
-  getApiStatus
+  getApiStatus,
+  calculateDistance
 }; 

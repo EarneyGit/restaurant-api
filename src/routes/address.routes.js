@@ -4,7 +4,8 @@ const {
   getAddressByPostcode,
   validatePostcode,
   batchPostcodeToAddress,
-  getApiStatus
+  getApiStatus,
+  calculateDistance
 } = require('../controllers/address.controller');
 
 // Import authentication middleware
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post('/postcode-to-address', postcodeToAddress);
 router.get('/postcode/:postcode', getAddressByPostcode);
 router.post('/validate-postcode', validatePostcode);
+router.post('/distance', calculateDistance);
 
 // Protected routes (admin only)
 router.use(protect);
