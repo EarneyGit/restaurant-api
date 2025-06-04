@@ -32,18 +32,11 @@ const postcodeToAddress = async (req, res) => {
       });
     }
 
-    // Add a note if using mock data
-    const responseData = {
+    res.status(200).json({
       success: true,
       data: result.data,
       message: 'Address retrieved successfully'
-    };
-    
-    if (result.isMockData) {
-      responseData.note = 'Using mock data because Google Maps API key is not configured';
-    }
-
-    res.status(200).json(responseData);
+    });
 
   } catch (error) {
     console.error('Error in postcodeToAddress:', error);
@@ -87,18 +80,11 @@ const getAddressByPostcode = async (req, res) => {
       });
     }
 
-    // Add a note if using mock data
-    const responseData = {
+    res.status(200).json({
       success: true,
       data: result.data,
       message: 'Address retrieved successfully'
-    };
-    
-    if (result.isMockData) {
-      responseData.note = 'Using mock data because Google Maps API key is not configured';
-    }
-
-    res.status(200).json(responseData);
+    });
 
   } catch (error) {
     console.error('Error in getAddressByPostcode:', error);
@@ -189,18 +175,18 @@ const batchPostcodeToAddress = async (req, res) => {
     // Process batch request
     const result = await googleMapsService.batchPostcodeToAddress(postcodes);
 
-    const responseData = {
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error
+      });
+    }
+
+    res.status(200).json({
       success: true,
       data: result.results,
       message: `Processed ${result.results.length} postcodes`
-    };
-
-    // Add a note if using mock data
-    if (result.hasMockData) {
-      responseData.note = 'Using mock data because Google Maps API key is not configured';
-    }
-
-    res.status(200).json(responseData);
+    });
 
   } catch (error) {
     console.error('Error in batchPostcodeToAddress:', error);
@@ -251,7 +237,7 @@ const getApiStatus = async (req, res) => {
 // @access  Public
 const calculateDistance = async (req, res) => {
   try {
-    const { from, to, unit } = req.body;
+    const { from, to, unit, mode } = req.body;
 
     // Validate required parameters
     if (!from || !to || !from.lat || !from.lng || !to.lat || !to.lng) {
@@ -270,8 +256,17 @@ const calculateDistance = async (req, res) => {
       });
     }
 
+    // Validate mode if provided
+    const validModes = ['driving', 'walking', 'bicycling', 'transit'];
+    if (mode && !validModes.includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mode must be one of: driving, walking, bicycling, transit'
+      });
+    }
+
     // Calculate distance using the Google Maps service
-    const result = googleMapsService.calculateDistance(from, to, unit || 'metric');
+    const result = await googleMapsService.calculateDistance(from, to, unit || 'metric', mode || 'driving');
 
     if (!result.success) {
       return res.status(400).json({

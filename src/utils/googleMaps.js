@@ -1,35 +1,8 @@
 class GoogleMapsService {
   constructor() {
     this.apiKey = process.env.GOOGLE_MAPS_API_KEY;
-    this.baseUrl = 'https://maps.googleapis.com/maps/api/geocode/json';
-    this.mockData = {
-      'SW1A 1AA': {
-        formattedAddress: 'Buckingham Palace, London SW1A 1AA, UK',
-        postcode: 'SW1A 1AA',
-        streetNumber: '',
-        streetName: 'Buckingham Palace',
-        locality: 'Westminster',
-        city: 'London',
-        county: 'Greater London',
-        country: 'United Kingdom',
-        latitude: 51.501364,
-        longitude: -0.14189,
-        placeId: 'mock_place_id_buckingham_palace'
-      },
-      'SW1A 2AA': {
-        formattedAddress: '10 Downing St, London SW1A 2AA, UK',
-        postcode: 'SW1A 2AA',
-        streetNumber: '10',
-        streetName: 'Downing Street',
-        locality: 'Westminster',
-        city: 'London',
-        county: 'Greater London',
-        country: 'United Kingdom',
-        latitude: 51.5034,
-        longitude: -0.1276,
-        placeId: 'mock_place_id_downing_street'
-      }
-    };
+    this.geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json';
+    this.routesUrl = 'https://routes.googleapis.com/directions/v2:computeRoutes';
   }
 
   /**
@@ -46,9 +19,20 @@ class GoogleMapsService {
    * @returns {Promise<Object>} - Address details
    */
   async postcodeToAddress(postcode) {
+    console.log(`postcodeToAddress: ${this.apiKey}`);
     try {
+      if (!this.apiKey) {
+        return {
+          success: false,
+          error: 'Google Maps API key is not configured. Please add a valid API key to your environment variables.'
+        };
+      }
+
       if (!postcode || typeof postcode !== 'string') {
-        throw new Error('Valid postcode is required');
+        return {
+          success: false,
+          error: 'Valid postcode is required'
+        };
       }
 
       // Clean and format postcode
@@ -57,43 +41,9 @@ class GoogleMapsService {
       // Basic UK postcode validation
       const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}$/i;
       if (!ukPostcodeRegex.test(cleanPostcode)) {
-        throw new Error('Invalid UK postcode format');
-      }
-
-      // If API key is not configured, use mock data
-      if (!this.apiKey) {
-        console.warn('Google Maps API key not configured, using mock data');
-        
-        // Format postcode with a space if it doesn't have one
-        const formattedPostcode = cleanPostcode.replace(/^([A-Z]{1,2}[0-9][A-Z0-9]?)([0-9][A-Z]{2})$/i, '$1 $2');
-        
-        // Check if we have mock data for this postcode
-        if (this.mockData[formattedPostcode]) {
-          return {
-            success: true,
-            data: this.mockData[formattedPostcode]
-          };
-        }
-        
-        // Generate mock data for unknown postcodes
-        const mockAddress = {
-          formattedAddress: `Mock Address, ${formattedPostcode}, UK`,
-          postcode: formattedPostcode,
-          streetNumber: '123',
-          streetName: 'Mock Street',
-          locality: 'Mock Locality',
-          city: 'Mock City',
-          county: 'Mock County',
-          country: 'United Kingdom',
-          latitude: 51.5 + Math.random() * 0.1,
-          longitude: -0.1 + Math.random() * 0.1,
-          placeId: `mock_place_id_${formattedPostcode.replace(/\s+/g, '_').toLowerCase()}`
-        };
-        
         return {
-          success: true,
-          data: mockAddress,
-          isMockData: true
+          success: false,
+          error: 'Invalid UK postcode format'
         };
       }
 
@@ -105,7 +55,7 @@ class GoogleMapsService {
         key: this.apiKey
       });
 
-      const url = `${this.baseUrl}?${params}`;
+      const url = `${this.geocodeUrl}?${params}`;
 
       // Get fetch function
       const fetch = await this.getFetch();
@@ -114,7 +64,10 @@ class GoogleMapsService {
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`Google Maps API request failed: ${response.status} ${response.statusText}`);
+        return {
+          success: false,
+          error: `Google Maps API request failed: ${response.status} ${response.statusText}`
+        };
       }
 
       const data = await response.json();
@@ -122,18 +75,33 @@ class GoogleMapsService {
       // Check API response status
       if (data.status !== 'OK') {
         if (data.status === 'ZERO_RESULTS') {
-          throw new Error('No results found for the provided postcode');
+          return {
+            success: false,
+            error: 'No results found for the provided postcode'
+          };
         } else if (data.status === 'OVER_QUERY_LIMIT') {
-          throw new Error('Google Maps API quota exceeded');
+          return {
+            success: false,
+            error: 'Google Maps API quota exceeded'
+          };
         } else if (data.status === 'REQUEST_DENIED') {
-          throw new Error('Google Maps API request denied - check API key');
+          return {
+            success: false,
+            error: 'Google Maps API request denied - check API key'
+          };
         } else {
-          throw new Error(`Google Maps API error: ${data.status}`);
+          return {
+            success: false,
+            error: `Google Maps API error: ${data.status}`
+          };
         }
       }
 
       if (!data.results || data.results.length === 0) {
-        throw new Error('No address found for the provided postcode');
+        return {
+          success: false,
+          error: 'No address found for the provided postcode'
+        };
       }
 
       // Extract address components from the first result
@@ -222,87 +190,147 @@ class GoogleMapsService {
       throw new Error('Postcodes must be an array');
     }
 
+    if (!this.apiKey) {
+      return {
+        success: false,
+        error: 'Google Maps API key is not configured. Please add a valid API key to your environment variables.'
+      };
+    }
+
     const results = [];
-    let hasMockData = false;
     
     // Process postcodes with a small delay to respect API rate limits
     for (const postcode of postcodes) {
       const result = await this.postcodeToAddress(postcode);
-      
-      // Track if any results are mock data
-      if (result.isMockData) {
-        hasMockData = true;
-      }
-      
       results.push({
         postcode,
         ...result
       });
       
-      // Small delay to avoid hitting rate limits (only if using real API)
-      if (this.apiKey) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      // Small delay to avoid hitting rate limits
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     return {
-      results,
-      hasMockData
+      success: true,
+      results
     };
   }
 
   /**
-   * Calculate distance between two coordinates using the Haversine formula
+   * Calculate distance between two coordinates using Google Maps Distance Matrix API
    * @param {Object} from - Source coordinates {lat, lng}
    * @param {Object} to - Destination coordinates {lat, lng}
    * @param {string} unit - Unit of measurement ('metric' for kilometers, 'imperial' for miles)
+   * @param {string} mode - Travel mode ('driving', 'walking', 'bicycling', 'transit')
    * @returns {Object} - Distance calculation result
    */
-  calculateDistance(from, to, unit = 'metric') {
+  async calculateDistance(from, to, unit = 'metric', mode = 'driving') {
     try {
-      if (!from || !to || !from.lat || !from.lng || !to.lat || !to.lng) {
-        throw new Error('Valid coordinates are required');
+      if (!this.apiKey) {
+        return {
+          success: false,
+          error: 'Google Maps API key is not configured. Please add a valid API key to your environment variables.'
+        };
       }
 
-      // Convert latitude and longitude from degrees to radians
-      const lat1 = parseFloat(from.lat) * Math.PI / 180;
-      const lon1 = parseFloat(from.lng) * Math.PI / 180;
-      const lat2 = parseFloat(to.lat) * Math.PI / 180;
-      const lon2 = parseFloat(to.lng) * Math.PI / 180;
+      if (!from || !to || !from.lat || !from.lng || !to.lat || !to.lng) {
+        return {
+          success: false,
+          error: 'Valid coordinates are required'
+        };
+      }
 
-      // Radius of the earth in kilometers or miles
-      const R = unit === 'metric' ? 6371 : 3958.8;
+      // Try the Distance Matrix API first (legacy API)
+      const distanceMatrixUrl = 'https://maps.googleapis.com/maps/api/distancematrix/json';
+      
+      // Format coordinates for the API
+      const origins = `${from.lat},${from.lng}`;
+      const destinations = `${to.lat},${to.lng}`;
+      
+      // Build API URL with parameters
+      const params = new URLSearchParams({
+        origins,
+        destinations,
+        mode: mode,
+        units: unit === 'metric' ? 'metric' : 'imperial',
+        key: this.apiKey
+      });
 
-      // Haversine formula
-      const dLat = lat2 - lat1;
-      const dLon = lon2 - lon1;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1) * Math.cos(lat2) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c;
+      const url = `${distanceMatrixUrl}?${params}`;
 
+      // Get fetch function
+      const fetch = await this.getFetch();
+
+      // Make API request
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Google Maps API request failed: ${response.status} ${response.statusText}`
+        };
+      }
+
+      const data = await response.json();
+      console.log("Distance Matrix API response:", data);
+
+      // Check API response status
+      if (data.status !== 'OK') {
+        return {
+          success: false,
+          error: `Google Maps Distance Matrix API error: ${data.status}${data.error_message ? ' - ' + data.error_message : ''}`
+        };
+      }
+
+      // Extract distance and duration from response
+      if (!data.rows || !data.rows[0] || !data.rows[0].elements || !data.rows[0].elements[0]) {
+        return {
+          success: false,
+          error: 'No route found between the provided coordinates'
+        };
+      }
+
+      const element = data.rows[0].elements[0];
+      
+      if (element.status !== 'OK') {
+        return {
+          success: false,
+          error: `Route calculation failed: ${element.status}`
+        };
+      }
+
+      // Format the response
       return {
         success: true,
         data: {
-          distance: parseFloat(distance.toFixed(2)),
-          unit: unit === 'metric' ? 'kilometers' : 'miles',
+          distance: {
+            value: element.distance.value, // Distance in meters
+            text: element.distance.text    // Formatted distance (e.g., "5.2 km")
+          },
+          duration: {
+            value: element.duration.value, // Duration in seconds
+            text: element.duration.text    // Formatted duration (e.g., "10 mins")
+          },
           from: {
             lat: from.lat,
-            lng: from.lng
+            lng: from.lng,
+            address: data.origin_addresses[0]
           },
           to: {
             lat: to.lat,
-            lng: to.lng
-          }
+            lng: to.lng,
+            address: data.destination_addresses[0]
+          },
+          unit: unit === 'metric' ? 'kilometers' : 'miles',
+          mode: mode
         }
       };
     } catch (error) {
-      console.error('Distance calculation error:', error.message);
+      console.error('Google Maps API Error:', error.message);
       return {
         success: false,
-        error: error.message
+        error: `Google Maps API Error: ${error.message}`
       };
     }
   }
