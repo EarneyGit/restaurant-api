@@ -214,7 +214,18 @@ const getApiStatus = async (req, res) => {
           'Postcode to address conversion',
           'Address validation',
           'Batch processing',
-          'Geocoding (lat/lng coordinates)'
+          'Geocoding (lat/lng coordinates)',
+          'Distance calculation between coordinates'
+        ],
+        distanceCalculationModes: [
+          'driving',
+          'walking',
+          'bicycling',
+          'transit'
+        ],
+        units: [
+          'metric (kilometers)',
+          'imperial (miles)'
         ]
       },
       message: hasApiKey 
@@ -266,7 +277,7 @@ const calculateDistance = async (req, res) => {
     }
 
     // Calculate distance using the Google Maps service
-    const result = await googleMapsService.calculateDistance(from, to, unit || 'metric', mode || 'driving');
+    const result = await googleMapsService.calculateDistance(from, to, unit || 'metric', mode || 'driving');  
 
     if (!result.success) {
       return res.status(400).json({
