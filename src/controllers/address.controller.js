@@ -1,4 +1,5 @@
 const googleMapsService = require('../utils/googleMaps');
+const axios = require('axios');
 
 // @desc    Convert UK postcode to address
 // @route   POST /api/address/postcode-to-address
@@ -96,6 +97,95 @@ const getAddressByPostcode = async (req, res) => {
   }
 };
 
+// @desc    Get all addresses for a UK postcode using Ideal Postcodes API
+// @route   GET /api/address/postcode1/:postcode
+// @access  Public
+const getAddressByPostcodeIdeal = async (req, res) => {
+  try {
+    const { postcode } = req.params;
+
+    if (!postcode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Postcode is required'
+      });
+    }
+
+    // Validate postcode format
+    if (!googleMapsService.validateUKPostcode(postcode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid UK postcode format'
+      });
+    }
+
+    // Get API key from environment variables
+    const apiKey = process.env.IDEAL_POSTCODES_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(500).json({
+        success: false,
+        message: 'Ideal Postcodes API key is not configured'
+      });
+    }
+
+    // Clean and format postcode
+    const cleanPostcode = postcode.trim().toUpperCase().replace(/\s+/g, '');
+    
+    // Make API request to Ideal Postcodes
+    const url = `https://api.ideal-postcodes.co.uk/v1/postcodes/${cleanPostcode}?api_key=${apiKey}`;
+    
+    const response = await axios.get(url);
+    
+    // Check if we got a successful response
+    if (response.data && response.data.result) {
+      return res.status(200).json({
+        success: true,
+        data: response.data.result,
+        message: `Found ${response.data.result.length} addresses for postcode ${postcode}`
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: 'No addresses found for the provided postcode'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in getAddressByPostcodeIdeal:', error);
+    
+    // Handle specific API errors
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+      
+      if (status === 404) {
+        return res.status(404).json({
+          success: false,
+          message: 'No addresses found for the provided postcode'
+        });
+      } else if (status === 401 || status === 403) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid API key or unauthorized access to Ideal Postcodes API'
+        });
+      } else if (data && data.message) {
+        return res.status(status).json({
+          success: false,
+          message: data.message
+        });
+      }
+    }
+    
+    // Generic error response
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching addresses from Ideal Postcodes API',
+      error: process.env.NODE_ENV === 'production' ? null : error.message
+    });
+  }
+};
+
 // @desc    Validate UK postcode format
 // @route   POST /api/address/validate-postcode
 // @access  Public
@@ -173,12 +263,19 @@ const batchPostcodeToAddress = async (req, res) => {
     }
 
     // Process batch request
-    const results = await googleMapsService.batchPostcodeToAddress(postcodes);
+    const result = await googleMapsService.batchPostcodeToAddress(postcodes);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error
+      });
+    }
 
     res.status(200).json({
       success: true,
-      data: results,
-      message: `Processed ${results.length} postcodes`
+      data: result.results,
+      message: `Processed ${result.results.length} postcodes`
     });
 
   } catch (error) {
@@ -196,23 +293,37 @@ const batchPostcodeToAddress = async (req, res) => {
 // @access  Private (Admin only)
 const getApiStatus = async (req, res) => {
   try {
-    const hasApiKey = !!process.env.GOOGLE_MAPS_API_KEY;
+    const hasGoogleApiKey = !!process.env.GOOGLE_MAPS_API_KEY;
+    const hasIdealPostcodesApiKey = !!process.env.IDEAL_POSTCODES_API_KEY;
     
     res.status(200).json({
       success: true,
       data: {
-        googleMapsApiConfigured: hasApiKey,
+        googleMapsApiConfigured: hasGoogleApiKey,
+        idealPostcodesApiConfigured: hasIdealPostcodesApiKey,
         supportedCountry: 'United Kingdom',
         features: [
           'Postcode to address conversion',
           'Address validation',
           'Batch processing',
-          'Geocoding (lat/lng coordinates)'
+          'Geocoding (lat/lng coordinates)',
+          'Distance calculation between coordinates',
+          'Multiple addresses per postcode (Ideal Postcodes API)'
+        ],
+        distanceCalculationModes: [
+          'driving',
+          'walking',
+          'bicycling',
+          'transit'
+        ],
+        units: [
+          'metric (kilometers)',
+          'imperial (miles)'
         ]
       },
-      message: hasApiKey 
-        ? 'Google Maps API is configured and ready' 
-        : 'Google Maps API key is not configured'
+      message: hasGoogleApiKey && hasIdealPostcodesApiKey
+        ? 'All APIs are configured and ready'
+        : 'Some API keys are not configured'
     });
 
   } catch (error) {
@@ -225,10 +336,71 @@ const getApiStatus = async (req, res) => {
   }
 };
 
+// @desc    Calculate distance between two coordinates
+// @route   POST /api/address/distance
+// @access  Public
+const calculateDistance = async (req, res) => {
+  try {
+    const { from, to, unit, mode } = req.body;
+
+    // Validate required parameters
+    if (!from || !to || !from.lat || !from.lng || !to.lat || !to.lng) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid coordinates (lat, lng) are required for both from and to locations'
+      });
+    }
+
+    // Validate unit if provided
+    const validUnits = ['metric', 'imperial'];
+    if (unit && !validUnits.includes(unit)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unit must be either "metric" or "imperial"'
+      });
+    }
+
+    // Validate mode if provided
+    const validModes = ['driving', 'walking', 'bicycling', 'transit'];
+    if (mode && !validModes.includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mode must be one of: driving, walking, bicycling, transit'
+      });
+    }
+
+    // Calculate distance using the Google Maps service
+    const result = await googleMapsService.calculateDistance(from, to, unit || 'metric', mode || 'driving');  
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      message: 'Distance calculated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error in calculateDistance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'production' ? null : error.message
+    });
+  }
+};
+
 module.exports = {
   postcodeToAddress,
   getAddressByPostcode,
+  getAddressByPostcodeIdeal,
   validatePostcode,
   batchPostcodeToAddress,
-  getApiStatus
+  getApiStatus,
+  calculateDistance
 }; 
