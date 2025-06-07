@@ -3,12 +3,11 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Using environment variable or default URI if not set
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/restaurant';
-    
+    const mongoURI = process.env.MONGODB_URI;
     const conn = await mongoose.connect(mongoURI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`ConnectDB: MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error(`Error in ConnectDB: ${error.message}`);
     process.exit(1);
   }
 };

@@ -1,15 +1,8 @@
 const mongoose = require('mongoose');
 const Role = require('../models/role.model');
 
-// Load environment variables if dotenv is available
-try {
-  require('dotenv').config();
-} catch (error) {
-  console.log('dotenv not found, using default values');
-}
-
 // Connect to database
-const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/restaurant-api';
+const mongoURI = process.env.MONGODB_URI;
 mongoose.connect(mongoURI)
   .then(() => console.log(`MongoDB Connected: ${mongoose.connection.host}`))
   .catch(err => {

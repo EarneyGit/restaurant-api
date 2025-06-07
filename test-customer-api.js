@@ -51,7 +51,7 @@ async function testCustomerAPI() {
   // Test 3: Search Customers by Name
   console.log('3️⃣ Testing Search Customers by Name');
   try {
-    const response = await fetch(`${baseUrl}?firstname=John&page=1&limit=5`, {
+    const response = await fetch(`${baseUrl}?firstName=John&page=1&limit=5`, {
       method: 'GET',
       headers
     });
@@ -126,8 +126,8 @@ console.log('Query Parameters for GET /api/customers:');
 console.log('- page: Page number (default: 1)');
 console.log('- limit: Items per page (default: 20)');
 console.log('- userId: Filter by user ID');
-console.log('- firstname: Filter by first name');
-console.log('- lastname: Filter by last name');
+console.log('- firstName: Filter by first name');
+console.log('- lastName: Filter by last name');
 console.log('- email: Filter by email');
 console.log('- mobile: Filter by mobile number');
 console.log('- postcode: Filter by postcode');
