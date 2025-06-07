@@ -36,8 +36,8 @@ const getCustomers = async (req, res) => {
       page = 1,
       limit = 20,
       userId,
-      firstname,
-      lastname,
+      firstName,
+      lastName,
       email,
       mobile,
       postcode,
@@ -91,17 +91,17 @@ const getCustomers = async (req, res) => {
       {
         $project: {
           id: '$_id',
-          firstname: { 
+          firstName: { 
             $ifNull: [
-              { $arrayElemAt: [{ $split: ['$userDetails.name', ' '] }, 0] },
+              { $arrayElemAt: [{ $split: ['$userDetails.firstName', ' '] }, 0] },
               'Guest'
             ]
           },
-          lastname: { 
+          lastName: { 
             $ifNull: [
               { 
                 $reduce: {
-                  input: { $slice: [{ $split: ['$userDetails.name', ' '] }, 1, 10] },
+                  input: { $slice: [{ $split: ['$userDetails.lastName', ' '] }, 1, 10] },
                   initialValue: '',
                   in: { $concat: ['$$value', { $cond: [{ $eq: ['$$value', ''] }, '', ' '] }, '$$this'] }
                 }
@@ -153,12 +153,12 @@ const getCustomers = async (req, res) => {
       query._id = new mongoose.Types.ObjectId(userId);
     }
     
-    if (firstname) {
-      matchConditions.firstname = { $regex: firstname, $options: 'i' };
+    if (firstName) {
+      matchConditions.firstName = { $regex: firstName, $options: 'i' };
     }
     
-    if (lastname) {
-      matchConditions.lastname = { $regex: lastname, $options: 'i' };
+    if (lastName) {
+      matchConditions.lastName = { $regex: lastName, $options: 'i' };
     }
     
     if (email) {
@@ -181,8 +181,8 @@ const getCustomers = async (req, res) => {
     // Add sorting
     const sortStage = {};
     switch (sortBy) {
-      case 'name':
-        sortStage.firstname = sortOrder === 'desc' ? -1 : 1;
+      case 'firstName':
+        sortStage.firstName = sortOrder === 'desc' ? -1 : 1;
         break;
       case 'email':
         sortStage.email = sortOrder === 'desc' ? -1 : 1;
@@ -275,12 +275,12 @@ const getCustomer = async (req, res) => {
     // Format the response
     const customerDetails = {
       id: user._id,
-      firstname: user.name ? user.name.split(' ')[0] : 'Guest',
-      lastname: user.name ? user.name.split(' ').slice(1).join(' ') : '',
-      email: user.email || '',
-      mobile: user.phone || '',
-      address: user.address || '',
-      postcode: user.postcode || '',
+      firstName: user.firstName || "Guest",
+      lastName: user.lastName || "User",
+      email: user.email || "",
+      mobile: user.phone || "",
+      address: user.address || "",
+      postcode: user.postcode || "",
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       // Static values for now since we're not fetching orders
@@ -289,8 +289,8 @@ const getCustomer = async (req, res) => {
       averageOrderValue: 0,
       lastOrderDate: null,
       firstOrderDate: null,
-      customerType: 'New',
-      orders: []
+      customerType: "New",
+      orders: [],
     };
     
     console.log('Returning customer details:', customerDetails);
@@ -557,7 +557,6 @@ const updateCustomer = async (req, res) => {
     
     if (firstName !== undefined) updateData.firstName = firstName;
     if (lastName !== undefined) updateData.lastName = lastName;
-    if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email;
     if (mobileNumber !== undefined) updateData.mobileNumber = mobileNumber;
     if (phone !== undefined) updateData.phone = phone;
@@ -628,8 +627,8 @@ const getCustomersList = async (req, res) => {
       page = 1,
       limit = 20,
       userId,
-      firstname,
-      lastname,
+      firstName,
+      lastName,
       email,
       mobile,
       postcode,
@@ -645,13 +644,13 @@ const getCustomersList = async (req, res) => {
       query._id = new mongoose.Types.ObjectId(userId);
     }
     
-    if (firstname) {
-      query.name = { $regex: firstname, $options: 'i' };
+    if (firstName) {
+      query.firstName = { $regex: firstName, $options: 'i' };
     }
     
-    if (lastname) {
+    if (lastName) {
       // For lastname, we'll search in the name field as well
-      query.name = { $regex: lastname, $options: 'i' };
+      query.lastName = { $regex: lastName, $options: 'i' };
     }
     
     if (email) {
@@ -669,8 +668,8 @@ const getCustomersList = async (req, res) => {
     // Build sort criteria
     let sortCriteria = {};
     switch (sortBy) {
-      case 'name':
-        sortCriteria.name = sortOrder === 'desc' ? -1 : 1;
+      case 'firstName':
+        sortCriteria.firstName = sortOrder === 'desc' ? -1 : 1;
         break;
       case 'email':
         sortCriteria.email = sortOrder === 'desc' ? -1 : 1;
@@ -688,7 +687,7 @@ const getCustomersList = async (req, res) => {
     
     // Fetch users with pagination
     const users = await User.find(query)
-      .select('_id name email phone address postcode createdAt')
+      .select('_id firstName lastName email phone address postcode createdAt')
       .sort(sortCriteria)
       .skip(skip)
       .limit(parseInt(limit))
@@ -697,8 +696,8 @@ const getCustomersList = async (req, res) => {
     // Format response data
     const customers = users.map(user => ({
       id: user._id,
-      firstname: user.name ? user.name.split(' ')[0] : 'Guest',
-      lastname: user.name ? user.name.split(' ').slice(1).join(' ') : '',
+      firstName: user.firstName ? user.firstName : 'Guest',
+      lastName: user.lastName ? user.lastName : 'User',
       email: user.email || '',
       mobile: user.phone || '',
       totalOrders: 0,
