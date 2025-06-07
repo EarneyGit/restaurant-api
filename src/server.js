@@ -7,7 +7,9 @@ const { initSocket } = require('./utils/socket');
 
 // Load environment variables if dotenv is available
 try {
-  require('dotenv').config();
+  const result = require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+  console.log(result);
+  console.log('dotenv found, using env values');
 } catch (error) {
   console.log('dotenv not found, using default values');
 }

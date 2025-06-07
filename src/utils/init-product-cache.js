@@ -73,7 +73,7 @@ async function runInitialization() {
   try {
     // Connect to MongoDB if not already connected
     if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/restaurant');
+      await mongoose.connect(process.env.MONGODB_URI);
       console.log('Connected to MongoDB for cache initialization');
     }
 

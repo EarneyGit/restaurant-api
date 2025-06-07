@@ -10,7 +10,7 @@ try {
 }
 
 // Connect to database
-const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/restaurant';
+const mongoURI = process.env.MONGODB_URI;
 mongoose.connect(mongoURI)
   .then(() => console.log(`MongoDB Connected: ${mongoose.connection.host}`))
   .catch(err => {
