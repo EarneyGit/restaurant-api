@@ -19,8 +19,11 @@ const transformCartForResponse = (cart) => {
         return total + attrTotal;
       }, 0) : 0;
 
+      // Get the current effective price from the product
+      const currentEffectivePrice = item.productId.currentEffectivePrice || item.productId.price;
+
       // Calculate total price per item including attributes
-      const totalPricePerItem = item.priceAtTime + attributePrices;
+      const totalPricePerItem = currentEffectivePrice + attributePrices;
 
       return {
         id: item._id,
@@ -29,9 +32,11 @@ const transformCartForResponse = (cart) => {
         description: item.productId.description || '',
         price: {
           base: item.priceAtTime,
+          currentEffectivePrice: currentEffectivePrice,
           attributes: attributePrices,
           total: totalPricePerItem
         },
+        hasActivePriceChanges: item.productId.hasActivePriceChanges || false,
         quantity: item.quantity,
         selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
         specialRequirements: item.specialRequirements || '',
@@ -92,7 +97,7 @@ exports.getCart = async (req, res, next) => {
     }
     
     const cart = await Cart.findOne(query)
-      .populate('items.productId', 'name price images category description allergens')
+      .populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens')
       .populate('branchId', 'name address');
     
     if (!cart) {
@@ -233,7 +238,7 @@ exports.addToCart = async (req, res, next) => {
     );
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price images category description allergens');
+    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
     
     res.status(200).json({
       success: true,
@@ -317,7 +322,7 @@ exports.updateCartItem = async (req, res, next) => {
     await cart.save();
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price images category description allergens');
+    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
     
     res.status(200).json({
       success: true,
@@ -371,7 +376,7 @@ exports.removeFromCart = async (req, res, next) => {
     await cart.removeItem(itemId);
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price images category description allergens');
+    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
     
     res.status(200).json({
       success: true,
@@ -474,7 +479,7 @@ exports.updateCartDelivery = async (req, res, next) => {
     await cart.save();
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price images category description allergens');
+    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
     
     res.status(200).json({
       success: true,
@@ -506,7 +511,7 @@ exports.mergeCart = async (req, res, next) => {
     if (!guestCart || guestCart.items.length === 0) {
       // No guest cart to merge, just return user's existing cart
       let userCart = await Cart.findOrCreateCart(userId);
-      await userCart.populate('items.productId', 'name price images category description allergens');
+      await userCart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
       
       return res.status(200).json({
         success: true,
@@ -533,7 +538,7 @@ exports.mergeCart = async (req, res, next) => {
     await Cart.findByIdAndDelete(guestCart._id);
     
     // Populate cart items for response
-    await userCart.populate('items.productId', 'name price images category description allergens');
+    await userCart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
     
     res.status(200).json({
       success: true,
