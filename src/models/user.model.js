@@ -17,11 +17,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: [50, 'Last name cannot be more than 50 characters']
     },
-    name: {
-      type: String,
-      trim: true,
-      maxlength: [100, 'Name cannot be more than 100 characters']
-    },
+    // name: {
+    //   type: String,
+    //   trim: true,
+    //   maxlength: [100, 'Name cannot be more than 100 characters']
+    // },
     email: {
       type: String,
       required: [true, 'Please add an email'],
@@ -124,25 +124,11 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    toJSON: { 
-      virtuals: true,
-      transform: function(doc, ret) {
-        // Include firstName and lastName, exclude name
-        const { name, ...rest } = ret;
-        return rest;
-      }
-    },
+    toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
 );
 
-// Generate name from firstName and lastName
-userSchema.pre('save', function(next) {
-  if (this.isModified('firstName') || this.isModified('lastName')) {
-    this.name = `${this.firstName || ''} ${this.lastName || ''}`.trim() || null;
-  }
-  next();
-});
 
 // Encrypt password using bcrypt
 userSchema.pre('save', async function(next) {
