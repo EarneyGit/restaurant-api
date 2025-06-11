@@ -268,7 +268,7 @@ exports.applyPriceChanges = async (req, res, next) => {
               }) // Debug log
 
               // Update product cache
-              await updateProductCache(product._id);
+              // await updateProductCache(product._id);
 
               results.push({
                 productId: product._id,
@@ -541,7 +541,7 @@ exports.updatePriceChange = async (req, res, next) => {
     );
 
     // Update product cache
-    await updateProductCache(priceChange.productId);
+    // await updateProductCache(priceChange.productId);
 
     res.status(200).json({
       success: true,
@@ -601,7 +601,7 @@ exports.deletePriceChange = async (req, res, next) => {
     );
 
     // Update product cache
-    await updateProductCache(productId);
+    // await updateProductCache(productId);
 
     res.status(200).json({
       success: true,
@@ -653,7 +653,7 @@ exports.togglePriceChange = async (req, res, next) => {
     );
 
     // Update product cache
-    await updateProductCache(priceChange.productId);
+    // await updateProductCache(priceChange.productId);
 
     res.status(200).json({
       success: true,
@@ -714,7 +714,7 @@ exports.revertExpiredPriceChanges = async (req, res, next) => {
     // Update product caches
     const productIds = [...new Set(expiredPriceChanges.map(pc => pc.productId))];
     for (const productId of productIds) {
-      await updateProductCache(productId);
+      // await updateProductCache(productId);
     }
 
     res.status(200).json({

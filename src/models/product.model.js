@@ -69,17 +69,17 @@ const productSchema = new mongoose.Schema(
       min: [0, 'Price must be at least 0']
     },
     // Caching fields for better performance
-    currentEffectivePrice: {
-      type: Number,
-      default: function() { return this.price; }
-    },
-    hasActivePriceChanges: {
-      type: Boolean,
-      default: false
-    },
-    activePriceChangeId: {
-      type: String
-    },
+    // currentEffectivePrice: {
+    //   type: Number,
+    //   default: function() { return this.price; }
+    // },
+    // hasActivePriceChanges: {
+    //   type: Boolean,
+    //   default: false
+    // },
+    // activePriceChangeId: {
+    //   type: String
+    // },
     hideItem: {
       type: Boolean,
       default: false

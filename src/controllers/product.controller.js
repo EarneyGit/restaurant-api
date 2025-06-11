@@ -459,10 +459,10 @@ exports.createProduct = async (req, res, next) => {
       id: populatedProduct._id,
       name: populatedProduct.name,
       price: populatedProduct.price,
-      currentEffectivePrice:
-        populatedProduct.currentEffectivePrice || populatedProduct.price,
-      hasActivePriceChanges: populatedProduct.hasActivePriceChanges || false,
-      activePriceChangeId: populatedProduct.activePriceChangeId || null,
+      // currentEffectivePrice:
+      //   populatedProduct.currentEffectivePrice || populatedProduct.price,
+      // hasActivePriceChanges: populatedProduct.hasActivePriceChanges || false,
+      // activePriceChangeId: populatedProduct.activePriceChangeId || null,
       hideItem: populatedProduct.hideItem ?? false,
       delivery:
         populatedProduct.delivery !== undefined
@@ -675,9 +675,9 @@ exports.updateProduct = async (req, res, next) => {
       id: product._id,
       name: product.name,
       price: product.price,
-      currentEffectivePrice: product.currentEffectivePrice || product.price,
-      hasActivePriceChanges: product.hasActivePriceChanges || false,
-      activePriceChangeId: product.activePriceChangeId || null,
+      // currentEffectivePrice: product.currentEffectivePrice || product.price,
+      // hasActivePriceChanges: product.hasActivePriceChanges || false,
+      // activePriceChangeId: product.activePriceChangeId || null,
       hideItem: product.hideItem ?? false,
       delivery: product.delivery !== undefined ? product.delivery : true,
       collection: product.collection !== undefined ? product.collection : true,
@@ -766,6 +766,14 @@ exports.getPopularProducts = async (req, res, next) => {
       .populate("category", "name")
       .populate("branchId", "name address")
       .populate("selectedItems", "name price category")
+      .populate({
+        path: "priceChanges",
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      })
       .limit(8);
 
     // Transform products to match frontend structure
@@ -773,9 +781,9 @@ exports.getPopularProducts = async (req, res, next) => {
       id: product._id,
       name: product.name,
       price: product.price,
-      currentEffectivePrice: product.currentEffectivePrice || product.price,
-      hasActivePriceChanges: product.hasActivePriceChanges || false,
-      activePriceChangeId: product.activePriceChangeId || null,
+      // currentEffectivePrice: product.currentEffectivePrice || product.price,
+      // hasActivePriceChanges: product.hasActivePriceChanges || false,
+      // activePriceChangeId: product.activePriceChangeId || null,
       hideItem: product.hideItem ?? false,
       delivery: product.delivery !== undefined ? product.delivery : true,
       collection: product.collection !== undefined ? product.collection : true,
@@ -840,9 +848,9 @@ exports.getRecommendedProducts = async (req, res, next) => {
       id: product._id,
       name: product.name,
       price: product.price,
-      currentEffectivePrice: product.currentEffectivePrice || product.price,
-      hasActivePriceChanges: product.hasActivePriceChanges || false,
-      activePriceChangeId: product.activePriceChangeId || null,
+      // currentEffectivePrice: product.currentEffectivePrice || product.price,
+      // hasActivePriceChanges: product.hasActivePriceChanges || false,
+      // activePriceChangeId: product.activePriceChangeId || null,
       hideItem: product.hideItem ?? false,
       delivery: product.delivery !== undefined ? product.delivery : true,
       collection: product.collection !== undefined ? product.collection : true,
@@ -1088,9 +1096,9 @@ exports.getOfflineProducts = async (req, res, next) => {
       id: product._id,
       name: product.name,
       price: product.price,
-      currentEffectivePrice: product.currentEffectivePrice || product.price,
-      hasActivePriceChanges: product.hasActivePriceChanges || false,
-      activePriceChangeId: product.activePriceChangeId || null,
+      // currentEffectivePrice: product.currentEffectivePrice || product.price,
+      // hasActivePriceChanges: product.hasActivePriceChanges || false,
+      // activePriceChangeId: product.activePriceChangeId || null,
       hideItem: product.hideItem ?? false,
       delivery: product.delivery !== undefined ? product.delivery : true,
       collection: product.collection !== undefined ? product.collection : true,
@@ -1168,9 +1176,9 @@ exports.toggleProductOffline = async (req, res, next) => {
       id: product._id,
       name: product.name,
       price: product.price,
-      currentEffectivePrice: product.currentEffectivePrice || product.price,
-      hasActivePriceChanges: product.hasActivePriceChanges || false,
-      activePriceChangeId: product.activePriceChangeId || null,
+      // currentEffectivePrice: product.currentEffectivePrice || product.price,
+      // hasActivePriceChanges: product.hasActivePriceChanges || false,
+      // activePriceChangeId: product.activePriceChangeId || null,
       hideItem: product.hideItem ?? false,
       delivery: product.delivery !== undefined ? product.delivery : true,
       collection: product.collection !== undefined ? product.collection : true,
