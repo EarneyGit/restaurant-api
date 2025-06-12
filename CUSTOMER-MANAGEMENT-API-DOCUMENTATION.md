@@ -37,8 +37,8 @@ Headers: {
 - `page` (number, optional): Page number (default: 1)
 - `limit` (number, optional): Items per page (default: 20, max: 100)
 - `userId` (string, optional): Filter by specific user ID
-- `firstname` (string, optional): Filter by first name (case-insensitive)
-- `lastname` (string, optional): Filter by last name (case-insensitive)
+- `firstName` (string, optional): Filter by first name (case-insensitive)
+- `lastName` (string, optional): Filter by last name (case-insensitive)
 - `email` (string, optional): Filter by email (case-insensitive)
 - `mobile` (string, optional): Filter by mobile number
 - `postcode` (string, optional): Filter by postcode (case-insensitive)
@@ -47,7 +47,7 @@ Headers: {
 
 **Example Request:**
 ```bash
-GET /api/customers?page=1&limit=20&firstname=John&sortBy=totalSpent&sortOrder=desc
+GET /api/customers?page=1&limit=20&firstName=John&sortBy=totalSpent&sortOrder=desc
 ```
 
 **Response:**
@@ -57,8 +57,8 @@ GET /api/customers?page=1&limit=20&firstname=John&sortBy=totalSpent&sortOrder=de
   "data": [
     {
       "id": "60f7b3b3b3b3b3b3b3b3b3b3",
-      "firstname": "John",
-      "lastname": "Doe",
+      "firstName": "John",
+      "lastName": "Doe",
       "email": "john.doe@example.com",
       "mobile": "+447123456789",
       "address": "123 Main Street, London",
@@ -103,8 +103,8 @@ GET /api/customers/60f7b3b3b3b3b3b3b3b3b3b3
   "success": true,
   "data": {
     "id": "60f7b3b3b3b3b3b3b3b3b3b3",
-    "firstname": "John",
-    "lastname": "Doe",
+    "firstName": "John",
+    "lastName": "Doe",
     "email": "john.doe@example.com",
     "mobile": "+447123456789",
     "address": "123 Main Street, London",
@@ -186,7 +186,8 @@ import { customerService } from '@/services/customer.service';
 // Get customers with filtering
 const customers = await customerService.getFilteredCustomers(
   {
-    firstname: 'John',
+    firstName: 'John',
+    lastName: "User",
     email: 'john@example.com'
   },
   1, // page

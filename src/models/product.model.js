@@ -69,17 +69,17 @@ const productSchema = new mongoose.Schema(
       min: [0, 'Price must be at least 0']
     },
     // Caching fields for better performance
-    currentEffectivePrice: {
-      type: Number,
-      default: function() { return this.price; }
-    },
-    hasActivePriceChanges: {
-      type: Boolean,
-      default: false
-    },
-    activePriceChangeId: {
-      type: String
-    },
+    // currentEffectivePrice: {
+    //   type: Number,
+    //   default: function() { return this.price; }
+    // },
+    // hasActivePriceChanges: {
+    //   type: Boolean,
+    //   default: false
+    // },
+    // activePriceChangeId: {
+    //   type: String
+    // },
     hideItem: {
       type: Boolean,
       default: false
@@ -174,43 +174,43 @@ const productSchema = new mongoose.Schema(
       default: false
     },
     // Price Changes
-    priceChanges: [{
-      id: {
-        type: String,
-        required: true
-      },
-      name: {
-        type: String,
-        default: ''
-      },
-      type: {
-        type: String,
-        enum: ['increase', 'decrease', 'fixed'],
-        required: true
-      },
-      value: {
-        type: Number,
-        required: true
-      },
-      startDate: {
-        type: String,
-        required: true
-      },
-      endDate: {
-        type: String,
-        required: true
-      },
-      daysOfWeek: [{
-        type: String,
-        enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-      }],
-      timeStart: String,
-      timeEnd: String,
-      active: {
-        type: Boolean,
-        default: true
-      }
-    }],
+    // priceChanges: [{
+    //   id: {
+    //     type: String,
+    //     required: true
+    //   },
+    //   name: {
+    //     type: String,
+    //     default: ''
+    //   },
+    //   type: {
+    //     type: String,
+    //     enum: ['increase', 'decrease', 'fixed'],
+    //     required: true
+    //   },
+    //   value: {
+    //     type: Number,
+    //     required: true
+    //   },
+    //   startDate: {
+    //     type: String,
+    //     required: true
+    //   },
+    //   endDate: {
+    //     type: String,
+    //     required: true
+    //   },
+    //   daysOfWeek: [{
+    //     type: String,
+    //     enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    //   }],
+    //   timeStart: String,
+    //   timeEnd: String,
+    //   active: {
+    //     type: Boolean,
+    //     default: true
+    //   }
+    // }],
     // Stock Management fields
     stockManagement: {
       isManaged: {
@@ -261,6 +261,13 @@ productSchema.virtual('discountPercentage').get(function() {
     return Math.round((this.price - this.discountedPrice) / this.price * 100);
   }
   return 0;
+});
+
+productSchema.virtual('priceChanges', {
+  ref: 'PriceChange',
+  localField: '_id',
+  foreignField: 'productId',
+  justOne: false
 });
 
 const Product = mongoose.model('Product', productSchema);

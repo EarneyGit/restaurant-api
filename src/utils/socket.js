@@ -68,7 +68,7 @@ const initSocket = (server) => {
         socket.branchId = user.branchId;
         socket.userRole = user.role;
         
-        console.log(`Restaurant staff ${user.name} (${socket.id}) joined room: ${roomName}`);
+        console.log(`Restaurant staff ${user.firstName} ${user.lastName} (${socket.id}) joined room: ${roomName}`);
         socket.emit('joined_restaurant', { 
           message: 'Successfully joined restaurant room',
           branchId: user.branchId,

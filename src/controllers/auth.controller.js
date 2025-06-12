@@ -110,10 +110,10 @@ exports.verifyOtp = async (req, res, next) => {
     );
 
     // Delete any existing temporary tokens for this email and purpose
-    await Token.deleteMany({ 
-      email: email.toLowerCase(), 
-      type: 'temporary', 
-      purpose: otpRecord.purpose 
+    await Token.deleteMany({
+      email: email.toLowerCase(),
+      type: 'temporary',
+      purpose: otpRecord.purpose
     });
 
     // Save temporary token to database
@@ -141,12 +141,21 @@ exports.verifyOtp = async (req, res, next) => {
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { email, token, password, phone, name, address, roleId } = req.body;
+    const {
+      email,
+      token,
+      password,
+      phone,
+      firstName,
+      lastName,
+      address,
+      roleId,
+    } = req.body;
 
-    if (!email || !token || !password || !name) {
+    if (!email || !token || !password || !lastName || !firstName) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email, token, password, and name'
+        message: 'Please provide email, token, password, and name (firstName and lastName)'
       });
     }
 
@@ -198,7 +207,9 @@ exports.register = async (req, res, next) => {
 
     // Create user
     const user = await User.create({
-      name,
+      firstName,
+      lastName,
+      // name: `${firstName} ${lastName}`,
       email: email.toLowerCase(),
       password,
       phone,
@@ -214,7 +225,7 @@ exports.register = async (req, res, next) => {
 
     // Generate login token
     const loginToken = generateJWTToken(
-      { 
+      {
         id: user._id,
         email: user.email,
         role: userRole ? userRole.slug : 'user'
@@ -238,7 +249,8 @@ exports.register = async (req, res, next) => {
       token: loginToken,
       user: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: userRole ? userRole.slug : 'user'
       }
@@ -287,7 +299,11 @@ exports.forgotPasswordOtp = async (req, res, next) => {
     });
 
     // Send OTP via email
-    await sendPasswordResetOTP(email.toLowerCase(), otp, user.name);
+    await sendPasswordResetOTP(
+      email.toLowerCase(),
+      otp,
+      `${user.firstName} ${user.lastName}`
+    );
 
     res.status(200).json({
       success: true,
@@ -410,7 +426,7 @@ exports.login = async (req, res, next) => {
 
     // Generate login token
     const loginToken = generateJWTToken(
-      { 
+      {
         id: user._id,
         email: user.email,
         role: user.roleId ? user.roleId.slug : 'user',
@@ -420,10 +436,10 @@ exports.login = async (req, res, next) => {
     );
 
     // Delete any existing login tokens for this user
-    await Token.deleteMany({ 
-      userId: user._id, 
-      type: 'login', 
-      purpose: 'login' 
+    await Token.deleteMany({
+      userId: user._id,
+      type: 'login',
+      purpose: 'login'
     });
 
     // Save login token
@@ -442,7 +458,8 @@ exports.login = async (req, res, next) => {
       token: loginToken,
       user: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.roleId ? user.roleId.slug : 'user',
         roleDetails: user.roleId ? {
@@ -485,7 +502,8 @@ exports.getMe = async (req, res, next) => {
       success: true,
       data: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         phone: user.phone,
         address: user.address,
@@ -509,7 +527,7 @@ exports.logout = async (req, res, next) => {
   try {
     // Get token from header
     const token = req.headers.authorization?.split(' ')[1];
-    
+
     if (token) {
       // Mark token as used (effectively invalidating it)
       await Token.findOneAndUpdate(

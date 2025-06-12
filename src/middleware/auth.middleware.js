@@ -65,7 +65,8 @@ const protect = async (req, res, next) => {
       req.user = {
         id: user._id,
         email: user.email,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.roleId ? user.roleId.slug : 'user',
         roleId: user.roleId,
         branchId: user.branchId ? user.branchId._id : null,
@@ -263,7 +264,8 @@ const optionalAuth = async (req, res, next) => {
       req.user = {
         id: user._id,
         email: user.email,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.roleId ? user.roleId.slug : 'user',
         roleId: user.roleId,
         branchId: user.branchId ? user.branchId._id : null,
