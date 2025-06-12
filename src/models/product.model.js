@@ -173,6 +173,10 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    isGroupItem: {
+      type: Boolean,
+      default: false
+    },
     // Price Changes
     // priceChanges: [{
     //   id: {

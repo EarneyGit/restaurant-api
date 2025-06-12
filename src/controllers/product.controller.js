@@ -156,6 +156,7 @@ exports.getProducts = async (req, res, next) => {
         deleted: product.deleted || false,
         hidePrice: product.hidePrice || false,
         allowAddWithoutChoices: product.allowAddWithoutChoices || false,
+        isGroupItem: product.isGroupItem || false,
         stockManagement: product.stockManagement || {
           isManaged: false,
           quantity: 0,
@@ -309,6 +310,7 @@ exports.getProduct = async (req, res, next) => {
       deleted: product.deleted || false,
       hidePrice: product.hidePrice || false,
       allowAddWithoutChoices: product.allowAddWithoutChoices || false,
+      isGroupItem: product.isGroupItem || false,
       stockManagement: product.stockManagement || {
         isManaged: false,
         quantity: 0,
@@ -438,6 +440,7 @@ exports.createProduct = async (req, res, next) => {
       "deleted",
       "hidePrice",
       "allowAddWithoutChoices",
+      "isGroupItem",
     ];
     booleanFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -501,6 +504,7 @@ exports.createProduct = async (req, res, next) => {
       deleted: populatedProduct.deleted || false,
       hidePrice: populatedProduct.hidePrice || false,
       allowAddWithoutChoices: populatedProduct.allowAddWithoutChoices || false,
+      isGroupItem: populatedProduct.isGroupItem || false,
       stockManagement: populatedProduct.stockManagement || {
         isManaged: false,
         quantity: 0,
@@ -654,6 +658,7 @@ exports.updateProduct = async (req, res, next) => {
       "deleted",
       "hidePrice",
       "allowAddWithoutChoices",
+      "isGroupItem",
     ];
     booleanFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -708,6 +713,7 @@ exports.updateProduct = async (req, res, next) => {
       deleted: product.deleted || false,
       hidePrice: product.hidePrice || false,
       allowAddWithoutChoices: product.allowAddWithoutChoices || false,
+      isGroupItem: product.isGroupItem || false,
       stockManagement: product.stockManagement || {
         isManaged: false,
         quantity: 0,
