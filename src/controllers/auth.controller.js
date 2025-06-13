@@ -603,7 +603,8 @@ exports.verifyToken = async (req, res, next) => {
       message: 'Token is valid',
       user: {
         id: user._id,
-        name: `${user.firstName} ${user.lastName}`,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.roleId ? user.roleId.slug : 'user',
         roleDetails: user.roleId ? {
