@@ -544,4 +544,88 @@ exports.logout = async (req, res, next) => {
     console.error('Logout error:', error);
     next(error);
   }
+};
+
+// @desc    Verify login token
+// @route   GET /api/auth/verify-token
+// @access  Private
+exports.verifyToken = async (req, res, next) => {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authorization token is required',
+      });
+    }
+    const token = authHeader.split(' ')[1];
+
+    // Verify token exists in Token collection and is valid
+    const tokenDoc = await Token.findOne({
+      token,
+      type: 'login',
+      used: false,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!tokenDoc) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired token',
+      });
+    }
+
+    // Decode token to get userId
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token',
+      });
+    }
+
+    // Get user
+    const user = await User.findById(decoded.id)
+      .populate('roleId', 'name slug permissions')
+      .populate('branchId', 'name address');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Return user info (similar to login response)
+    return res.status(200).json({
+      success: true,
+      message: 'Token is valid',
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.roleId ? user.roleId.slug : 'user',
+        roleDetails: user.roleId ? {
+          id: user.roleId._id,
+          name: user.roleId.name,
+          slug: user.roleId.slug
+        } : null,
+        branchId: user.branchId ? user.branchId._id : null,
+        branch: user.branchId ? {
+          id: user.branchId._id,
+          name: user.branchId.name,
+          address: user.branchId.address
+        } : null,
+        permissions: user.roleId ? user.roleId.permissions : []
+      }
+    });
+  } catch (error) {
+    console.error('Verify token error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error during token verification',
+    });
+  }
 }; 

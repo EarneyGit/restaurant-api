@@ -66,6 +66,10 @@ const daySettingsSchema = new mongoose.Schema({
     }
   },
   collection: {
+    useDifferentTimes: {
+      type: Boolean,
+      default: false
+    },
     leadTime: {
       type: Number,
       default: 20,
@@ -78,6 +82,26 @@ const daySettingsSchema = new mongoose.Schema({
           return !v || /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
         },
         message: 'Time must be in HH:MM format'
+      }
+    },
+    customTimes: {
+      start: {
+        type: String,
+        validate: {
+          validator: function(v) {
+            return !v || /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+          },
+          message: 'Time must be in HH:MM format'
+        }
+      },
+      end: {
+        type: String,
+        validate: {
+          validator: function(v) {
+            return !v || /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+          },
+          message: 'Time must be in HH:MM format'
+        }
       }
     }
   },
@@ -301,8 +325,13 @@ orderingTimesSchema.pre('save', function(next) {
         end: "16:00"
       },
       collection: {
+        useDifferentTimes: false,
         leadTime: 20,
-        displayedTime: "12:10"
+        displayedTime: "12:10",
+        customTimes: {
+          start: "11:45",
+          end: "21:50"
+        }
       },
       delivery: {
         useDifferentTimes: false,
