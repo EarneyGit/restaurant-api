@@ -579,7 +579,10 @@ exports.getTemporaryPriceChanges = async (req, res, next) => {
       name: pc.name,
       type: pc.type,
       deleted: pc.deleted || false,
-      deletedAt: pc.deletedAt
+      deletedAt: pc.deletedAt,
+      daysOfWeek: pc.daysOfWeek || [],
+      timeStart: pc.timeStart,
+      timeEnd: pc.timeEnd
     }));
 
     // Separate active and deleted price changes
@@ -713,7 +716,7 @@ exports.updatePriceChange = async (req, res, next) => {
 
     const priceChangeId = req.params.id;
     const branchId = req.user.branchId;
-    const { name, startDate, endDate, startPrice, endPrice, active } = req.body;
+    const { name, startDate, endDate, startPrice, endPrice, active, daysOfWeek, timeStart, timeEnd } = req.body;
 
     const priceChange = await PriceChange.findOne({
       id: priceChangeId,
@@ -751,6 +754,9 @@ exports.updatePriceChange = async (req, res, next) => {
       updateData.value = parseFloat(endPrice);
     }
     if (active !== undefined) updateData.active = active;
+    if (daysOfWeek !== undefined) updateData.daysOfWeek = daysOfWeek;
+    if (timeStart !== undefined) updateData.timeStart = timeStart;
+    if (timeEnd !== undefined) updateData.timeEnd = timeEnd;
 
     await PriceChange.updateOne(
       { _id: priceChange._id },
