@@ -9,7 +9,9 @@ const {
   getPriceChangeDetails,
   getEffectivePrices,
   togglePriceChange,
-  revertExpiredPriceChanges
+  revertExpiredPriceChanges,
+  createIndividualPriceChange,
+  getProductPriceChanges
 } = require('../controllers/price-changes.controller');
 
 // Import authentication middleware
@@ -26,6 +28,9 @@ router.get('/', getPriceChangesData);
 // Apply price changes to products
 router.post('/', applyPriceChanges);
 
+// Create individual price change for a product (for product modals)
+router.post('/individual', createIndividualPriceChange);
+
 // Get temporary price changes categorized by status (Current, Future, Historical)
 router.get('/temporary', getTemporaryPriceChanges);
 
@@ -34,6 +39,9 @@ router.get('/effective-prices', getEffectivePrices);
 
 // Get list of all price changes (legacy endpoint)
 router.get('/list', getPriceChangesList);
+
+// Get price changes for a specific product
+router.get('/product/:productId', getProductPriceChanges);
 
 // Revert expired price changes (manual trigger)
 router.post('/revert-expired', revertExpiredPriceChanges);
