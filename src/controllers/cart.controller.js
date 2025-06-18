@@ -6,59 +6,90 @@ const User = require('../models/user.model');
 const transformCartForResponse = (cart) => {
   if (!cart) return null;
   
+  // Helper function to calculate effective price from price changes
+  const calculateEffectivePrice = (basePrice, priceChanges) => {
+    if (!priceChanges || priceChanges.length === 0) {
+      return basePrice;
+    }
+    
+    // Find the most recent active price change
+    const activePriceChange = priceChanges.find(pc => pc.active);
+    if (!activePriceChange) {
+      return basePrice;
+    }
+    
+    // Calculate effective price based on price change type
+    switch (activePriceChange.type) {
+      case 'temporary':
+        return activePriceChange.tempPrice || activePriceChange.value;
+      case 'permanent':
+      case 'fixed':
+        return activePriceChange.value;
+      case 'increase':
+        return basePrice + activePriceChange.value;
+      case 'decrease':
+        return Math.max(0, basePrice - activePriceChange.value);
+      default:
+        return basePrice;
+    }
+  };
+  
+  let recalculatedSubtotal = 0;
+  
+  const transformedItems = cart.items.map(item => {
+    // Calculate effective price considering price changes
+    const effectivePrice = calculateEffectivePrice(item.priceAtTime, item.productId.priceChanges);
+    
+    // Calculate attribute prices
+    const attributePrices = item.selectedAttributes ? item.selectedAttributes.reduce((total, attr) => {
+      const attrTotal = attr.selectedItems.reduce((sum, selectedItem) => {
+        return sum + (selectedItem.itemPrice * selectedItem.quantity);
+      }, 0);
+      return total + attrTotal;
+    }, 0) : 0;
+
+    // Calculate correct itemTotal with effective price
+    const correctItemTotal = (effectivePrice * item.quantity) + (attributePrices * item.quantity);
+    recalculatedSubtotal += correctItemTotal;
+
+    return {
+      id: item._id,
+      productId: item.productId._id || item.productId,
+      name: item.productId.name || 'Unknown Product',
+      description: item.productId.description || '',
+      price: item.priceAtTime,
+      priceChanges: item.productId.priceChanges || [],
+      quantity: item.quantity,
+      selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
+      specialRequirements: item.specialRequirements || '',
+      images: item.productId.images || [],
+      itemTotal: correctItemTotal,
+      category: item.productId.category || null,
+      selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
+        attributeId: attr.attributeId,
+        attributeName: attr.attributeName,
+        attributeType: attr.attributeType,
+        selectedItems: attr.selectedItems.map(item => ({
+          itemId: item.itemId,
+          itemName: item.itemName,
+          itemPrice: item.itemPrice,
+          quantity: item.quantity
+        }))
+      })) : []
+    };
+  });
+
+  // Recalculate totals with correct prices
+  const recalculatedTotal = recalculatedSubtotal + cart.deliveryFee;
+  
   return {
     id: cart._id,
     userId: cart.userId,
     sessionId: cart.sessionId,
-    items: cart.items.map(item => {
-      // Calculate attribute prices
-      const attributePrices = item.selectedAttributes ? item.selectedAttributes.reduce((total, attr) => {
-        const attrTotal = attr.selectedItems.reduce((sum, selectedItem) => {
-          return sum + (selectedItem.itemPrice * selectedItem.quantity);
-        }, 0);
-        return total + attrTotal;
-      }, 0) : 0;
-
-      // Get the current effective price from the product
-      const currentEffectivePrice = item.productId.currentEffectivePrice || item.productId.price;
-
-      // Calculate total price per item including attributes
-      const totalPricePerItem = currentEffectivePrice + attributePrices;
-
-      return {
-        id: item._id,
-        productId: item.productId._id || item.productId,
-        name: item.productId.name || 'Unknown Product',
-        description: item.productId.description || '',
-        price: {
-          base: item.priceAtTime,
-          currentEffectivePrice: currentEffectivePrice,
-          attributes: attributePrices,
-          total: totalPricePerItem
-        },
-        hasActivePriceChanges: item.productId.hasActivePriceChanges || false,
-        quantity: item.quantity,
-        selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
-        specialRequirements: item.specialRequirements || '',
-        images: item.productId.images || [],
-        itemTotal: item.itemTotal,
-        category: item.productId.category || null,
-        selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
-          attributeId: attr.attributeId,
-          attributeName: attr.attributeName,
-          attributeType: attr.attributeType,
-          selectedItems: attr.selectedItems.map(item => ({
-            itemId: item.itemId,
-            itemName: item.itemName,
-            itemPrice: item.itemPrice,
-            quantity: item.quantity
-          }))
-        })) : []
-      };
-    }),
-    subtotal: cart.subtotal,
+    items: transformedItems,
+    subtotal: recalculatedSubtotal,
     deliveryFee: cart.deliveryFee,
-    total: cart.total,
+    total: recalculatedTotal,
     itemCount: cart.itemCount,
     orderType: cart.orderType,
     branchId: cart.branchId,
@@ -97,7 +128,18 @@ exports.getCart = async (req, res, next) => {
     }
     
     const cart = await Cart.findOne(query)
-      .populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens')
+      .populate({
+        path: 'items.productId',
+        select: 'name price images category description allergens',
+        populate: {
+          path: 'priceChanges',
+          match: {
+            active: true,
+            startDate: { $lte: new Date() },
+            endDate: { $gte: new Date() },
+          },
+        }
+      })
       .populate('branchId', 'name address');
     
     if (!cart) {
@@ -238,7 +280,18 @@ exports.addToCart = async (req, res, next) => {
     );
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
+    await cart.populate({
+      path: 'items.productId',
+      select: 'name price images category description allergens',
+      populate: {
+        path: 'priceChanges',
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      }
+    });
     
     res.status(200).json({
       success: true,
@@ -322,7 +375,18 @@ exports.updateCartItem = async (req, res, next) => {
     await cart.save();
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
+    await cart.populate({
+      path: 'items.productId',
+      select: 'name price images category description allergens',
+      populate: {
+        path: 'priceChanges',
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      }
+    });
     
     res.status(200).json({
       success: true,
@@ -376,7 +440,18 @@ exports.removeFromCart = async (req, res, next) => {
     await cart.removeItem(itemId);
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
+    await cart.populate({
+      path: 'items.productId',
+      select: 'name price images category description allergens',
+      populate: {
+        path: 'priceChanges',
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      }
+    });
     
     res.status(200).json({
       success: true,
@@ -479,7 +554,18 @@ exports.updateCartDelivery = async (req, res, next) => {
     await cart.save();
     
     // Populate cart items for response
-    await cart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
+    await cart.populate({
+      path: 'items.productId',
+      select: 'name price images category description allergens',
+      populate: {
+        path: 'priceChanges',
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      }
+    });
     
     res.status(200).json({
       success: true,
@@ -511,7 +597,18 @@ exports.mergeCart = async (req, res, next) => {
     if (!guestCart || guestCart.items.length === 0) {
       // No guest cart to merge, just return user's existing cart
       let userCart = await Cart.findOrCreateCart(userId);
-      await userCart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
+      await userCart.populate({
+        path: 'items.productId',
+        select: 'name price images category description allergens',
+        populate: {
+          path: 'priceChanges',
+          match: {
+            active: true,
+            startDate: { $lte: new Date() },
+            endDate: { $gte: new Date() },
+          },
+        }
+      });
       
       return res.status(200).json({
         success: true,
@@ -538,7 +635,18 @@ exports.mergeCart = async (req, res, next) => {
     await Cart.findByIdAndDelete(guestCart._id);
     
     // Populate cart items for response
-    await userCart.populate('items.productId', 'name price currentEffectivePrice hasActivePriceChanges images category description allergens');
+    await userCart.populate({
+      path: 'items.productId',
+      select: 'name price images category description allergens',
+      populate: {
+        path: 'priceChanges',
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      }
+    });
     
     res.status(200).json({
       success: true,
