@@ -12,6 +12,34 @@ const populateOptions = {
   select: 'name price description images category allergens weight calorificValue availability'
 };
 
+// Helper function to calculate effective price from price changes
+const calculateEffectivePrice = (basePrice, priceChanges) => {
+  if (!priceChanges || priceChanges.length === 0) {
+    return basePrice;
+  }
+  
+  // Find the most recent active price change
+  const activePriceChange = priceChanges.find(pc => pc.active);
+  if (!activePriceChange) {
+    return basePrice;
+  }
+  
+  // Calculate effective price based on price change type
+  switch (activePriceChange.type) {
+    case 'temporary':
+      return activePriceChange.tempPrice || activePriceChange.value;
+    case 'permanent':
+    case 'fixed':
+      return activePriceChange.value;
+    case 'increase':
+      return basePrice + activePriceChange.value;
+    case 'decrease':
+      return Math.max(0, basePrice - activePriceChange.value);
+    default:
+      return basePrice;
+  }
+};
+
 // @desc    Get all orders
 // @route   GET /api/orders
 // @access  Public/Private (Branch-based)
@@ -408,7 +436,16 @@ exports.createOrder = async (req, res, next) => {
         });
       }
       
-      const product = await Product.findById(item.product);
+      const product = await Product.findById(item.product)
+        .populate({
+          path: 'priceChanges',
+          match: {
+            active: true,
+            startDate: { $lte: new Date() },
+            endDate: { $gte: new Date() },
+          },
+        });
+      
       if (!product) {
         return res.status(404).json({
           success: false,
@@ -423,11 +460,14 @@ exports.createOrder = async (req, res, next) => {
         });
       }
       
-      // Add product price to order item
+      // Calculate effective price considering active price changes
+      const effectivePrice = calculateEffectivePrice(product.price, product.priceChanges);
+      
+      // Add product with effective price to order item
       validatedProducts.push({
         product: item.product,
         quantity: item.quantity,
-        price: product.price,
+        price: effectivePrice,
         notes: item.notes,
         selectedAttributes: item.selectedAttributes || []
       });

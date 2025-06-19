@@ -307,6 +307,223 @@ exports.applyPriceChanges = async (req, res, next) => {
   }
 };
 
+// @desc    Create individual price change for a product
+// @route   POST /api/price-changes/individual
+// @access  Private (Admin/Manager/Staff)
+exports.createIndividualPriceChange = async (req, res, next) => {
+  try {
+    const userRole = req.user ? req.user.role : null;
+    
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    const { 
+      productId, 
+      name, 
+      type, 
+      value, 
+      startDate, 
+      endDate, 
+      daysOfWeek = [], 
+      timeStart, 
+      timeEnd,
+      active = true 
+    } = req.body;
+    const branchId = req.user.branchId;
+
+    if (!productId || !name || !type || value === undefined || !startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product ID, name, type, value, start date, and end date are required'
+      });
+    }
+
+    // Validate product exists and belongs to branch
+    const product = await Product.findOne({
+      _id: productId,
+      branchId: branchId
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found in your branch'
+      });
+    }
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (start >= end) {
+      return res.status(400).json({
+        success: false,
+        message: 'End date must be after start date'
+      });
+    }
+
+    // Check for conflicting active price changes
+    const conflictingPriceChange = await PriceChange.findOne({
+      productId: productId,
+      active: true,
+      $or: [
+        {
+          startDate: { $lte: end },
+          endDate: { $gte: start }
+        }
+      ]
+    });
+
+    if (conflictingPriceChange) {
+      // Deactivate conflicting price change
+      await PriceChange.updateOne(
+        { _id: conflictingPriceChange._id },
+        { $set: { active: false } }
+      );
+    }
+
+    // Generate unique ID for the price change
+    const uniquePriceChangeId = uuidv4();
+
+    // Calculate price based on type
+    let tempPrice;
+    switch (type) {
+      case 'increase':
+        tempPrice = product.price * (1 + value / 100);
+        break;
+      case 'decrease':
+        tempPrice = product.price * (1 - value / 100);
+        break;
+      case 'fixed':
+        tempPrice = value;
+        break;
+      default:
+        tempPrice = value;
+    }
+
+    // Create new price change
+    const priceChangeData = {
+      id: uniquePriceChangeId,
+      productId: product._id,
+      branchId: branchId,
+      name: name,
+      type: type,
+      originalPrice: product.price,
+      tempPrice: tempPrice,
+      revertPrice: product.price,
+      value: value,
+      startDate: start,
+      endDate: end,
+      daysOfWeek: daysOfWeek || [],
+      timeStart: timeStart || null,
+      timeEnd: timeEnd || null,
+      active: active,
+      autoRevert: true,
+      createdBy: req.user.id
+    };
+
+    const newPriceChange = await PriceChange.create(priceChangeData);
+
+    res.status(201).json({
+      success: true,
+      message: 'Price change created successfully',
+      data: {
+        id: newPriceChange.id,
+        productId: product._id,
+        productName: product.name,
+        priceChangeId: uniquePriceChangeId,
+        originalPrice: product.price,
+        newPrice: tempPrice,
+        name: name,
+        type: type,
+        startDate: startDate,
+        endDate: endDate,
+        daysOfWeek: daysOfWeek,
+        timeStart: timeStart,
+        timeEnd: timeEnd,
+        active: active
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get price changes for a specific product
+// @route   GET /api/price-changes/product/:productId
+// @access  Private (Admin/Manager/Staff)
+exports.getProductPriceChanges = async (req, res, next) => {
+  try {
+    const userRole = req.user ? req.user.role : null;
+    
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    const { productId } = req.params;
+    const branchId = req.user.branchId;
+
+    // Validate product exists and belongs to branch
+    const product = await Product.findOne({
+      _id: productId,
+      branchId: branchId
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found in your branch'
+      });
+    }
+
+    // Get all price changes for this product
+    const priceChanges = await PriceChange.find({
+      productId: productId,
+      branchId: branchId,
+      deleted: { $ne: true }
+    })
+    .sort({ startDate: -1 })
+    .lean();
+
+    const now = new Date();
+    
+    // Format price changes
+    const formattedPriceChanges = priceChanges.map(pc => ({
+      id: pc.id,
+      name: pc.name,
+      type: pc.type,
+      value: pc.value,
+      startDate: pc.startDate,
+      endDate: pc.endDate,
+      daysOfWeek: pc.daysOfWeek || [],
+      timeStart: pc.timeStart,
+      timeEnd: pc.timeEnd,
+      active: pc.active,
+      originalPrice: pc.originalPrice,
+      tempPrice: pc.tempPrice,
+      revertPrice: pc.revertPrice,
+      status: pc.active ? 
+        (new Date(pc.startDate) > now ? 'future' : 
+         new Date(pc.endDate) >= now ? 'current' : 'historical') : 
+        'historical'
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formattedPriceChanges
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get temporary price changes categorized by status
 // @route   GET /api/price-changes/temporary
 // @access  Private (Admin/Manager/Staff)
@@ -362,7 +579,10 @@ exports.getTemporaryPriceChanges = async (req, res, next) => {
       name: pc.name,
       type: pc.type,
       deleted: pc.deleted || false,
-      deletedAt: pc.deletedAt
+      deletedAt: pc.deletedAt,
+      daysOfWeek: pc.daysOfWeek || [],
+      timeStart: pc.timeStart,
+      timeEnd: pc.timeEnd
     }));
 
     // Separate active and deleted price changes
@@ -496,7 +716,7 @@ exports.updatePriceChange = async (req, res, next) => {
 
     const priceChangeId = req.params.id;
     const branchId = req.user.branchId;
-    const { name, startDate, endDate, startPrice, endPrice, active } = req.body;
+    const { name, startDate, endDate, startPrice, endPrice, active, daysOfWeek, timeStart, timeEnd } = req.body;
 
     const priceChange = await PriceChange.findOne({
       id: priceChangeId,
@@ -534,6 +754,9 @@ exports.updatePriceChange = async (req, res, next) => {
       updateData.value = parseFloat(endPrice);
     }
     if (active !== undefined) updateData.active = active;
+    if (daysOfWeek !== undefined) updateData.daysOfWeek = daysOfWeek;
+    if (timeStart !== undefined) updateData.timeStart = timeStart;
+    if (timeEnd !== undefined) updateData.timeEnd = timeEnd;
 
     await PriceChange.updateOne(
       { _id: priceChange._id },
