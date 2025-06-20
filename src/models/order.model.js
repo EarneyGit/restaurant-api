@@ -107,6 +107,29 @@ const orderSchema = new mongoose.Schema(
       },
       originalTotal: Number
     },
+    // Discount applied field for easier querying
+    discountApplied: {
+      discountId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Discount'
+      },
+      code: String,
+      name: String,
+      discountType: {
+        type: String,
+        enum: ['percentage', 'fixed']
+      },
+      discountValue: Number,
+      discountAmount: {
+        type: Number,
+        default: 0
+      },
+      originalTotal: Number,
+      appliedAt: {
+        type: Date,
+        default: Date.now
+      }
+    },
     // Final total after discount
     finalTotal: {
       type: Number,

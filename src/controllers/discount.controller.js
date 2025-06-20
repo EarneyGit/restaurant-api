@@ -338,7 +338,7 @@ const deleteDiscount = async (req, res) => {
 // @access  Public (for order validation)
 const validateDiscountCode = async (req, res) => {
   try {
-    const { code, branchId, orderTotal, deliveryMethod, userId } = req.body;
+    const { code, branchId, orderTotal, deliveryMethod, orderType, userId } = req.body;
     
     if (!code || !branchId || !orderTotal) {
       return res.status(400).json({
@@ -364,18 +364,23 @@ const validateDiscountCode = async (req, res) => {
     // Create mock order for validation
     const mockOrder = {
       totalAmount: orderTotal,
-      deliveryMethod: deliveryMethod
+      deliveryMethod: deliveryMethod,
+      orderType: orderType
     };
     
-    // Validate discount (pass branchId to check availability)
-    const validation = discount.isValidForOrder(mockOrder, null, branchId);
+    // Use comprehensive validation method
+    console.log(`Validating discount ${code} for user: ${userId}, branch: ${branchId}`);
+    const validation = await discount.validateForOrderCreation(mockOrder, userId, branchId);
     
     if (!validation.valid) {
+      console.log(`Discount validation failed: ${validation.reason}`);
       return res.status(400).json({
         success: false,
         message: validation.reason
       });
     }
+    
+    console.log(`Discount validation passed for ${code}`);
     
     // Calculate discount
     const discountAmount = discount.calculateDiscount(orderTotal);
@@ -394,7 +399,7 @@ const validateDiscountCode = async (req, res) => {
         newTotal: newTotal,
         savings: discountAmount
       },
-      message: 'Discount code is valid'
+      message: 'Coupon applied'
     });
     
   } catch (error) {
@@ -481,6 +486,63 @@ const getDiscountStats = async (req, res) => {
   }
 };
 
+// @desc    Debug: Check user usage for a discount
+// @route   GET /api/discounts/:code/user-usage/:userId
+// @access  Private (Admin/Manager/Staff only)
+const checkUserUsage = async (req, res) => {
+  try {
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
+    
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can access this endpoint'
+      });
+    }
+    
+    const { code, userId } = req.params;
+    
+    // Find the discount
+    const discount = await Discount.findOne({
+      code: code.toUpperCase(),
+      isActive: true
+    });
+    
+    if (!discount) {
+      return res.status(404).json({
+        success: false,
+        message: 'Discount not found'
+      });
+    }
+    
+    // Get user usage stats
+    const usageStats = await discount.getUserUsageStats(userId);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        discountCode: discount.code,
+        discountName: discount.name,
+        maxUsesPerCustomer: discount.maxUses.perCustomer,
+        userId: userId,
+        currentUsage: usageStats.totalUsage,
+        remainingUses: Math.max(0, discount.maxUses.perCustomer - usageStats.totalUsage),
+        canUseDiscount: usageStats.totalUsage < discount.maxUses.perCustomer,
+        orders: usageStats.orders
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in checkUserUsage:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'production' ? null : error.message
+    });
+  }
+};
+
 module.exports = {
   getDiscounts,
   getDiscount,
@@ -488,5 +550,6 @@ module.exports = {
   updateDiscount,
   deleteDiscount,
   validateDiscountCode,
-  getDiscountStats
+  getDiscountStats,
+  checkUserUsage
 }; 

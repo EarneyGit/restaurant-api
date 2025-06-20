@@ -50,12 +50,6 @@ const discountSchema = new mongoose.Schema(
       of: Boolean,
       default: {}
     },
-    // Keep legacy outlet format for backward compatibility
-    legacyOutlets: {
-      dunfermline: { type: Boolean, default: true },
-      edinburgh: { type: Boolean, default: true },
-      glasgow: { type: Boolean, default: true }
-    },
     timeDependent: {
       type: Boolean,
       default: false
@@ -169,24 +163,13 @@ discountSchema.methods.isValidForOrder = function(order, user = null, checkBranc
   if (checkBranchId) {
     let isBranchEnabled = true;
     
-    // Check new outlets format first (Map)
+    // Check outlets format (Map)
     if (this.outlets && this.outlets.size > 0) {
       // If we have specific branch entries, check if this branch is enabled
       if (this.outlets.has(checkBranchId)) {
         isBranchEnabled = this.outlets.get(checkBranchId);
       } else {
         // If the branch isn't in the list, default to false
-        isBranchEnabled = false;
-      }
-    } else if (this.legacyOutlets) {
-      // Fall back to legacy format if no new format data
-      const branchNameMap = {
-        // This should be replaced with actual logic to map branchId to name
-        // For now, using dummy mapping for backward compatibility
-      };
-      
-      const branchName = branchNameMap[checkBranchId];
-      if (branchName && this.legacyOutlets[branchName] === false) {
         isBranchEnabled = false;
       }
     }
@@ -206,22 +189,27 @@ discountSchema.methods.isValidForOrder = function(order, user = null, checkBranc
     return { valid: false, reason: `Maximum spend of £${this.maxSpend.toFixed(2)} exceeded` };
   }
   
-  // Check day availability
-  const dayName = new Date().toLocaleDateString('en-US', { weekday: 'lowercase' });
+  // Check day availability - Fixed the weekday issue
+  const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   if (!this.daysAvailable[dayName]) {
     return { valid: false, reason: 'Discount not available today' };
   }
   
-  // Check service type
-  if (order.deliveryMethod) {
+  // Check service type using orderType (preferred) or deliveryMethod (fallback)
+  const orderTypeToCheck = order.orderType || order.deliveryMethod;
+  if (orderTypeToCheck) {
     const serviceTypeMap = {
+      'collection': 'collection',
       'pickup': 'collection',
       'delivery': 'delivery',
-      'dine_in': 'tableOrdering'
+      'dine_in': 'tableOrdering',
+      'tableordering': 'tableOrdering',
+      'table-ordering': 'tableOrdering'
     };
-    const serviceType = serviceTypeMap[order.deliveryMethod];
+    
+    const serviceType = serviceTypeMap[orderTypeToCheck.toLowerCase()];
     if (serviceType && !this.serviceTypes[serviceType]) {
-      return { valid: false, reason: `Discount not available for ${order.deliveryMethod}` };
+      return { valid: false, reason: `Discount not available for ${orderTypeToCheck}` };
     }
   }
   
@@ -229,6 +217,170 @@ discountSchema.methods.isValidForOrder = function(order, user = null, checkBranc
   if (this.firstOrderOnly && user) {
     // This would need to be checked against user's order history
     // For now, we'll assume it's valid
+  }
+  
+  return { valid: true };
+};
+
+// Helper method to get current usage statistics for a user
+discountSchema.methods.getUserUsageStats = async function(userId) {
+  const Order = require('./order.model');
+  
+  try {
+    const userOrders = await Order.find({
+      $or: [
+        { 'discountApplied.discountId': this._id },
+        { 'discount.discountId': this._id }
+      ],
+      user: userId,
+      status: { $ne: 'cancelled' }
+    }).select('_id createdAt discount discountApplied');
+    
+    console.log(`Found ${userOrders.length} orders for user ${userId} with discount ${this.code}`);
+    console.log('Orders:', userOrders.map(order => ({
+      id: order._id,
+      createdAt: order.createdAt,
+      hasDiscount: !!order.discount,
+      hasDiscountApplied: !!order.discountApplied
+    })));
+    
+    return {
+      totalUsage: userOrders.length,
+      orders: userOrders
+    };
+  } catch (error) {
+    console.error('Error getting user usage stats:', error);
+    return { totalUsage: 0, orders: [] };
+  }
+};
+
+// Comprehensive validation method for order creation with usage tracking
+discountSchema.methods.validateForOrderCreation = async function(order, userId = null, branchId = null) {
+  const Order = require('./order.model');
+  
+  // Priority 1: Check if coupon exists and is active
+  if (!this.isActive) {
+    return { valid: false, reason: 'Coupon code is not active' };
+  }
+  
+  // Priority 2: Check if discount is available for the branch
+  if (branchId) {
+    let isBranchEnabled = true;
+    
+    if (this.outlets && this.outlets.size > 0) {
+      if (this.outlets.has(branchId)) {
+        isBranchEnabled = this.outlets.get(branchId);
+      } else {
+        isBranchEnabled = false;
+      }
+    }
+    
+    if (!isBranchEnabled) {
+      return { valid: false, reason: 'Coupon not available at this branch' };
+    }
+  }
+  
+  // Priority 3: Check service type (order type)
+  const orderTypeToCheck = order.orderType || order.deliveryMethod;
+  if (orderTypeToCheck) {
+    const serviceTypeMap = {
+      'collection': 'collection',
+      'pickup': 'collection',
+      'delivery': 'delivery',
+      'dine_in': 'tableOrdering',
+      'tableordering': 'tableOrdering',
+      'table-ordering': 'tableOrdering'
+    };
+    
+    const serviceType = serviceTypeMap[orderTypeToCheck.toLowerCase()];
+    if (serviceType && !this.serviceTypes[serviceType]) {
+      return { valid: false, reason: `Coupon not available for ${orderTypeToCheck} orders` };
+    }
+  }
+  
+  // Priority 4: Check usage limits
+  try {
+    // Check total usage limit
+    if (this.maxUses.total > 0) {
+      const totalUsageCount = await Order.countDocuments({
+        $or: [
+          { 'discountApplied.discountId': this._id },
+          { 'discount.discountId': this._id }
+        ],
+        status: { $ne: 'cancelled' }
+      });
+      
+      if (totalUsageCount >= this.maxUses.total) {
+        return { valid: false, reason: 'Coupon usage limit exceeded' };
+      }
+    }
+    
+    // Check per customer usage limit
+    if (this.maxUses.perCustomer > 0 && userId) {
+      const usageStats = await this.getUserUsageStats(userId);
+      const customerUsageCount = usageStats.totalUsage;
+      
+      console.log(`User ${userId} has used coupon ${this.code} ${customerUsageCount} times. Limit: ${this.maxUses.perCustomer}`);
+      
+      if (customerUsageCount >= this.maxUses.perCustomer) {
+        return { valid: false, reason: `You have reached the maximum usage limit (${this.maxUses.perCustomer}) for this coupon` };
+      }
+    }
+    
+    // Check per day usage limit
+    if (this.maxUses.perDay > 0) {
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+      
+      const dailyUsageCount = await Order.countDocuments({
+        $or: [
+          { 'discountApplied.discountId': this._id },
+          { 'discount.discountId': this._id }
+        ],
+        createdAt: { $gte: startOfDay, $lte: endOfDay },
+        status: { $ne: 'cancelled' }
+      });
+      
+      if (dailyUsageCount >= this.maxUses.perDay) {
+        return { valid: false, reason: 'Daily usage limit for this coupon has been reached' };
+      }
+    }
+  } catch (error) {
+    console.error('Error checking usage limits:', error);
+    return { valid: false, reason: 'Error validating coupon usage' };
+  }
+  
+  // Priority 5: Check day availability
+  const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  if (!this.daysAvailable[dayName]) {
+    return { valid: false, reason: 'Coupon not available today' };
+  }
+  
+  // Priority 6: Check minimum and maximum spend
+  if (order.totalAmount < this.minSpend) {
+    return { valid: false, reason: `Minimum spend of £${this.minSpend.toFixed(2)} required` };
+  }
+  
+  if (this.maxSpend > 0 && order.totalAmount > this.maxSpend) {
+    return { valid: false, reason: `Maximum spend of £${this.maxSpend.toFixed(2)} exceeded` };
+  }
+  
+  // Priority 7: Check first order only requirement
+  if (this.firstOrderOnly && userId) {
+    try {
+      const existingOrderCount = await Order.countDocuments({
+        user: userId,
+        status: { $ne: 'cancelled' }
+      });
+      
+      if (existingOrderCount > 0) {
+        return { valid: false, reason: 'This coupon is only valid for first-time customers' };
+      }
+    } catch (error) {
+      console.error('Error checking first order requirement:', error);
+      return { valid: false, reason: 'Error validating first order requirement' };
+    }
   }
   
   return { valid: true };

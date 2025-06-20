@@ -1,6 +1,7 @@
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
+const Discount = require('../models/discount.model');
 const OrderingTimes = require('../models/ordering-times.model');
 const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
 const { getIO } = require('../utils/socket');
@@ -488,6 +489,114 @@ exports.createOrder = async (req, res, next) => {
     // Update the products array with validated data
     req.body.products = validatedProducts;
 
+    // Calculate total amount first (including attribute prices)
+    const totalAmount = validatedProducts.reduce((total, item) => {
+      let itemTotal = item.price * item.quantity;
+      
+      // Add attribute item prices
+      if (item.selectedAttributes && item.selectedAttributes.length > 0) {
+        const attributeTotal = item.selectedAttributes.reduce((attrTotal, attr) => {
+          if (attr.selectedItems && attr.selectedItems.length > 0) {
+            const attrItemTotal = attr.selectedItems.reduce((itemSum, selectedItem) => {
+              return itemSum + (selectedItem.itemPrice * selectedItem.quantity);
+            }, 0);
+            return attrTotal + attrItemTotal;
+          }
+          return attrTotal;
+        }, 0);
+        
+        // Multiply attribute total by product quantity
+        itemTotal += (attributeTotal * item.quantity);
+      }
+      
+      return total + itemTotal;
+    }, 0);
+    
+    req.body.totalAmount = totalAmount;
+
+    // Coupon validation and discount calculation
+    let discountData = null;
+    let finalTotal = totalAmount;
+    
+    if (req.body.couponCode) {
+      try {
+        // Priority 1: Find the coupon and check if it exists and is active
+        const discount = await Discount.findOne({
+          code: req.body.couponCode.toUpperCase(),
+          isActive: true
+        });
+        
+        if (!discount) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid coupon code'
+          });
+        }
+        
+        // Create order object for validation
+        const orderForValidation = {
+          totalAmount: totalAmount,
+          deliveryMethod: req.body.deliveryMethod,
+          orderType: req.body.orderType
+        };
+        
+        // Priority-based validation using the new method
+        const userId = isAuthenticated ? req.user._id : null;
+        console.log(`Validating coupon ${req.body.couponCode} for user: ${userId}, branch: ${targetBranchId}`);
+        
+        const validation = await discount.validateForOrderCreation(
+          orderForValidation,
+          userId,
+          targetBranchId.toString()
+        );
+        
+        if (!validation.valid) {
+          console.log(`Coupon validation failed: ${validation.reason}`);
+          return res.status(400).json({
+            success: false,
+            message: validation.reason
+          });
+        }
+        
+        console.log(`Coupon validation passed for ${req.body.couponCode}`);
+        
+        // Calculate discount amount
+        const discountAmount = discount.calculateDiscount(totalAmount);
+        finalTotal = Math.max(0, totalAmount - discountAmount);
+        
+        // Prepare discount data for order
+        discountData = {
+          discountId: discount._id,
+          code: discount.code,
+          name: discount.name,
+          discountType: discount.discountType,
+          discountValue: discount.discountValue,
+          discountAmount: discountAmount,
+          originalTotal: totalAmount
+        };
+        
+        // Set discount information in the order data
+        req.body.discount = discountData;
+        req.body.discountApplied = {
+          ...discountData,
+          appliedAt: new Date()
+        };
+        req.body.finalTotal = finalTotal;
+        
+        console.log(`Discount applied: ${discountAmount}, Final total: ${finalTotal}`);
+        
+      } catch (error) {
+        console.error('Error validating coupon:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Error validating coupon code'
+        });
+      }
+    } else {
+      // No coupon applied, final total equals total amount
+      req.body.finalTotal = totalAmount;
+    }
+
     // Get estimated time to complete based on ordering times configuration
     let estimatedTimeToComplete = 45; // Default 45 minutes
     
@@ -551,6 +660,9 @@ exports.createOrder = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: populatedOrder,
+      discount: discountData,
+      finalTotal: finalTotal,
+      savings: discountData ? discountData.discountAmount : 0,
       stockDeduction: stockDeduction.updated,
       branchId: targetBranchId
     });

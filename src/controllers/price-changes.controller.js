@@ -564,8 +564,11 @@ exports.getTemporaryPriceChanges = async (req, res, next) => {
       deleted: pc.deleted 
     }))) // Debug log
 
+    // Filter out price changes with null productId (product was deleted)
+    const validPriceChanges = priceChanges.filter(pc => pc.productId);
+
     // Process and categorize price changes
-    const allPriceChanges = priceChanges.map(pc => ({
+    const allPriceChanges = validPriceChanges.map(pc => ({
       id: pc.id,
       productId: pc.productId._id,
       productName: pc.productId.name,
@@ -662,6 +665,14 @@ exports.getPriceChangeDetails = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Price change not found in your branch'
+      });
+    }
+
+    // Check if the product still exists
+    if (!priceChange.productId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product associated with this price change no longer exists'
       });
     }
 
