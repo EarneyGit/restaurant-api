@@ -6,7 +6,8 @@ const {
   updateDiscount,
   deleteDiscount,
   validateDiscountCode,
-  getDiscountStats
+  getDiscountStats,
+  checkUserUsage
 } = require('../controllers/discount.controller');
 
 const { protect } = require('../middleware/auth.middleware');
@@ -25,6 +26,9 @@ router.route('/')
   .post(createDiscount);
 
 router.get('/stats', getDiscountStats);
+
+// Debug route for checking user usage
+router.get('/:code/user-usage/:userId', checkUserUsage);
 
 router.route('/:id')
   .get(getDiscount)
