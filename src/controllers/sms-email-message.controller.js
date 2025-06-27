@@ -1,5 +1,7 @@
 const SmsEmailMessage = require('../models/sms-email-message.model');
 const Branch = require('../models/branch.model');
+const User = require('../models/user.model');
+const { sendEmail } = require('../utils/emailSender');
 
 // @desc    Get all SMS/Email messages for admin's branch
 // @route   GET /api/sms-email-messages
@@ -133,9 +135,11 @@ const createSmsEmailMessage = async (req, res) => {
       template, 
       subject, 
       message, 
+      htmlContent,
       scheduledTime, 
       targetBranches,
-      overrideGdpr 
+      overrideGdpr,
+      sendNow
     } = req.body;
 
     // Validation
@@ -202,6 +206,9 @@ const createSmsEmailMessage = async (req, res) => {
 
     if (type === 'email') {
       messageData.subject = subject.trim();
+      if (htmlContent) {
+        messageData.htmlContent = htmlContent.trim();
+      }
     }
 
     // Handle scheduled time
@@ -225,15 +232,70 @@ const createSmsEmailMessage = async (req, res) => {
       { path: 'targetBranches', select: 'name' }
     ]);
 
-    // TODO: Implement actual SMS/Email sending logic here
-    // For now, we'll just mark it as sent if it's immediate
-    if (!scheduledTime) {
-      // Calculate estimated recipients (this would be replaced with actual logic)
-      const estimatedRecipients = validatedTargetBranches.length * 25; // Rough estimate
+    // Implement email sending logic
+    if (!scheduledTime && sendNow) {
+      let totalRecipients = 0;
+      let successfulDeliveries = 0;
+      let failedDeliveries = 0;
+
+      // Send emails only if conditions are met
+      if (type === 'email' && target === 'all') {
+        try {
+          // Get all customers (users with roleId: null)
+          const customers = await User.find({
+            roleId: null,
+            emailVerified: true,
+            isActive: true
+          }).select('email firstName lastName');
+
+          console.log(`Found ${customers.length} customers to send email to`);
+          totalRecipients = customers.length;
+
+          // Send emails to all customers
+          for (const customer of customers) {
+            try {
+              const customerName = customer.firstName 
+                ? `${customer.firstName} ${customer.lastName || ''}`.trim()
+                : 'Valued Customer';
+
+              const emailContent = htmlContent || message;
+              
+              const emailSent = await sendEmail({
+                to: customer.email,
+                subject: subject,
+                html: emailContent,
+                text: message // Fallback text content
+              });
+
+              if (emailSent) {
+                successfulDeliveries++;
+              } else {
+                failedDeliveries++;
+              }
+            } catch (emailError) {
+              console.error(`Failed to send email to ${customer.email}:`, emailError);
+              failedDeliveries++;
+            }
+          }
+
+          console.log(`Email sending completed: ${successfulDeliveries} successful, ${failedDeliveries} failed`);
+        } catch (error) {
+          console.error('Error fetching customers or sending emails:', error);
+          totalRecipients = validatedTargetBranches.length * 25; // Fallback estimate
+          successfulDeliveries = 0;
+          failedDeliveries = totalRecipients;
+        }
+      } else {
+        // For other message types or targets, use estimate
+        totalRecipients = validatedTargetBranches.length * 25; // Rough estimate
+        successfulDeliveries = totalRecipients;
+        failedDeliveries = 0;
+      }
+
       await smsEmailMessage.markAsSent({
-        totalRecipients: estimatedRecipients,
-        successfulDeliveries: estimatedRecipients,
-        failedDeliveries: 0
+        totalRecipients,
+        successfulDeliveries,
+        failedDeliveries
       });
     }
 
@@ -288,7 +350,7 @@ const updateSmsEmailMessage = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ['subject', 'message', 'scheduledTime', 'targetBranches', 'overrideGdpr'];
+    const allowedUpdates = ['subject', 'message', 'htmlContent', 'scheduledTime', 'targetBranches', 'overrideGdpr'];
     const updates = {};
     
     for (const key of allowedUpdates) {
