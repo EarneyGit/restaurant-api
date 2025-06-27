@@ -160,29 +160,79 @@ exports.getOrders = async (req, res, next) => {
     // Transform the response to include complete product details
     const transformedOrders = orders.map(order => {
       const orderObj = order.toObject();
-      orderObj.products = orderObj.products.map(item => ({
-        id: item._id,
-        product: item.product,
-        quantity: item.quantity,
-        price: item.price,
-        notes: item.notes,
-        selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
-          attributeId: attr.attributeId,
-          attributeName: attr.attributeName,
-          attributeType: attr.attributeType,
-          selectedItems: attr.selectedItems.map(attrItem => ({
-            itemId: attrItem.itemId,
-            itemName: attrItem.itemName,
-            itemPrice: attrItem.itemPrice,
-            quantity: attrItem.quantity
-          }))
-        })) : [],
-        itemTotal: item.price * item.quantity + (item.selectedAttributes || []).reduce((total, attr) => 
+      orderObj.products = orderObj.products.map(item => {
+        // Calculate attribute total for this product
+        const attributeTotal = (item.selectedAttributes || []).reduce((total, attr) => 
           total + attr.selectedItems.reduce((sum, attrItem) => 
             sum + (attrItem.itemPrice * attrItem.quantity), 0
           ), 0
-        )
-      }));
+        );
+        
+        // Calculate item total with proper breakdown
+        const baseTotal = item.price * item.quantity;
+        const attributesTotalForQuantity = attributeTotal * item.quantity;
+        const itemTotal = baseTotal + attributesTotalForQuantity;
+        
+        return {
+          id: item._id,
+          product: item.product,
+          quantity: item.quantity,
+          price: {
+            base: item.price,
+            currentEffectivePrice: item.price,
+            attributes: attributeTotal,
+            total: itemTotal
+          },
+          notes: item.notes,
+          selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
+            attributeId: attr.attributeId,
+            attributeName: attr.attributeName,
+            attributeType: attr.attributeType,
+            selectedItems: attr.selectedItems.map(attrItem => ({
+              itemId: attrItem.itemId,
+              itemName: attrItem.itemName,
+              itemPrice: attrItem.itemPrice,
+              quantity: attrItem.quantity
+            }))
+          })) : [],
+          itemTotal: itemTotal
+        };
+      });
+      
+      // Calculate proper totals
+      orderObj.subtotal = orderObj.products.reduce((total, p) => {
+        return total + (p.price.base * p.quantity);
+      }, 0);
+      
+      orderObj.deliveryFee = orderObj.deliveryFee || 0;
+      orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
+      
+      // Enhanced discount information
+      if (orderObj.discount) {
+        orderObj.discount = {
+          discountId: orderObj.discount.discountId,
+          code: orderObj.discount.code,
+          name: orderObj.discount.name,
+          discountType: orderObj.discount.discountType,
+          discountValue: orderObj.discount.discountValue,
+          discountAmount: orderObj.discount.discountAmount,
+          originalTotal: orderObj.discount.originalTotal
+        };
+      }
+      
+      if (orderObj.discountApplied) {
+        orderObj.discountApplied = {
+          discountId: orderObj.discountApplied.discountId,
+          code: orderObj.discountApplied.code,
+          name: orderObj.discountApplied.name,
+          discountType: orderObj.discountApplied.discountType,
+          discountValue: orderObj.discountApplied.discountValue,
+          discountAmount: orderObj.discountApplied.discountAmount,
+          originalTotal: orderObj.discountApplied.originalTotal,
+          appliedAt: orderObj.discountApplied.appliedAt
+        };
+      }
+      
       return orderObj;
     });
 
@@ -292,33 +342,50 @@ exports.getOrder = async (req, res, next) => {
         status: populatedOrder.status,
         estimatedTimeToComplete: populatedOrder.estimatedTimeToComplete,
         createdAt: populatedOrder.createdAt,
-        products: populatedOrder.products.map(p => ({
-          quantity: p.quantity,
-          price: p.price,
-          product: {
-            _id: p.product._id,
-            name: p.product.name,
-            description: p.product.description,
-            images: p.product.images,
-            price: p.product.price
-          },
-          selectedAttributes: p.selectedAttributes ? p.selectedAttributes.map(attr => ({
-            attributeId: attr.attributeId,
-            attributeName: attr.attributeName,
-            attributeType: attr.attributeType,
-            selectedItems: attr.selectedItems.map(item => ({
-              itemId: item.itemId,
-              itemName: item.itemName,
-              itemPrice: item.itemPrice,
-              quantity: item.quantity
-            }))
-          })) : [],
-          itemTotal: p.price * p.quantity + (p.selectedAttributes || []).reduce((total, attr) => 
+        products: populatedOrder.products.map(p => {
+          // Calculate attribute total for this product
+          const attributeTotal = (p.selectedAttributes || []).reduce((total, attr) => 
             total + attr.selectedItems.reduce((sum, item) => 
               sum + (item.itemPrice * item.quantity), 0
             ), 0
-          )
-        })),
+          );
+          
+          // Calculate item total with proper breakdown
+          const baseTotal = p.price * p.quantity;
+          const attributesTotalForQuantity = attributeTotal * p.quantity;
+          const itemTotal = baseTotal + attributesTotalForQuantity;
+          
+          return {
+            id: p._id,
+            quantity: p.quantity,
+            price: {
+              base: p.price,
+              currentEffectivePrice: p.price,
+              attributes: attributeTotal,
+              total: itemTotal
+            },
+            product: {
+              _id: p.product._id,
+              name: p.product.name,
+              description: p.product.description,
+              images: p.product.images,
+              price: p.product.price
+            },
+            selectedAttributes: p.selectedAttributes ? p.selectedAttributes.map(attr => ({
+              attributeId: attr.attributeId,
+              attributeName: attr.attributeName,
+              attributeType: attr.attributeType,
+              selectedItems: attr.selectedItems.map(item => ({
+                itemId: item.itemId,
+                itemName: item.itemName,
+                itemPrice: item.itemPrice,
+                quantity: item.quantity
+              }))
+            })) : [],
+            itemTotal: itemTotal,
+            notes: p.notes || ''
+          };
+        }),
         branchId: {
           _id: populatedOrder.branchId._id,
           name: populatedOrder.branchId.name
@@ -328,8 +395,33 @@ exports.getOrder = async (req, res, next) => {
           city: populatedOrder.deliveryAddress.city,
           postalCode: populatedOrder.deliveryAddress.postalCode
         } : null,
+        // Calculate proper totals
+        subtotal: populatedOrder.products.reduce((total, p) => {
+          return total + (p.price * p.quantity);
+        }, 0),
+        deliveryFee: populatedOrder.deliveryFee || 0,
         totalAmount: populatedOrder.totalAmount,
-        finalTotal: populatedOrder.finalTotal
+        finalTotal: populatedOrder.finalTotal || populatedOrder.totalAmount,
+        // Enhanced discount information
+        discount: populatedOrder.discount ? {
+          discountId: populatedOrder.discount.discountId,
+          code: populatedOrder.discount.code,
+          name: populatedOrder.discount.name,
+          discountType: populatedOrder.discount.discountType,
+          discountValue: populatedOrder.discount.discountValue,
+          discountAmount: populatedOrder.discount.discountAmount,
+          originalTotal: populatedOrder.discount.originalTotal
+        } : null,
+        discountApplied: populatedOrder.discountApplied ? {
+          discountId: populatedOrder.discountApplied.discountId,
+          code: populatedOrder.discountApplied.code,
+          name: populatedOrder.discountApplied.name,
+          discountType: populatedOrder.discountApplied.discountType,
+          discountValue: populatedOrder.discountApplied.discountValue,
+          discountAmount: populatedOrder.discountApplied.discountAmount,
+          originalTotal: populatedOrder.discountApplied.originalTotal,
+          appliedAt: populatedOrder.discountApplied.appliedAt
+        } : null
       };
       
       return res.status(200).json({
@@ -341,29 +433,78 @@ exports.getOrder = async (req, res, next) => {
 
     // Transform the response for authenticated users
     const orderObj = populatedOrder.toObject();
-    orderObj.products = orderObj.products.map(item => ({
-      id: item._id,
-      product: item.product,
-      quantity: item.quantity,
-      price: item.price,
-      notes: item.notes,
-      selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
-        attributeId: attr.attributeId,
-        attributeName: attr.attributeName,
-        attributeType: attr.attributeType,
-        selectedItems: attr.selectedItems.map(attrItem => ({
-          itemId: attrItem.itemId,
-          itemName: attrItem.itemName,
-          itemPrice: attrItem.itemPrice,
-          quantity: attrItem.quantity
-        }))
-      })) : [],
-      itemTotal: item.price * item.quantity + (item.selectedAttributes || []).reduce((total, attr) => 
+    orderObj.products = orderObj.products.map(item => {
+      // Calculate attribute total for this product
+      const attributeTotal = (item.selectedAttributes || []).reduce((total, attr) => 
         total + attr.selectedItems.reduce((sum, attrItem) => 
           sum + (attrItem.itemPrice * attrItem.quantity), 0
         ), 0
-      )
-    }));
+      );
+      
+      // Calculate item total with proper breakdown
+      const baseTotal = item.price * item.quantity;
+      const attributesTotalForQuantity = attributeTotal * item.quantity;
+      const itemTotal = baseTotal + attributesTotalForQuantity;
+      
+      return {
+        id: item._id,
+        product: item.product,
+        quantity: item.quantity,
+        price: {
+          base: item.price,
+          currentEffectivePrice: item.price,
+          attributes: attributeTotal,
+          total: itemTotal
+        },
+        notes: item.notes,
+        selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
+          attributeId: attr.attributeId,
+          attributeName: attr.attributeName,
+          attributeType: attr.attributeType,
+          selectedItems: attr.selectedItems.map(attrItem => ({
+            itemId: attrItem.itemId,
+            itemName: attrItem.itemName,
+            itemPrice: attrItem.itemPrice,
+            quantity: attrItem.quantity
+          }))
+        })) : [],
+        itemTotal: itemTotal
+      };
+    });
+
+    // Calculate proper totals for authenticated response
+    orderObj.subtotal = orderObj.products.reduce((total, p) => {
+      return total + (p.price.base * p.quantity);
+    }, 0);
+    
+    orderObj.deliveryFee = orderObj.deliveryFee || 0;
+    orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
+    
+    // Enhanced discount information
+    if (orderObj.discount) {
+      orderObj.discount = {
+        discountId: orderObj.discount.discountId,
+        code: orderObj.discount.code,
+        name: orderObj.discount.name,
+        discountType: orderObj.discount.discountType,
+        discountValue: orderObj.discount.discountValue,
+        discountAmount: orderObj.discount.discountAmount,
+        originalTotal: orderObj.discount.originalTotal
+      };
+    }
+    
+    if (orderObj.discountApplied) {
+      orderObj.discountApplied = {
+        discountId: orderObj.discountApplied.discountId,
+        code: orderObj.discountApplied.code,
+        name: orderObj.discountApplied.name,
+        discountType: orderObj.discountApplied.discountType,
+        discountValue: orderObj.discountApplied.discountValue,
+        discountAmount: orderObj.discountApplied.discountAmount,
+        originalTotal: orderObj.discountApplied.originalTotal,
+        appliedAt: orderObj.discountApplied.appliedAt
+      };
+    }
 
     return res.status(200).json({
       success: true,
