@@ -1,0 +1,303 @@
+{
+  "info": {
+    "name": "Restaurant API - Discount & Order Management",
+    "description": "Complete API collection for discount validation and order management with promo codes",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "authToken",
+      "value": ""
+    },
+    {
+      "key": "branchId",
+      "value": "68330325eff1bd5bc97750bf"
+    },
+    {
+      "key": "sessionId",
+      "value": "guest-session-123"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@restaurant.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Discount Management",
+      "item": [
+        {
+          "name": "Validate Discount Code (Public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"branchId\": \"{{branchId}}\",\n  \"orderTotal\": 50.00,\n  \"deliveryMethod\": \"delivery\",\n  \"orderType\": \"delivery\",\n  \"userId\": \"user123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/discounts/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["discounts", "validate"]
+            }
+          }
+        },
+        {
+          "name": "Get All Discounts (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/discounts?page=1&limit=20&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["discounts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Discount (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Welcome Discount\",\n  \"code\": \"WELCOME10\",\n  \"description\": \"10% off for new customers\",\n  \"discountType\": \"percentage\",\n  \"discountValue\": 10,\n  \"minOrderAmount\": 20,\n  \"maxDiscountAmount\": 5,\n  \"isActive\": true,\n  \"validFrom\": \"2024-01-01T00:00:00.000Z\",\n  \"validUntil\": \"2024-12-31T23:59:59.000Z\",\n  \"maxUses\": {\n    \"total\": 1000,\n    \"perCustomer\": 1\n  },\n  \"applicableOn\": {\n    \"orderTypes\": [\"delivery\", \"pickup\"],\n    \"deliveryMethods\": [\"delivery\", \"pickup\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/discounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["discounts"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Cart Management",
+      "item": [
+        {
+          "name": "Get Cart with Stock Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Session-ID",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Item to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{sessionId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"product_id_here\",\n  \"quantity\": 2,\n  \"branchId\": \"{{branchId}}\",\n  \"selectedAttributes\": [],\n  \"specialRequirements\": \"No onions\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "items"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Order Management",
+      "item": [
+        {
+          "name": "Create Order with Discount (Guest)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+                            "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"products\": [\n    {\n      \"product\": \"product_id_here\",\n      \"quantity\": 2,\n      \"notes\": \"Extra spicy\",\n      \"selectedAttributes\": []\n    }\n  ],\n  \"customerInfo\": {\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone\": \"+1234567890\"\n  },\n  \"deliveryMethod\": \"delivery\",\n  \"orderType\": \"delivery\",\n  \"deliveryAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"postalCode\": \"10001\"\n  },\n  \"couponCode\": \"WELCOME10\",\n  \"paymentMethod\": \"card\",\n  \"notes\": \"Please ring doorbell\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/6844283ef158e4e677cb743a?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "6844283ef158e4e677cb743a"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Orders (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders?today=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "today",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\",\n  \"estimatedTimeToComplete\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/order_id_here",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "order_id_here"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Products with Stock",
+      "item": [
+        {
+          "name": "Get Products with Stock Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 

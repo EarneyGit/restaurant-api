@@ -57,14 +57,23 @@ const transformCartForResponse = (cart) => {
       productId: item.productId._id || item.productId,
       name: item.productId.name || 'Unknown Product',
       description: item.productId.description || '',
-      price: item.priceAtTime,
-      priceChanges: item.productId.priceChanges || [],
+      price: {
+        base: item.priceAtTime,
+        currentEffectivePrice: effectivePrice,
+        attributes: attributePrices,
+        total: correctItemTotal
+      },
       quantity: item.quantity,
       selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
       specialRequirements: item.specialRequirements || '',
       images: item.productId.images || [],
-      itemTotal: correctItemTotal,
       category: item.productId.category || null,
+      stockManagement: item.productId.stockManagement || {
+        isManaged: false,
+        quantity: 0,
+        lowStockThreshold: 10,
+        lastUpdated: new Date(),
+      },
       selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
         attributeId: attr.attributeId,
         attributeName: attr.attributeName,
@@ -130,7 +139,7 @@ exports.getCart = async (req, res, next) => {
     const cart = await Cart.findOne(query)
       .populate({
         path: 'items.productId',
-        select: 'name price images category description allergens',
+        select: 'name price images category description allergens stockManagement',
         populate: {
           path: 'priceChanges',
           match: {
@@ -282,7 +291,7 @@ exports.addToCart = async (req, res, next) => {
     // Populate cart items for response
     await cart.populate({
       path: 'items.productId',
-      select: 'name price images category description allergens',
+      select: 'name price images category description allergens stockManagement',
       populate: {
         path: 'priceChanges',
         match: {
@@ -377,7 +386,7 @@ exports.updateCartItem = async (req, res, next) => {
     // Populate cart items for response
     await cart.populate({
       path: 'items.productId',
-      select: 'name price images category description allergens',
+      select: 'name price images category description allergens stockManagement',
       populate: {
         path: 'priceChanges',
         match: {
@@ -442,7 +451,7 @@ exports.removeFromCart = async (req, res, next) => {
     // Populate cart items for response
     await cart.populate({
       path: 'items.productId',
-      select: 'name price images category description allergens',
+      select: 'name price images category description allergens stockManagement',
       populate: {
         path: 'priceChanges',
         match: {
@@ -556,7 +565,7 @@ exports.updateCartDelivery = async (req, res, next) => {
     // Populate cart items for response
     await cart.populate({
       path: 'items.productId',
-      select: 'name price images category description allergens',
+      select: 'name price images category description allergens stockManagement',
       populate: {
         path: 'priceChanges',
         match: {
@@ -599,7 +608,7 @@ exports.mergeCart = async (req, res, next) => {
       let userCart = await Cart.findOrCreateCart(userId);
       await userCart.populate({
         path: 'items.productId',
-        select: 'name price images category description allergens',
+        select: 'name price images category description allergens stockManagement',
         populate: {
           path: 'priceChanges',
           match: {
@@ -637,7 +646,7 @@ exports.mergeCart = async (req, res, next) => {
     // Populate cart items for response
     await userCart.populate({
       path: 'items.productId',
-      select: 'name price images category description allergens',
+      select: 'name price images category description allergens stockManagement',
       populate: {
         path: 'priceChanges',
         match: {
