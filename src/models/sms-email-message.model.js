@@ -35,6 +35,11 @@ const smsEmailMessageSchema = new mongoose.Schema({
     trim: true,
     maxlength: [1000, 'Message cannot exceed 1000 characters']
   },
+  htmlContent: {
+    type: String,
+    trim: true,
+    maxlength: [10000, 'HTML content cannot exceed 10000 characters']
+  },
   scheduledTime: {
     type: Date,
     default: null
