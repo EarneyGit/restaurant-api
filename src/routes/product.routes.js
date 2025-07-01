@@ -41,11 +41,13 @@ const upload = multer({
 router.get('/popular', optionalAuth, getPopularProducts);
 router.get('/recommended', optionalAuth, getRecommendedProducts);
 router.get('/stock/status', optionalAuth, getStockStatus);
+
+// Protected routes for staff and above (specific routes must come before parameterized routes)
+router.get('/offline', protect, getOfflineProducts);
+
+// General product routes
 router.get('/', optionalAuth, getProducts);
 router.get('/:id', optionalAuth, getProduct);
-
-// Protected routes for staff and above
-router.get('/offline', protect, staff, getOfflineProducts);
 router.patch('/toggle-all-offline', protect, staff, toggleAllProductsOffline);
 router.patch('/:id/toggle-offline', protect, staff, toggleProductOffline);
 router.put('/stock/bulk-update', protect, staff, bulkUpdateStock);
