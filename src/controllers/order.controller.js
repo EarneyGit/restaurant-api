@@ -70,7 +70,7 @@ exports.getOrders = async (req, res, next) => {
       
       // Regular users can only see their own orders when authenticated
       if (userRole === 'user') {
-        query.user = req.user._id;
+        query.user = req.user.id;
       }
     } else {
       // Regular users and guests: Use branch from query parameter
@@ -86,7 +86,7 @@ exports.getOrders = async (req, res, next) => {
       
       // If authenticated regular user, only show their orders
       if (isAuthenticated && isRegularUser) {
-        query.user = req.user._id;
+        query.user = req.user.id;
       } else if (!isAuthenticated) {
         // Guest users cannot see orders - return empty result
         return res.status(403).json({
@@ -117,7 +117,23 @@ exports.getOrders = async (req, res, next) => {
 
       if (req.query.userName) {
         const users = await User.find({
-          name: { $regex: req.query.userName, $options: 'i' }
+          $or: [
+            { firstName: { $regex: req.query.userName, $options: 'i' } },
+            { lastName: { $regex: req.query.userName, $options: 'i' } }
+          ]
+        }).select('_id');
+        
+        const userIds = users.map(user => user._id);
+        query.user = { $in: userIds };
+      }
+
+      // Handle customerName parameter (used by frontend search)
+      if (req.query.customerName) {
+        const users = await User.find({
+          $or: [
+            { firstName: { $regex: req.query.customerName, $options: 'i' } },
+            { lastName: { $regex: req.query.customerName, $options: 'i' } }
+          ]
         }).select('_id');
         
         const userIds = users.map(user => user._id);
@@ -133,8 +149,33 @@ exports.getOrders = async (req, res, next) => {
         query.user = { $in: userIds };
       }
 
+      // Handle phone parameter (used by frontend search)
+      if (req.query.phone) {
+        const users = await User.find({
+          phone: { $regex: req.query.phone, $options: 'i' }
+        }).select('_id');
+        
+        const userIds = users.map(user => user._id);
+        query.user = { $in: userIds };
+      }
+
       if (req.query.postCode) {
         query['deliveryAddress.postalCode'] = { $regex: req.query.postCode, $options: 'i' };
+      }
+
+      // Handle postcode parameter (used by frontend search)
+      if (req.query.postcode) {
+        query['deliveryAddress.postalCode'] = { $regex: req.query.postcode, $options: 'i' };
+      }
+
+      // Handle email parameter (used by frontend search)
+      if (req.query.email) {
+        const users = await User.find({
+          email: { $regex: req.query.email, $options: 'i' }
+        }).select('_id');
+        
+        const userIds = users.map(user => user._id);
+        query.user = { $in: userIds };
       }
       
       // Other filters
@@ -151,10 +192,10 @@ exports.getOrders = async (req, res, next) => {
     }
 
     const orders = await Order.find(query)
-      .populate('user', 'name email phone')
+      .populate('user', 'firstName lastName email phone')
       .populate('branchId', 'name address')
       .populate(populateOptions)
-      .populate('assignedTo', 'name email')
+      .populate('assignedTo', 'firstName lastName email')
       .sort({ createdAt: -1 });
 
     // Transform the response to include complete product details
@@ -314,7 +355,7 @@ exports.getOrder = async (req, res, next) => {
         }
       } 
       // Regular users: Can only view their own orders
-      else if (order.user.toString() !== req.user._id.toString()) {
+      else if (order.user.toString() !== req.user.id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'You do not have permission to view this order'
@@ -325,14 +366,9 @@ exports.getOrder = async (req, res, next) => {
     // Now populate the necessary fields based on the access type
     const populatedOrder = await Order.findById(order._id)
       .populate('branchId', 'name address')
-      .populate(populateOptions);
-
-    // Add user details only for authenticated requests
-    if (!isGuestOrder && req.user) {
-      await populatedOrder
-        .populate('user', 'name email')
-        .populate('assignedTo', 'name email');
-    }
+      .populate(populateOptions)
+      .populate('user', 'firstName lastName email phone')
+      .populate('assignedTo', 'firstName lastName email');
 
     // For guest orders or unauthorized access: Return public tracking info
     if (isGuestOrder || !req.user) {
@@ -554,7 +590,7 @@ exports.createOrder = async (req, res, next) => {
     
     // Set user if authenticated
     if (isAuthenticated) {
-      req.body.user = req.user._id;
+      req.body.user = req.user.id;
     }
     
     // Verify products exist and belong to the specified branch
@@ -682,7 +718,7 @@ exports.createOrder = async (req, res, next) => {
         };
         
         // Priority-based validation using the new method
-        const userId = isAuthenticated ? req.user._id : null;
+        const userId = isAuthenticated ? req.user.id : null;
         console.log(`Validating coupon ${req.body.couponCode} for user: ${userId}, branch: ${targetBranchId}`);
         
         const validation = await discount.validateForOrderCreation(
@@ -790,10 +826,10 @@ exports.createOrder = async (req, res, next) => {
     
     // Populate order data for response
     const populatedOrder = await Order.findById(order._id)
-      .populate('user', 'name email phone')
+      .populate('user', 'firstName lastName email phone')
       .populate('branchId', 'name address')
       .populate(populateOptions)
-      .populate('assignedTo', 'name email');
+      .populate('assignedTo', 'firstName lastName email');
 
     // Emit socket event to restaurant staff
     getIO().emit("order", { event: "order_created" });
@@ -864,10 +900,10 @@ exports.updateOrder = async (req, res, next) => {
       order = await Order.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
         runValidators: true
-      }).populate('user', 'name email')
+      }).populate('user', 'firstName lastName email phone')
         .populate('branchId', 'name address')
         .populate(populateOptions)
-        .populate('assignedTo', 'name email');
+        .populate('assignedTo', 'firstName lastName email');
 
       // Emit socket event for cancelled order
       getIO().emit("order", { event: "order_cancelled" });
@@ -882,10 +918,10 @@ exports.updateOrder = async (req, res, next) => {
       order = await Order.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
         runValidators: true
-      }).populate('user', 'name email')
+      }).populate('user', 'firstName lastName email phone')
         .populate('branchId', 'name address')
         .populate(populateOptions)
-        .populate('assignedTo', 'name email');
+        .populate('assignedTo', 'firstName lastName email');
 
       // Emit socket event for order update
       getIO().emit("order", { event: "order_updated" });
@@ -955,7 +991,7 @@ exports.getMyOrders = async (req, res, next) => {
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     let targetBranchId = null;
     
-    let query = { user: req.user._id };
+    let query = { user: req.user.id };
     
     // Handle branch determination based on user type
     if (isAdmin) {
@@ -1046,10 +1082,10 @@ exports.getTodayOrders = async (req, res, next) => {
     }
     
     const orders = await Order.find(query)
-      .populate('user', 'name email')
+      .populate('user', 'firstName lastName email phone')
       .populate('branchId', 'name address')
       .populate(populateOptions)
-      .populate('assignedTo', 'name email')
+      .populate('assignedTo', 'firstName lastName email')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
