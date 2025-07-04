@@ -19,7 +19,7 @@ exports.getBranches = async (req, res, next) => {
       query['address.city'] = { $regex: req.query.city, $options: 'i' };
     }
 
-    const branches = await Branch.find(query)
+    const branches = await Branch.find()
       .select('name code address contact location isActive isDefault')
       .sort('name');
 
