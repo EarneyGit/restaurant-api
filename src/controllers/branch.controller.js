@@ -76,6 +76,62 @@ exports.getBranch = async (req, res, next) => {
       });
     }
 
+    // Check if date parameter is provided
+    const { date } = req.query;
+    
+    if (date === 'today') {
+      // Get today's ordering times and settings
+      const orderingTimes = await OrderingTimes.findOne({ branchId: req.user.branchId });
+      
+      if (orderingTimes) {
+        // Get today's day name
+        const today = new Date();
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const todayDayName = dayNames[today.getDay()];
+        
+        // Get today's settings
+        const todaySettings = orderingTimes.weeklySchedule[todayDayName];
+        
+        // Check if outlet is closed today
+        const isClosedToday = orderingTimes.isClosedOnDate(today);
+        
+        // Create response with today's settings
+        const branchWithTodaySettings = branch.toObject();
+        branchWithTodaySettings.todaySettings = {
+          day: todayDayName,
+          date: today.toISOString().split('T')[0],
+          isClosed: isClosedToday,
+          isCollectionEnabled: !isClosedToday && todaySettings?.isCollectionAllowed,
+          isDeliveryEnabled: !isClosedToday && todaySettings?.isDeliveryAllowed,
+          isTableOrderingEnabled: !isClosedToday && todaySettings?.isTableOrderingAllowed,
+          defaultTimes: todaySettings?.defaultTimes || { start: "11:45", end: "21:50" },
+          collection: todaySettings?.collection || {
+            useDifferentTimes: false,
+            leadTime: 20,
+            displayedTime: "12:10",
+            customTimes: { start: "11:45", end: "21:50" }
+          },
+          delivery: todaySettings?.delivery || {
+            useDifferentTimes: false,
+            leadTime: 45,
+            displayedTime: "12:30",
+            customTimes: { start: "11:45", end: "21:50" }
+          },
+          tableOrdering: todaySettings?.tableOrdering || {
+            useDifferentTimes: false,
+            leadTime: 0,
+            displayedTime: "",
+            customTimes: { start: "11:45", end: "21:50" }
+          }
+        };
+
+        return res.status(200).json({
+          success: true,
+          data: branchWithTodaySettings
+        });
+      }
+    }
+
     res.status(200).json({
       success: true,
       data: branch
@@ -362,12 +418,46 @@ exports.updateBranchSettings = async (req, res, next) => {
       updateSettings.isTableOrderingEnabled = isTableOrderingEnabled;
     }
 
-    // Update only the settings fields
+    // Update branch settings
     branch = await Branch.findByIdAndUpdate(
       req.user.branchId, 
       { $set: updateSettings },
       { new: true, runValidators: true }
     ).populate('manager', 'name email');
+
+    // Also update the OrderingTimes model to sync the settings
+    let orderingTimes = await OrderingTimes.findOne({ branchId: req.user.branchId });
+    
+    if (orderingTimes) {
+      // Get today's day name
+      const today = new Date();
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const todayDayName = dayNames[today.getDay()];
+      
+      // Get today's settings
+      const todaySettings = orderingTimes.weeklySchedule[todayDayName];
+      
+      if (todaySettings) {
+        // Update today's settings based on branch settings
+        const updatedTodaySettings = { ...todaySettings };
+        
+        if (isCollectionEnabled !== undefined) {
+          updatedTodaySettings.isCollectionAllowed = isCollectionEnabled;
+        }
+        
+        if (isDeliveryEnabled !== undefined) {
+          updatedTodaySettings.isDeliveryAllowed = isDeliveryEnabled;
+        }
+        
+        if (isTableOrderingEnabled !== undefined) {
+          updatedTodaySettings.isTableOrderingAllowed = isTableOrderingEnabled;
+        }
+        
+        // Update the specific day in the weekly schedule
+        orderingTimes.weeklySchedule[todayDayName] = updatedTodaySettings;
+        await orderingTimes.save();
+      }
+    }
 
     res.status(200).json({
       success: true,

@@ -6,6 +6,7 @@ const OrderingTimes = require('../models/ordering-times.model');
 const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
 const { getIO } = require('../utils/socket');
 const { MANAGEMENT_ROLES } = require('../constants/roles');
+const { createPaymentIntent, getPaymentIntentStatus } = require('../utils/stripe-config/stripe-config');
 
 // Update the populate options in all relevant methods
 const populateOptions = {
@@ -818,6 +819,35 @@ exports.createOrder = async (req, res, next) => {
     // Set the estimated time to complete
     req.body.estimatedTimeToComplete = estimatedTimeToComplete;
 
+    // Handle payment processing based on payment method
+    if (req.body.paymentMethod === 'card') {
+      try {
+        // Create payment intent for card payments
+        const paymentIntent = await createPaymentIntent(
+          Math.round(finalTotal * 100), // Convert to cents
+          'gbp', // Currency - adjust as needed
+          `Order payment for ${req.body.orderNumber || 'restaurant order'}`
+        );
+
+        // Add stripe payment information to order
+        req.body.stripePaymentIntentId = paymentIntent.clientSecret.split('_secret_')[0];
+        req.body.stripeClientSecret = paymentIntent.clientSecret;
+        req.body.paymentStatus = 'pending';
+        
+        console.log('Payment intent created:', paymentIntent);
+        
+      } catch (error) {
+        console.error('Error creating payment intent:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to create payment intent. Please try again.'
+        });
+      }
+    } else if (req.body.paymentMethod === 'cash_on_delivery') {
+      // For cash on delivery, set payment status to pending
+      req.body.paymentStatus = 'pending';
+    }
+
     // Create the order
     const order = await Order.create(req.body);
 
@@ -834,7 +864,8 @@ exports.createOrder = async (req, res, next) => {
     // Emit socket event to restaurant staff
     getIO().emit("order", { event: "order_created" });
 
-    res.status(201).json({
+    // Prepare response data
+    const responseData = {
       success: true,
       data: populatedOrder,
       discount: discountData,
@@ -842,7 +873,20 @@ exports.createOrder = async (req, res, next) => {
       savings: discountData ? discountData.discountAmount : 0,
       stockDeduction: stockDeduction.updated,
       branchId: targetBranchId
-    });
+    };
+
+    // Add payment information if card payment
+    if (req.body.paymentMethod === 'card' && req.body.stripeClientSecret) {
+      responseData.payment = {
+        clientSecret: req.body.stripeClientSecret,
+        paymentIntentId: req.body.stripePaymentIntentId,
+        orderId: order._id,
+        amount: Math.round(finalTotal * 100), // Amount in cents
+        currency: 'gbp' // Adjust as needed
+      };
+    }
+
+    res.status(201).json(responseData);
   } catch (error) {
     next(error);
   }
@@ -930,12 +974,174 @@ exports.updateOrder = async (req, res, next) => {
         success: true,
         data: order
       });
-    }
+         }
 
+   } catch (error) {
+     next(error);
+   }
+ };
+
+// @desc    Stripe webhook handler
+// @route   POST /api/orders/stripe-webhook
+// @access  Public (Stripe webhook)
+exports.stripeWebhook = async (req, res, next) => {
+  try {
+    const event = req.body;
+    
+    console.log('Stripe webhook event received:', event.type);
+    
+    // Handle different event types
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object);
+        break;
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event.data.object);
+        break;
+      case 'payment_intent.canceled':
+        await handlePaymentIntentCanceled(event.data.object);
+        break;
+      case 'payment_intent.processing':
+        await handlePaymentIntentProcessing(event.data.object);
+        break;
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+    
+    res.status(200).json({ received: true });
   } catch (error) {
-    next(error);
+    console.error('Webhook error:', error);
+    res.status(400).json({ error: error.message });
   }
 };
+
+// Helper function to handle payment intent succeeded
+async function handlePaymentIntentSucceeded(paymentIntent) {
+  try {
+    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
+    
+    if (!order) {
+      console.log('Order not found for payment intent:', paymentIntent.id);
+      return;
+    }
+    
+    // Update order payment status
+    const updateData = {
+      paymentStatus: 'paid',
+      stripePaymentDate: new Date(),
+      stripePaymentMethod: paymentIntent.payment_method || 'card'
+    };
+    
+    // If order was in pending status, move to processing
+    if (order.status === 'pending') {
+      updateData.status = 'processing';
+    }
+    
+    await Order.findByIdAndUpdate(order._id, updateData);
+    
+    console.log('Order payment succeeded:', order._id);
+    
+    // Emit socket event for order update
+    getIO().emit("order", { event: "order_payment_succeeded", orderId: order._id });
+    
+  } catch (error) {
+    console.error('Error handling payment intent succeeded:', error);
+  }
+}
+
+// Helper function to handle payment intent failed
+async function handlePaymentIntentFailed(paymentIntent) {
+  try {
+    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
+    
+    if (!order) {
+      console.log('Order not found for payment intent:', paymentIntent.id);
+      return;
+    }
+    
+    // Update order payment status
+    const updateData = {
+      paymentStatus: 'failed',
+      stripePaymentDate: new Date()
+    };
+    
+    // If order was in pending status, mark as cancelled
+    if (order.status === 'pending') {
+      updateData.status = 'cancelled';
+    }
+    
+    await Order.findByIdAndUpdate(order._id, updateData);
+    
+    console.log('Order payment failed:', order._id);
+    
+    // Emit socket event for order update
+    getIO().emit("order", { event: "order_payment_failed", orderId: order._id });
+    
+  } catch (error) {
+    console.error('Error handling payment intent failed:', error);
+  }
+}
+
+// Helper function to handle payment intent canceled
+async function handlePaymentIntentCanceled(paymentIntent) {
+  try {
+    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
+    
+    if (!order) {
+      console.log('Order not found for payment intent:', paymentIntent.id);
+      return;
+    }
+    
+    // Update order payment status
+    const updateData = {
+      paymentStatus: 'failed',
+      stripePaymentDate: new Date()
+    };
+    
+    // If order was in pending status, mark as cancelled
+    if (order.status === 'pending') {
+      updateData.status = 'cancelled';
+    }
+    
+    await Order.findByIdAndUpdate(order._id, updateData);
+    
+    console.log('Order payment canceled:', order._id);
+    
+    // Emit socket event for order update
+    getIO().emit("order", { event: "order_payment_canceled", orderId: order._id });
+    
+  } catch (error) {
+    console.error('Error handling payment intent canceled:', error);
+  }
+}
+
+// Helper function to handle payment intent processing
+async function handlePaymentIntentProcessing(paymentIntent) {
+  try {
+    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
+    
+    if (!order) {
+      console.log('Order not found for payment intent:', paymentIntent.id);
+      return;
+    }
+    
+    // Update order payment status
+    const updateData = {
+      paymentStatus: 'processing',
+      stripePaymentDate: new Date()
+    };
+    
+    await Order.findByIdAndUpdate(order._id, updateData);
+    
+    console.log('Order payment processing:', order._id);
+    
+    // Emit socket event for order update
+    getIO().emit("order", { event: "order_payment_processing", orderId: order._id });
+    
+  } catch (error) {
+    console.error('Error handling payment intent processing:', error);
+  }
+}
 
 // @desc    Delete order
 // @route   DELETE /api/orders/:id
@@ -1094,6 +1300,107 @@ exports.getTodayOrders = async (req, res, next) => {
       data: orders,
       branchId: req.user.branchId
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Check payment status
+// @route   POST /api/orders/check-payment-status
+// @access  Public/Private (Order owner or admin)
+exports.checkPaymentStatus = async (req, res, next) => {
+  try {
+    const { orderId } = req.body;
+    
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order ID is required'
+      });
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Check if order has stripe payment intent
+    if (!order.stripePaymentIntentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No payment intent found for this order'
+      });
+    }
+
+    try {
+      // Get payment status from Stripe
+      const paymentStatus = await getPaymentIntentStatus(order.stripePaymentIntentId);
+      
+      // Update order based on payment status
+      let updateData = {};
+      let orderStatus = order.status;
+      
+      if (paymentStatus.success && paymentStatus.message === 'Payment successful') {
+        // Payment succeeded - update order status
+        updateData.paymentStatus = 'paid';
+        updateData.stripePaymentDate = new Date();
+        
+        // If order was in pending payment status, move to processing
+        if (order.status === 'pending') {
+          updateData.status = 'processing';
+          orderStatus = 'processing';
+        }
+      } else if (paymentStatus.message === 'Payment is still processing') {
+        // Payment still processing
+        updateData.paymentStatus = 'processing';
+      } else if (paymentStatus.message.includes('failed') || paymentStatus.message.includes('canceled')) {
+        // Payment failed
+        updateData.paymentStatus = 'failed';
+        
+        // If order was in pending status, mark as cancelled
+        if (order.status === 'pending') {
+          updateData.status = 'cancelled';
+          orderStatus = 'cancelled';
+        }
+      }
+
+      // Update order with new payment status
+      const updatedOrder = await Order.findByIdAndUpdate(
+        orderId,
+        updateData,
+        { new: true, runValidators: true }
+      ).populate('user', 'firstName lastName email phone')
+        .populate('branchId', 'name address')
+        .populate(populateOptions)
+        .populate('assignedTo', 'firstName lastName email');
+
+      // Emit socket event for order update
+      getIO().emit("order", { event: "order_payment_updated" });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          order: updatedOrder,
+          paymentStatus: paymentStatus,
+          orderStatus: orderStatus,
+          message: paymentStatus.message
+        }
+      });
+
+    } catch (stripeError) {
+      console.error('Error checking payment status:', stripeError);
+      return res.status(500).json({
+        success: false,
+        message: 'Error checking payment status',
+        error: stripeError.message
+      });
+    }
+
   } catch (error) {
     next(error);
   }

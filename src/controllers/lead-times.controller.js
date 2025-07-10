@@ -13,7 +13,7 @@ const parseLeadTime = (timeString) => {
   return match ? parseInt(match[1]) : 0;
 };
 
-// @desc    Get lead times for a branch
+// @desc    Get lead times for a branch (today's settings)
 // @route   GET /api/settings/lead-times
 // @access  Private/Admin/Manager/Staff
 exports.getLeadTimes = async (req, res, next) => {
@@ -56,14 +56,23 @@ exports.getLeadTimes = async (req, res, next) => {
       orderingTimes = await OrderingTimes.create({ branchId });
     }
 
-    // Extract lead times from the weekly schedule (use Monday as default)
-    const mondaySchedule = orderingTimes.weeklySchedule.monday;
-    const collectionLeadTime = mondaySchedule?.collection?.leadTime || 20;
-    const deliveryLeadTime = mondaySchedule?.delivery?.leadTime || 45;
+    // Get today's day name
+    const today = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayDayName = dayNames[today.getDay()];
+    
+    // Get today's settings
+    const todaySettings = orderingTimes.weeklySchedule[todayDayName];
+    
+    // Extract lead times from today's schedule
+    const collectionLeadTime = todaySettings?.collection?.leadTime || 20;
+    const deliveryLeadTime = todaySettings?.delivery?.leadTime || 45;
 
     const leadTimes = {
       collection: formatLeadTime(collectionLeadTime),
-      delivery: formatLeadTime(deliveryLeadTime)
+      delivery: formatLeadTime(deliveryLeadTime),
+      day: todayDayName,
+      date: today.toISOString().split('T')[0]
     };
 
     res.status(200).json({
@@ -75,7 +84,7 @@ exports.getLeadTimes = async (req, res, next) => {
   }
 };
 
-// @desc    Update lead times for a branch
+// @desc    Update lead times for a branch (today's settings)
 // @route   PUT /api/settings/lead-times
 // @access  Private/Admin/Manager
 exports.updateLeadTimes = async (req, res, next) => {
@@ -146,82 +155,75 @@ exports.updateLeadTimes = async (req, res, next) => {
       orderingTimes = await OrderingTimes.create({ branchId });
     }
 
-    // Update lead times for all days of the week while preserving existing structure
-    const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    // Get today's day name
+    const today = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayDayName = dayNames[today.getDay()];
     
-    daysOfWeek.forEach(day => {
-      // Ensure the day exists in weeklySchedule
-      if (!orderingTimes.weeklySchedule[day]) {
-        orderingTimes.weeklySchedule[day] = {
-          isCollectionAllowed: false,
-          isDeliveryAllowed: false,
-          isTableOrderingAllowed: false,
-          defaultTimes: {
+    // Get today's settings
+    let todaySettings = orderingTimes.weeklySchedule[todayDayName];
+    
+    // If today's settings don't exist, create default settings
+    if (!todaySettings) {
+      todaySettings = {
+        isCollectionAllowed: false,
+        isDeliveryAllowed: false,
+        isTableOrderingAllowed: false,
+        defaultTimes: {
+          start: "11:45",
+          end: "21:50"
+        },
+        breakTime: {
+          enabled: false,
+          start: "15:00",
+          end: "16:00"
+        },
+        collection: {
+          useDifferentTimes: false,
+          leadTime: 20,
+          displayedTime: "12:10",
+          customTimes: {
             start: "11:45",
             end: "21:50"
-          },
-          collection: {
-            leadTime: 20,
-            displayedTime: "12:10"
-          },
-          delivery: {
-            useDifferentTimes: false,
-            leadTime: 45,
-            displayedTime: "12:30",
-            customTimes: {
-              start: "11:45",
-              end: "21:50"
-            }
-          },
-          tableOrdering: {
-            useDifferentTimes: false,
-            leadTime: 0,
-            displayedTime: "",
-            customTimes: {
-              start: "11:45",
-              end: "21:50"
-            }
           }
-        };
-      } else {
-        // Ensure required fields exist if day already exists
-        if (!orderingTimes.weeklySchedule[day].defaultTimes) {
-          orderingTimes.weeklySchedule[day].defaultTimes = {
+        },
+        delivery: {
+          useDifferentTimes: false,
+          leadTime: 45,
+          displayedTime: "12:30",
+          customTimes: {
             start: "11:45",
             end: "21:50"
-          };
+          }
+        },
+        tableOrdering: {
+          useDifferentTimes: false,
+          leadTime: 0,
+          displayedTime: "",
+          customTimes: {
+            start: "11:45",
+            end: "21:50"
+          }
         }
-        if (!orderingTimes.weeklySchedule[day].collection) {
-          orderingTimes.weeklySchedule[day].collection = {
-            leadTime: 20,
-            displayedTime: "12:10"
-          };
-        }
-        if (!orderingTimes.weeklySchedule[day].delivery) {
-          orderingTimes.weeklySchedule[day].delivery = {
-            useDifferentTimes: false,
-            leadTime: 45,
-            displayedTime: "12:30",
-            customTimes: {
-              start: "11:45",
-              end: "21:50"
-            }
-          };
-        }
-      }
-      
-      // Update only the lead times
-      orderingTimes.weeklySchedule[day].collection.leadTime = collectionMinutes;
-      orderingTimes.weeklySchedule[day].delivery.leadTime = deliveryMinutes;
-    });
+      };
+    }
 
+    // Update only the lead times for today
+    todaySettings.collection.leadTime = collectionMinutes;
+    todaySettings.delivery.leadTime = deliveryMinutes;
+    
+    // Update the specific day in the weekly schedule
+    orderingTimes.weeklySchedule[todayDayName] = todaySettings;
+    
     // Mark the weeklySchedule as modified for Mongoose
     orderingTimes.markModified('weeklySchedule');
     await orderingTimes.save();
 
     const updatedLeadTimes = {
       collection: formatLeadTime(collectionMinutes),
-      delivery: formatLeadTime(deliveryMinutes)
+      delivery: formatLeadTime(deliveryMinutes),
+      day: todayDayName,
+      date: today.toISOString().split('T')[0]
     };
 
     res.status(200).json({
