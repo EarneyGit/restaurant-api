@@ -136,6 +136,38 @@ exports.updateWeeklySchedule = async (req, res, next) => {
       await orderingTimes.save();
     }
 
+    // Sync changes back to Branch model based on today's settings
+    const today = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayDayName = dayNames[today.getDay()];
+    
+    const todaySettings = weeklySchedule[todayDayName];
+    if (todaySettings) {
+      // Update branch settings based on today's ordering times
+      const updateBranchSettings = {};
+      
+      if (todaySettings.isCollectionAllowed !== undefined) {
+        updateBranchSettings.isCollectionEnabled = todaySettings.isCollectionAllowed;
+      }
+      
+      if (todaySettings.isDeliveryAllowed !== undefined) {
+        updateBranchSettings.isDeliveryEnabled = todaySettings.isDeliveryAllowed;
+      }
+      
+      if (todaySettings.isTableOrderingAllowed !== undefined) {
+        updateBranchSettings.isTableOrderingEnabled = todaySettings.isTableOrderingAllowed;
+      }
+      
+      // Only update if there are changes
+      if (Object.keys(updateBranchSettings).length > 0) {
+        await Branch.findByIdAndUpdate(
+          branchId,
+          { $set: updateBranchSettings },
+          { new: true, runValidators: true }
+        );
+      }
+    }
+
     await orderingTimes.populate('branchId', 'name');
 
     res.status(200).json({
@@ -232,6 +264,37 @@ exports.updateDaySchedule = async (req, res, next) => {
     // Update the specific day
     orderingTimes.weeklySchedule[dayName.toLowerCase()] = daySettings;
     await orderingTimes.save();
+
+    // Sync changes back to Branch model if this is today's settings
+    const today = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayDayName = dayNames[today.getDay()];
+    
+    if (dayName.toLowerCase() === todayDayName) {
+      // Update branch settings based on today's ordering times
+      const updateBranchSettings = {};
+      
+      if (daySettings.isCollectionAllowed !== undefined) {
+        updateBranchSettings.isCollectionEnabled = daySettings.isCollectionAllowed;
+      }
+      
+      if (daySettings.isDeliveryAllowed !== undefined) {
+        updateBranchSettings.isDeliveryEnabled = daySettings.isDeliveryAllowed;
+      }
+      
+      if (daySettings.isTableOrderingAllowed !== undefined) {
+        updateBranchSettings.isTableOrderingEnabled = daySettings.isTableOrderingAllowed;
+      }
+      
+      // Only update if there are changes
+      if (Object.keys(updateBranchSettings).length > 0) {
+        await Branch.findByIdAndUpdate(
+          branchId,
+          { $set: updateBranchSettings },
+          { new: true, runValidators: true }
+        );
+      }
+    }
 
     await orderingTimes.populate('branchId', 'name');
 
