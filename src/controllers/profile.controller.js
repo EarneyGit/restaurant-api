@@ -59,6 +59,7 @@ exports.updateProfile = async (req, res) => {
       'firstName',
       'lastName',
       'mobileNumber',
+      'address',
       'addressLine1',
       'addressLine2',
       'city',
