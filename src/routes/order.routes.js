@@ -6,7 +6,9 @@ const {
   updateOrder,
   deleteOrder,
   getMyOrders,
-  getTodayOrders
+  getTodayOrders,
+  checkPaymentStatus,
+  stripeWebhook
 } = require('../controllers/order.controller');
 
 // Import authentication middleware
@@ -20,6 +22,10 @@ router.get('/today', protect, getTodayOrders); // Admin only
 router.post('/', optionalAuth, createOrder); // Public with optional auth
 router.get('/', optionalAuth, getOrders); // Public with optional auth
 router.get('/:id', optionalAuth, getOrder); // Public with optional auth
+
+// Payment-related routes
+router.post('/check-payment-status', optionalAuth, checkPaymentStatus); // Public with optional auth
+router.post('/stripe-webhook', stripeWebhook); // Public - Stripe webhook
 
 // Admin-only routes - allow admin, manager, staff
 router.put('/:id', protect, updateOrder); // Admin/Manager/Staff only

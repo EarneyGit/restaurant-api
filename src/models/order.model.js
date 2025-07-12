@@ -139,13 +139,30 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['cash', 'card', 'online'],
+      enum: ['cash', 'card', 'online', 'cash_on_delivery'],
       default: 'cash'
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'refunded'],
+      enum: ['pending', 'paid', 'refunded', 'processing', 'failed'],
       default: 'pending'
+    },
+    // Stripe payment fields
+    stripePaymentIntentId: {
+      type: String,
+      default: null
+    },
+    stripeClientSecret: {
+      type: String,
+      default: null
+    },
+    stripePaymentMethod: {
+      type: String,
+      default: null
+    },
+    stripePaymentDate: {
+      type: Date,
+      default: null
     },
     deliveryMethod: {
       type: String,
