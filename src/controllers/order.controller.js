@@ -6,7 +6,7 @@ const OrderingTimes = require('../models/ordering-times.model');
 const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
 const { getIO } = require('../utils/socket');
 const { MANAGEMENT_ROLES } = require('../constants/roles');
-const { createPaymentIntent, getPaymentIntentStatus } = require('../utils/stripe-config/stripe-config');
+const { createPaymentIntent, getPaymentIntentStatus, refundPayment } = require('../utils/stripe-config/stripe-config');
 
 // Update the populate options in all relevant methods
 const populateOptions = {
@@ -458,7 +458,8 @@ exports.getOrder = async (req, res, next) => {
           discountAmount: populatedOrder.discountApplied.discountAmount,
           originalTotal: populatedOrder.discountApplied.originalTotal,
           appliedAt: populatedOrder.discountApplied.appliedAt
-        } : null
+        } : null,
+        stripePaymentIntentId: populatedOrder.stripePaymentIntentId || null
       };
       
       return res.status(200).json({
@@ -542,6 +543,7 @@ exports.getOrder = async (req, res, next) => {
         appliedAt: orderObj.discountApplied.appliedAt
       };
     }
+    orderObj.stripePaymentIntentId = populatedOrder.stripePaymentIntentId || null;
 
     return res.status(200).json({
       success: true,
@@ -830,7 +832,7 @@ exports.createOrder = async (req, res, next) => {
         );
 
         // Add stripe payment information to order
-        req.body.stripePaymentIntentId = paymentIntent.clientSecret.split('_secret_')[0];
+        req.body.stripePaymentIntentId = paymentIntent.id; // <-- Store the actual payment intent ID
         req.body.stripeClientSecret = paymentIntent.clientSecret;
         req.body.paymentStatus = 'pending';
         
@@ -1403,5 +1405,31 @@ exports.checkPaymentStatus = async (req, res, next) => {
 
   } catch (error) {
     next(error);
+  }
+}; 
+
+// @desc    Cancel (refund) a payment
+// @route   POST /api/orders/cancel-payment/:paymentIntentId
+// @access  Public/Private (Order owner or admin)
+exports.cancelPayment = async (req, res) => {
+  const { paymentIntentId } = req.params;
+  try {
+    if (!paymentIntentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment Intent ID is required'
+      });
+    }
+    const refund = await refundPayment(paymentIntentId);
+    return res.status(200).json({
+      success: true,
+      message: 'Payment cancelled and refunded successfully',
+      refund
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to cancel payment'
+    });
   }
 }; 
