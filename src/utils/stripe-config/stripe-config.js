@@ -34,6 +34,7 @@ async function createPaymentIntent(amount, currency, description) {
     );
 
     return {
+      id: paymentIntent.id,
       clientSecret: paymentIntent.client_secret,
       dpmCheckerLink: `https://dashboard.stripe.com/settings/payment_methods/review?transaction_id=${paymentIntent.id}`,
     };
@@ -105,9 +106,26 @@ async function getPaymentIntentStatus(paymentIntentId) {
   }
 }
 
+// Function to refund a payment by paymentIntentId
+async function refundPayment(paymentIntentId) {
+  try {
+    if (!paymentIntentId || typeof paymentIntentId !== 'string') {
+      throw new Error('Invalid or missing payment intent ID');
+    }
+    // Create a full refund for the payment intent
+    const refund = await stripe.refunds.create({
+      payment_intent: paymentIntentId
+    });
+    return refund;
+  } catch (error) {
+    console.error('Error creating refund:', error.message);
+    throw new Error(`Failed to create refund: ${error.message}`);
+  }
+}
+
 // Test call
 // getPaymentIntentStatus('pi_3QUNSaSDSi9maMay0u6NZ5D9')
 //   .then((status) => console.log('Payment Status:', status))
 //   .catch((error) => console.error('Error during test call:', error.message));
 
-module.exports = { createPaymentIntent, getPaymentIntentStatus };
+module.exports = { createPaymentIntent, getPaymentIntentStatus, refundPayment };
