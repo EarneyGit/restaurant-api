@@ -34,6 +34,7 @@ async function createPaymentIntent(amount, currency, description) {
     );
 
     return {
+      id: paymentIntent.id,
       clientSecret: paymentIntent.client_secret,
       dpmCheckerLink: `https://dashboard.stripe.com/settings/payment_methods/review?transaction_id=${paymentIntent.id}`,
     };
