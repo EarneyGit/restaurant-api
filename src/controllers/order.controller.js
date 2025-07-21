@@ -1,17 +1,26 @@
-const Order = require('../models/order.model');
-const Product = require('../models/product.model');
-const User = require('../models/user.model');
-const Discount = require('../models/discount.model');
-const OrderingTimes = require('../models/ordering-times.model');
-const { checkStockAvailability, deductStock, restoreStock } = require('../utils/stockManager');
-const { getIO } = require('../utils/socket');
-const { MANAGEMENT_ROLES } = require('../constants/roles');
-const { createPaymentIntent, getPaymentIntentStatus, refundPayment } = require('../utils/stripe-config/stripe-config');
+const Order = require("../models/order.model");
+const Product = require("../models/product.model");
+const User = require("../models/user.model");
+const Discount = require("../models/discount.model");
+const OrderingTimes = require("../models/ordering-times.model");
+const {
+  checkStockAvailability,
+  deductStock,
+  restoreStock,
+} = require("../utils/stockManager");
+const { getIO } = require("../utils/socket");
+const { MANAGEMENT_ROLES } = require("../constants/roles");
+const {
+  createPaymentIntent,
+  getPaymentIntentStatus,
+  refundPayment,
+} = require("../utils/stripe-config/stripe-config");
 
 // Update the populate options in all relevant methods
 const populateOptions = {
-  path: 'products.product',
-  select: 'name price description images category allergens weight calorificValue availability'
+  path: "products.product",
+  select:
+    "name price description images category allergens weight calorificValue availability",
 };
 
 // Helper function to calculate effective price from price changes
@@ -19,23 +28,23 @@ const calculateEffectivePrice = (basePrice, priceChanges) => {
   if (!priceChanges || priceChanges.length === 0) {
     return basePrice;
   }
-  
+
   // Find the most recent active price change
-  const activePriceChange = priceChanges.find(pc => pc.active);
+  const activePriceChange = priceChanges.find((pc) => pc.active);
   if (!activePriceChange) {
     return basePrice;
   }
-  
+
   // Calculate effective price based on price change type
   switch (activePriceChange.type) {
-    case 'temporary':
+    case "temporary":
       return activePriceChange.tempPrice || activePriceChange.value;
-    case 'permanent':
-    case 'fixed':
+    case "permanent":
+    case "fixed":
       return activePriceChange.value;
-    case 'increase':
+    case "increase":
       return basePrice + activePriceChange.value;
-    case 'decrease':
+    case "decrease":
       return Math.max(0, basePrice - activePriceChange.value);
     default:
       return basePrice;
@@ -53,24 +62,24 @@ exports.getOrders = async (req, res, next) => {
     const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    const isRegularUser = userRole === 'user' || userRole === null;
-    
+    const isRegularUser = userRole === "user" || userRole === null;
+
     // Handle branch determination based on user type
     if (isAdmin) {
       // Admin users: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       targetBranchId = req.user.branchId;
-      
+
       // Admin can only see orders from their branch
       query.branchId = targetBranchId;
-      
+
       // Regular users can only see their own orders when authenticated
-      if (userRole === 'user') {
+      if (userRole === "user") {
         query.user = req.user.id;
       }
     } else {
@@ -78,13 +87,13 @@ exports.getOrders = async (req, res, next) => {
       if (!req.query.branchId) {
         return res.status(400).json({
           success: false,
-          message: 'Branch ID is required. Please select a branch.'
+          message: "Branch ID is required. Please select a branch.",
         });
       }
-      
+
       targetBranchId = req.query.branchId;
       query.branchId = targetBranchId;
-      
+
       // If authenticated regular user, only show their orders
       if (isAuthenticated && isRegularUser) {
         query.user = req.user.id;
@@ -92,7 +101,7 @@ exports.getOrders = async (req, res, next) => {
         // Guest users cannot see orders - return empty result
         return res.status(403).json({
           success: false,
-          message: 'Authentication required to view orders'
+          message: "Authentication required to view orders",
         });
       }
     }
@@ -100,31 +109,31 @@ exports.getOrders = async (req, res, next) => {
     // Additional filters for admin users only
     if (isAdmin) {
       // Filter today's orders if today=true
-      if (req.query.today === 'true') {
+      if (req.query.today === "true") {
         const today = new Date();
         const startOfDay = new Date(today.setHours(0, 0, 0, 0));
         const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-        
+
         query.createdAt = {
           $gte: startOfDay,
-          $lte: endOfDay
+          $lte: endOfDay,
         };
       }
 
       // Handle specific search parameters
       if (req.query.orderNumber) {
-        query.orderNumber = { $regex: req.query.orderNumber, $options: 'i' };
+        query.orderNumber = { $regex: req.query.orderNumber, $options: "i" };
       }
 
       if (req.query.userName) {
         const users = await User.find({
           $or: [
-            { firstName: { $regex: req.query.userName, $options: 'i' } },
-            { lastName: { $regex: req.query.userName, $options: 'i' } }
-          ]
-        }).select('_id');
-        
-        const userIds = users.map(user => user._id);
+            { firstName: { $regex: req.query.userName, $options: "i" } },
+            { lastName: { $regex: req.query.userName, $options: "i" } },
+          ],
+        }).select("_id");
+
+        const userIds = users.map((user) => user._id);
         query.user = { $in: userIds };
       }
 
@@ -132,89 +141,99 @@ exports.getOrders = async (req, res, next) => {
       if (req.query.customerName) {
         const users = await User.find({
           $or: [
-            { firstName: { $regex: req.query.customerName, $options: 'i' } },
-            { lastName: { $regex: req.query.customerName, $options: 'i' } }
-          ]
-        }).select('_id');
-        
-        const userIds = users.map(user => user._id);
+            { firstName: { $regex: req.query.customerName, $options: "i" } },
+            { lastName: { $regex: req.query.customerName, $options: "i" } },
+          ],
+        }).select("_id");
+
+        const userIds = users.map((user) => user._id);
         query.user = { $in: userIds };
       }
 
       if (req.query.mobileNumber) {
         const users = await User.find({
-          phone: { $regex: req.query.mobileNumber, $options: 'i' }
-        }).select('_id');
-        
-        const userIds = users.map(user => user._id);
+          phone: { $regex: req.query.mobileNumber, $options: "i" },
+        }).select("_id");
+
+        const userIds = users.map((user) => user._id);
         query.user = { $in: userIds };
       }
 
       // Handle phone parameter (used by frontend search)
       if (req.query.phone) {
         const users = await User.find({
-          phone: { $regex: req.query.phone, $options: 'i' }
-        }).select('_id');
-        
-        const userIds = users.map(user => user._id);
+          phone: { $regex: req.query.phone, $options: "i" },
+        }).select("_id");
+
+        const userIds = users.map((user) => user._id);
         query.user = { $in: userIds };
       }
 
       if (req.query.postCode) {
-        query['deliveryAddress.postalCode'] = { $regex: req.query.postCode, $options: 'i' };
+        query["deliveryAddress.postalCode"] = {
+          $regex: req.query.postCode,
+          $options: "i",
+        };
       }
 
       // Handle postcode parameter (used by frontend search)
       if (req.query.postcode) {
-        query['deliveryAddress.postalCode'] = { $regex: req.query.postcode, $options: 'i' };
+        query["deliveryAddress.postalCode"] = {
+          $regex: req.query.postcode,
+          $options: "i",
+        };
       }
 
       // Handle email parameter (used by frontend search)
       if (req.query.email) {
         const users = await User.find({
-          email: { $regex: req.query.email, $options: 'i' }
-        }).select('_id');
-        
-        const userIds = users.map(user => user._id);
+          email: { $regex: req.query.email, $options: "i" },
+        }).select("_id");
+
+        const userIds = users.map((user) => user._id);
         query.user = { $in: userIds };
       }
-      
+
       // Other filters
       if (req.query.status) {
         query.status = req.query.status;
       }
-      
+
       if (req.query.startDate && req.query.endDate) {
         query.createdAt = {
           $gte: new Date(req.query.startDate),
-          $lte: new Date(req.query.endDate)
+          $lte: new Date(req.query.endDate),
         };
       }
     }
 
     const orders = await Order.find(query)
-      .populate('user', 'firstName lastName email phone')
-      .populate('branchId', 'name address')
+      .populate("user", "firstName lastName email phone")
+      .populate("branchId", "name address")
       .populate(populateOptions)
-      .populate('assignedTo', 'firstName lastName email')
+      .populate("assignedTo", "firstName lastName email")
       .sort({ createdAt: -1 });
 
     // Transform the response to include complete product details
-    const transformedOrders = orders.map(order => {
+    const transformedOrders = orders.map((order) => {
       const orderObj = order.toObject();
-      orderObj.products = orderObj.products.map(item => {
+      orderObj.products = orderObj.products.map((item) => {
         // Calculate attribute total for this product
-        const attributeTotal = (item.selectedAttributes || []).reduce((total, attr) => 
-          total + attr.selectedItems.reduce((sum, attrItem) => 
-            sum + (attrItem.itemPrice * attrItem.quantity), 0
-          ), 0
+        const attributeTotal = (item.selectedAttributes || []).reduce(
+          (total, attr) =>
+            total +
+            attr.selectedItems.reduce(
+              (sum, attrItem) => sum + attrItem.itemPrice * attrItem.quantity,
+              0
+            ),
+          0
         );
-        
+
         // Calculate item total with proper breakdown
         const baseTotal = item.price * item.quantity;
         const attributesTotalForQuantity = attributeTotal * item.quantity;
         const itemTotal = baseTotal + attributesTotalForQuantity;
-        
+
         return {
           id: item._id,
           product: item.product,
@@ -223,32 +242,34 @@ exports.getOrders = async (req, res, next) => {
             base: item.price,
             currentEffectivePrice: item.price,
             attributes: attributeTotal,
-            total: itemTotal
+            total: itemTotal,
           },
           notes: item.notes,
-          selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
-            attributeId: attr.attributeId,
-            attributeName: attr.attributeName,
-            attributeType: attr.attributeType,
-            selectedItems: attr.selectedItems.map(attrItem => ({
-              itemId: attrItem.itemId,
-              itemName: attrItem.itemName,
-              itemPrice: attrItem.itemPrice,
-              quantity: attrItem.quantity
-            }))
-          })) : [],
-          itemTotal: itemTotal
+          selectedAttributes: item.selectedAttributes
+            ? item.selectedAttributes.map((attr) => ({
+                attributeId: attr.attributeId,
+                attributeName: attr.attributeName,
+                attributeType: attr.attributeType,
+                selectedItems: attr.selectedItems.map((attrItem) => ({
+                  itemId: attrItem.itemId,
+                  itemName: attrItem.itemName,
+                  itemPrice: attrItem.itemPrice,
+                  quantity: attrItem.quantity,
+                })),
+              }))
+            : [],
+          itemTotal: itemTotal,
         };
       });
-      
+
       // Calculate proper totals
       orderObj.subtotal = orderObj.products.reduce((total, p) => {
-        return total + (p.price.base * p.quantity);
+        return total + p.price.base * p.quantity;
       }, 0);
-      
+
       orderObj.deliveryFee = orderObj.deliveryFee || 0;
       orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
-      
+
       // Enhanced discount information
       if (orderObj.discount) {
         orderObj.discount = {
@@ -258,10 +279,10 @@ exports.getOrders = async (req, res, next) => {
           discountType: orderObj.discount.discountType,
           discountValue: orderObj.discount.discountValue,
           discountAmount: orderObj.discount.discountAmount,
-          originalTotal: orderObj.discount.originalTotal
+          originalTotal: orderObj.discount.originalTotal,
         };
       }
-      
+
       if (orderObj.discountApplied) {
         orderObj.discountApplied = {
           discountId: orderObj.discountApplied.discountId,
@@ -271,10 +292,10 @@ exports.getOrders = async (req, res, next) => {
           discountValue: orderObj.discountApplied.discountValue,
           discountAmount: orderObj.discountApplied.discountAmount,
           originalTotal: orderObj.discountApplied.originalTotal,
-          appliedAt: orderObj.discountApplied.appliedAt
+          appliedAt: orderObj.discountApplied.appliedAt,
         };
       }
-      
+
       return orderObj;
     });
 
@@ -282,7 +303,7 @@ exports.getOrders = async (req, res, next) => {
       success: true,
       count: transformedOrders.length,
       data: transformedOrders,
-      branchId: targetBranchId
+      branchId: targetBranchId,
     });
   } catch (error) {
     next(error);
@@ -299,7 +320,7 @@ exports.getOrder = async (req, res, next) => {
     if (!requestedBranchId) {
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required. Please select a branch.'
+        message: "Branch ID is required. Please select a branch.",
       });
     }
 
@@ -309,7 +330,7 @@ exports.getOrder = async (req, res, next) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order not found with id of ${req.params.id}`
+        message: `Order not found with id of ${req.params.id}`,
       });
     }
 
@@ -317,7 +338,7 @@ exports.getOrder = async (req, res, next) => {
     if (order.branchId.toString() !== requestedBranchId) {
       return res.status(403).json({
         success: false,
-        message: 'Order not found in the selected branch'
+        message: "Order not found in the selected branch",
       });
     }
 
@@ -330,8 +351,8 @@ exports.getOrder = async (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({
           success: false,
-          message: 'Please login to view this order',
-          requiresAuth: true
+          message: "Please login to view this order",
+          requiresAuth: true,
         });
       }
 
@@ -344,32 +365,32 @@ exports.getOrder = async (req, res, next) => {
         if (!req.user.branchId) {
           return res.status(403).json({
             success: false,
-            message: `${userRole} must be assigned to a branch`
+            message: `${userRole} must be assigned to a branch`,
           });
         }
-        
+
         if (order.branchId.toString() !== req.user.branchId.toString()) {
           return res.status(403).json({
             success: false,
-            message: 'You do not have permission to view this order'
+            message: "You do not have permission to view this order",
           });
         }
-      } 
+      }
       // Regular users: Can only view their own orders
       else if (order.user.toString() !== req.user.id.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'You do not have permission to view this order'
+          message: "You do not have permission to view this order",
         });
       }
     }
 
     // Now populate the necessary fields based on the access type
     const populatedOrder = await Order.findById(order._id)
-      .populate('branchId', 'name address')
+      .populate("branchId", "name address")
       .populate(populateOptions)
-      .populate('user', 'firstName lastName email phone')
-      .populate('assignedTo', 'firstName lastName email');
+      .populate("user", "firstName lastName email phone")
+      .populate("assignedTo", "firstName lastName email");
 
     // For guest orders or unauthorized access: Return public tracking info
     if (isGuestOrder || !req.user) {
@@ -379,19 +400,23 @@ exports.getOrder = async (req, res, next) => {
         status: populatedOrder.status,
         estimatedTimeToComplete: populatedOrder.estimatedTimeToComplete,
         createdAt: populatedOrder.createdAt,
-        products: populatedOrder.products.map(p => {
+        products: populatedOrder.products.map((p) => {
           // Calculate attribute total for this product
-          const attributeTotal = (p.selectedAttributes || []).reduce((total, attr) => 
-            total + attr.selectedItems.reduce((sum, item) => 
-              sum + (item.itemPrice * item.quantity), 0
-            ), 0
+          const attributeTotal = (p.selectedAttributes || []).reduce(
+            (total, attr) =>
+              total +
+              attr.selectedItems.reduce(
+                (sum, item) => sum + item.itemPrice * item.quantity,
+                0
+              ),
+            0
           );
-          
+
           // Calculate item total with proper breakdown
           const baseTotal = p.price * p.quantity;
           const attributesTotalForQuantity = attributeTotal * p.quantity;
           const itemTotal = baseTotal + attributesTotalForQuantity;
-          
+
           return {
             id: p._id,
             quantity: p.quantity,
@@ -399,91 +424,103 @@ exports.getOrder = async (req, res, next) => {
               base: p.price,
               currentEffectivePrice: p.price,
               attributes: attributeTotal,
-              total: itemTotal
+              total: itemTotal,
             },
             product: {
               _id: p.product._id,
               name: p.product.name,
               description: p.product.description,
               images: p.product.images,
-              price: p.product.price
+              price: p.product.price,
             },
-            selectedAttributes: p.selectedAttributes ? p.selectedAttributes.map(attr => ({
-              attributeId: attr.attributeId,
-              attributeName: attr.attributeName,
-              attributeType: attr.attributeType,
-              selectedItems: attr.selectedItems.map(item => ({
-                itemId: item.itemId,
-                itemName: item.itemName,
-                itemPrice: item.itemPrice,
-                quantity: item.quantity
-              }))
-            })) : [],
+            selectedAttributes: p.selectedAttributes
+              ? p.selectedAttributes.map((attr) => ({
+                  attributeId: attr.attributeId,
+                  attributeName: attr.attributeName,
+                  attributeType: attr.attributeType,
+                  selectedItems: attr.selectedItems.map((item) => ({
+                    itemId: item.itemId,
+                    itemName: item.itemName,
+                    itemPrice: item.itemPrice,
+                    quantity: item.quantity,
+                  })),
+                }))
+              : [],
             itemTotal: itemTotal,
-            notes: p.notes || ''
+            notes: p.notes || "",
           };
         }),
         branchId: {
           _id: populatedOrder.branchId._id,
-          name: populatedOrder.branchId.name
+          name: populatedOrder.branchId.name,
         },
-        deliveryAddress: populatedOrder.deliveryAddress ? {
-          street: populatedOrder.deliveryAddress.street,
-          city: populatedOrder.deliveryAddress.city,
-          postalCode: populatedOrder.deliveryAddress.postalCode
-        } : null,
+        deliveryAddress: populatedOrder.deliveryAddress
+          ? {
+              street: populatedOrder.deliveryAddress.street,
+              city: populatedOrder.deliveryAddress.city,
+              postalCode: populatedOrder.deliveryAddress.postalCode,
+            }
+          : null,
         // Calculate proper totals
         subtotal: populatedOrder.products.reduce((total, p) => {
-          return total + (p.price * p.quantity);
+          return total + p.price * p.quantity;
         }, 0),
         deliveryFee: populatedOrder.deliveryFee || 0,
         totalAmount: populatedOrder.totalAmount,
         finalTotal: populatedOrder.finalTotal || populatedOrder.totalAmount,
         // Enhanced discount information
-        discount: populatedOrder.discount ? {
-          discountId: populatedOrder.discount.discountId,
-          code: populatedOrder.discount.code,
-          name: populatedOrder.discount.name,
-          discountType: populatedOrder.discount.discountType,
-          discountValue: populatedOrder.discount.discountValue,
-          discountAmount: populatedOrder.discount.discountAmount,
-          originalTotal: populatedOrder.discount.originalTotal
-        } : null,
-        discountApplied: populatedOrder.discountApplied ? {
-          discountId: populatedOrder.discountApplied.discountId,
-          code: populatedOrder.discountApplied.code,
-          name: populatedOrder.discountApplied.name,
-          discountType: populatedOrder.discountApplied.discountType,
-          discountValue: populatedOrder.discountApplied.discountValue,
-          discountAmount: populatedOrder.discountApplied.discountAmount,
-          originalTotal: populatedOrder.discountApplied.originalTotal,
-          appliedAt: populatedOrder.discountApplied.appliedAt
-        } : null,
-        stripePaymentIntentId: populatedOrder.stripePaymentIntentId || null
+        discount: populatedOrder.discount
+          ? {
+              discountId: populatedOrder.discount.discountId,
+              code: populatedOrder.discount.code,
+              name: populatedOrder.discount.name,
+              discountType: populatedOrder.discount.discountType,
+              discountValue: populatedOrder.discount.discountValue,
+              discountAmount: populatedOrder.discount.discountAmount,
+              originalTotal: populatedOrder.discount.originalTotal,
+            }
+          : null,
+        discountApplied: populatedOrder.discountApplied
+          ? {
+              discountId: populatedOrder.discountApplied.discountId,
+              code: populatedOrder.discountApplied.code,
+              name: populatedOrder.discountApplied.name,
+              discountType: populatedOrder.discountApplied.discountType,
+              discountValue: populatedOrder.discountApplied.discountValue,
+              discountAmount: populatedOrder.discountApplied.discountAmount,
+              originalTotal: populatedOrder.discountApplied.originalTotal,
+              appliedAt: populatedOrder.discountApplied.appliedAt,
+            }
+          : null,
+        stripePaymentIntentId: populatedOrder.stripePaymentIntentId || null,
       };
-      
+
       return res.status(200).json({
         success: true,
         data: publicOrderData,
-        isGuestOrder
+        isGuestOrder,
       });
     }
 
     // Transform the response for authenticated users
     const orderObj = populatedOrder.toObject();
-    orderObj.products = orderObj.products.map(item => {
+    orderObj.products = orderObj.products.map((item) => {
       // Calculate attribute total for this product
-      const attributeTotal = (item.selectedAttributes || []).reduce((total, attr) => 
-        total + attr.selectedItems.reduce((sum, attrItem) => 
-          sum + (attrItem.itemPrice * attrItem.quantity), 0
-        ), 0
+      const attributeTotal = (item.selectedAttributes || []).reduce(
+        (total, attr) =>
+          total +
+          attr.selectedItems.reduce(
+            (sum, attrItem) => sum + attrItem.itemPrice * attrItem.quantity,
+            0
+          ),
+        0
       );
-      
+
       // Calculate item total with proper breakdown
       const baseTotal = item.price * item.quantity;
       const attributesTotalForQuantity = attributeTotal * item.quantity;
       const itemTotal = baseTotal + attributesTotalForQuantity;
-      
+
       return {
         id: item._id,
         product: item.product,
@@ -492,32 +529,34 @@ exports.getOrder = async (req, res, next) => {
           base: item.price,
           currentEffectivePrice: item.price,
           attributes: attributeTotal,
-          total: itemTotal
+          total: itemTotal,
         },
         notes: item.notes,
-        selectedAttributes: item.selectedAttributes ? item.selectedAttributes.map(attr => ({
-          attributeId: attr.attributeId,
-          attributeName: attr.attributeName,
-          attributeType: attr.attributeType,
-          selectedItems: attr.selectedItems.map(attrItem => ({
-            itemId: attrItem.itemId,
-            itemName: attrItem.itemName,
-            itemPrice: attrItem.itemPrice,
-            quantity: attrItem.quantity
-          }))
-        })) : [],
-        itemTotal: itemTotal
+        selectedAttributes: item.selectedAttributes
+          ? item.selectedAttributes.map((attr) => ({
+              attributeId: attr.attributeId,
+              attributeName: attr.attributeName,
+              attributeType: attr.attributeType,
+              selectedItems: attr.selectedItems.map((attrItem) => ({
+                itemId: attrItem.itemId,
+                itemName: attrItem.itemName,
+                itemPrice: attrItem.itemPrice,
+                quantity: attrItem.quantity,
+              })),
+            }))
+          : [],
+        itemTotal: itemTotal,
       };
     });
 
     // Calculate proper totals for authenticated response
     orderObj.subtotal = orderObj.products.reduce((total, p) => {
-      return total + (p.price.base * p.quantity);
+      return total + p.price.base * p.quantity;
     }, 0);
-    
+
     orderObj.deliveryFee = orderObj.deliveryFee || 0;
     orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
-    
+
     // Enhanced discount information
     if (orderObj.discount) {
       orderObj.discount = {
@@ -527,10 +566,10 @@ exports.getOrder = async (req, res, next) => {
         discountType: orderObj.discount.discountType,
         discountValue: orderObj.discount.discountValue,
         discountAmount: orderObj.discount.discountAmount,
-        originalTotal: orderObj.discount.originalTotal
+        originalTotal: orderObj.discount.originalTotal,
       };
     }
-    
+
     if (orderObj.discountApplied) {
       orderObj.discountApplied = {
         discountId: orderObj.discountApplied.discountId,
@@ -540,18 +579,19 @@ exports.getOrder = async (req, res, next) => {
         discountValue: orderObj.discountApplied.discountValue,
         discountAmount: orderObj.discountApplied.discountAmount,
         originalTotal: orderObj.discountApplied.originalTotal,
-        appliedAt: orderObj.discountApplied.appliedAt
+        appliedAt: orderObj.discountApplied.appliedAt,
       };
     }
-    orderObj.stripePaymentIntentId = populatedOrder.stripePaymentIntentId || null;
+    orderObj.stripePaymentIntentId =
+      populatedOrder.stripePaymentIntentId || null;
 
     return res.status(200).json({
       success: true,
       data: orderObj,
-      isGuestOrder
+      isGuestOrder,
     });
   } catch (error) {
-    console.error('Order retrieval error:', error);
+    console.error("Order retrieval error:", error);
     next(error);
   }
 };
@@ -565,17 +605,17 @@ exports.createOrder = async (req, res, next) => {
     const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    const isRegularUser = userRole === 'user' || userRole === null;
-    
+    const isRegularUser = userRole === "user" || userRole === null;
+
     let targetBranchId = null;
-    
+
     // Handle branch determination based on user type
     if (isAdmin) {
       // Admin users: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       targetBranchId = req.user.branchId;
@@ -585,84 +625,90 @@ exports.createOrder = async (req, res, next) => {
       if (!req.body.branchId) {
         return res.status(400).json({
           success: false,
-          message: 'Branch ID is required. Please select a branch.'
+          message: "Branch ID is required. Please select a branch.",
         });
       }
       targetBranchId = req.body.branchId;
     }
-    
+
     // Set user if authenticated
     if (isAuthenticated) {
       req.body.user = req.user.id;
     }
-    
+
     // Verify products exist and belong to the specified branch
-    if (!req.body.products || !Array.isArray(req.body.products) || req.body.products.length === 0) {
+    if (
+      !req.body.products ||
+      !Array.isArray(req.body.products) ||
+      req.body.products.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Products are required'
+        message: "Products are required",
       });
     }
-    
+
     // Validate product IDs and check branch assignment
     const validatedProducts = [];
-    
+
     for (let i = 0; i < req.body.products.length; i++) {
       const item = req.body.products[i];
-      
+
       if (!item.product || !item.quantity) {
         return res.status(400).json({
           success: false,
-          message: 'Product ID and quantity are required for each item'
+          message: "Product ID and quantity are required for each item",
         });
       }
-      
-      const product = await Product.findById(item.product)
-        .populate({
-          path: 'priceChanges',
-          match: {
-            active: true,
-            startDate: { $lte: new Date() },
-            endDate: { $gte: new Date() },
-          },
-        });
-      
+
+      const product = await Product.findById(item.product).populate({
+        path: "priceChanges",
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      });
+
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: `Product not found with id of ${item.product}`
+          message: `Product not found with id of ${item.product}`,
         });
       }
-      
+
       if (product.branchId.toString() !== targetBranchId.toString()) {
         return res.status(400).json({
           success: false,
-          message: `Product ${product.name} does not belong to the selected branch`
+          message: `Product ${product.name} does not belong to the selected branch`,
         });
       }
-      
+
       // Calculate effective price considering active price changes
-      const effectivePrice = calculateEffectivePrice(product.price, product.priceChanges);
-      
+      const effectivePrice = calculateEffectivePrice(
+        product.price,
+        product.priceChanges
+      );
+
       // Add product with effective price to order item
       validatedProducts.push({
         product: item.product,
         quantity: item.quantity,
         price: effectivePrice,
         notes: item.notes,
-        selectedAttributes: item.selectedAttributes || []
+        selectedAttributes: item.selectedAttributes || [],
       });
     }
 
     // Check stock availability for all products
     const stockCheck = await checkStockAvailability(validatedProducts);
-    
+
     if (!stockCheck.success) {
       return res.status(400).json({
         success: false,
-        message: 'Stock validation failed',
+        message: "Stock validation failed",
         errors: stockCheck.errors,
-        stockInfo: stockCheck.stockInfo
+        stockInfo: stockCheck.stockInfo,
       });
     }
 
@@ -672,78 +718,88 @@ exports.createOrder = async (req, res, next) => {
     // Calculate total amount first (including attribute prices)
     const totalAmount = validatedProducts.reduce((total, item) => {
       let itemTotal = item.price * item.quantity;
-      
+
       // Add attribute item prices
       if (item.selectedAttributes && item.selectedAttributes.length > 0) {
-        const attributeTotal = item.selectedAttributes.reduce((attrTotal, attr) => {
-          if (attr.selectedItems && attr.selectedItems.length > 0) {
-            const attrItemTotal = attr.selectedItems.reduce((itemSum, selectedItem) => {
-              return itemSum + (selectedItem.itemPrice * selectedItem.quantity);
-            }, 0);
-            return attrTotal + attrItemTotal;
-          }
-          return attrTotal;
-        }, 0);
-        
+        const attributeTotal = item.selectedAttributes.reduce(
+          (attrTotal, attr) => {
+            if (attr.selectedItems && attr.selectedItems.length > 0) {
+              const attrItemTotal = attr.selectedItems.reduce(
+                (itemSum, selectedItem) => {
+                  return (
+                    itemSum + selectedItem.itemPrice * selectedItem.quantity
+                  );
+                },
+                0
+              );
+              return attrTotal + attrItemTotal;
+            }
+            return attrTotal;
+          },
+          0
+        );
+
         // Multiply attribute total by product quantity
-        itemTotal += (attributeTotal * item.quantity);
+        itemTotal += attributeTotal * item.quantity;
       }
-      
+
       return total + itemTotal;
     }, 0);
-    
+
     req.body.totalAmount = totalAmount;
 
     // Coupon validation and discount calculation
     let discountData = null;
     let finalTotal = totalAmount;
-    
+
     if (req.body.couponCode) {
       try {
         // Priority 1: Find the coupon and check if it exists and is active
         const discount = await Discount.findOne({
           code: req.body.couponCode.toUpperCase(),
-          isActive: true
+          isActive: true,
         });
-        
+
         if (!discount) {
           return res.status(400).json({
             success: false,
-            message: 'Invalid coupon code'
+            message: "Invalid coupon code",
           });
         }
-        
+
         // Create order object for validation
         const orderForValidation = {
           totalAmount: totalAmount,
           deliveryMethod: req.body.deliveryMethod,
-          orderType: req.body.orderType
+          orderType: req.body.orderType,
         };
-        
+
         // Priority-based validation using the new method
         const userId = isAuthenticated ? req.user.id : null;
-        console.log(`Validating coupon ${req.body.couponCode} for user: ${userId}, branch: ${targetBranchId}`);
-        
+        console.log(
+          `Validating coupon ${req.body.couponCode} for user: ${userId}, branch: ${targetBranchId}`
+        );
+
         const validation = await discount.validateForOrderCreation(
           orderForValidation,
           userId,
           targetBranchId.toString()
         );
-        
+
         if (!validation.valid) {
           console.log(`Coupon validation failed: ${validation.reason}`);
           return res.status(400).json({
             success: false,
-            message: validation.reason
+            message: validation.reason,
           });
         }
-        
+
         console.log(`Coupon validation passed for ${req.body.couponCode}`);
-        
+
         // Calculate discount amount
         const discountAmount = discount.calculateDiscount(totalAmount);
         finalTotal = Math.max(0, totalAmount - discountAmount);
-        
+
         // Prepare discount data for order
         discountData = {
           discountId: discount._id,
@@ -752,24 +808,25 @@ exports.createOrder = async (req, res, next) => {
           discountType: discount.discountType,
           discountValue: discount.discountValue,
           discountAmount: discountAmount,
-          originalTotal: totalAmount
+          originalTotal: totalAmount,
         };
-        
+
         // Set discount information in the order data
         req.body.discount = discountData;
         req.body.discountApplied = {
           ...discountData,
-          appliedAt: new Date()
+          appliedAt: new Date(),
         };
         req.body.finalTotal = finalTotal;
-        
-        console.log(`Discount applied: ${discountAmount}, Final total: ${finalTotal}`);
-        
+
+        console.log(
+          `Discount applied: ${discountAmount}, Final total: ${finalTotal}`
+        );
       } catch (error) {
-        console.error('Error validating coupon:', error);
+        console.error("Error validating coupon:", error);
         return res.status(500).json({
           success: false,
-          message: 'Error validating coupon code'
+          message: "Error validating coupon code",
         });
       }
     } else {
@@ -779,75 +836,94 @@ exports.createOrder = async (req, res, next) => {
 
     // Get estimated time to complete based on ordering times configuration
     let estimatedTimeToComplete = 45; // Default 45 minutes
-    
+
     try {
       // Get current day of the week
       const currentDate = new Date();
-      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayNames = [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+      ];
       const currentDay = dayNames[currentDate.getDay()];
-      
+
       // Find ordering times for the branch
-      const orderingTimes = await OrderingTimes.findOne({ branchId: targetBranchId });
-      
-      if (orderingTimes && orderingTimes.weeklySchedule && orderingTimes.weeklySchedule[currentDay]) {
+      const orderingTimes = await OrderingTimes.findOne({
+        branchId: targetBranchId,
+      });
+
+      if (
+        orderingTimes &&
+        orderingTimes.weeklySchedule &&
+        orderingTimes.weeklySchedule[currentDay]
+      ) {
         const daySettings = orderingTimes.weeklySchedule[currentDay];
-        
+
         // Map delivery method to ordering times field
-        let orderType = '';
+        let orderType = "";
         switch (req.body.deliveryMethod) {
-          case 'pickup':
-            orderType = 'collection';
+          case "pickup":
+            orderType = "collection";
             break;
-          case 'delivery':
-            orderType = 'delivery';
+          case "delivery":
+            orderType = "delivery";
             break;
-          case 'dine_in':
-            orderType = 'tableOrdering';
+          case "dine_in":
+            orderType = "tableOrdering";
             break;
           default:
-            orderType = 'collection';
+            orderType = "collection";
         }
-        
+
         // Get lead time based on order type
-        if (daySettings[orderType] && typeof daySettings[orderType].leadTime === 'number') {
+        if (
+          daySettings[orderType] &&
+          typeof daySettings[orderType].leadTime === "number"
+        ) {
           estimatedTimeToComplete = daySettings[orderType].leadTime;
         }
       }
     } catch (error) {
       // If there's an error fetching ordering times, use default value
-      console.log('Error fetching ordering times, using default lead time:', error.message);
+      console.log(
+        "Error fetching ordering times, using default lead time:",
+        error.message
+      );
     }
-    
+
     // Set the estimated time to complete
     req.body.estimatedTimeToComplete = estimatedTimeToComplete;
 
     // Handle payment processing based on payment method
-    if (req.body.paymentMethod === 'card') {
+    if (req.body.paymentMethod === "card") {
       try {
         // Create payment intent for card payments
         const paymentIntent = await createPaymentIntent(
           Math.round(finalTotal * 100), // Convert to cents
-          'gbp', // Currency - adjust as needed
-          `Order payment for ${req.body.orderNumber || 'restaurant order'}`
+          "gbp", // Currency - adjust as needed
+          `Order payment for ${req.body.orderNumber || "restaurant order"}`
         );
 
         // Add stripe payment information to order
         req.body.stripePaymentIntentId = paymentIntent.id; // <-- Store the actual payment intent ID
         req.body.stripeClientSecret = paymentIntent.clientSecret;
-        req.body.paymentStatus = 'pending';
-        
-        console.log('Payment intent created:', paymentIntent);
-        
+        req.body.paymentStatus = "pending";
+
+        console.log("Payment intent created:", paymentIntent);
       } catch (error) {
-        console.error('Error creating payment intent:', error);
+        console.error("Error creating payment intent:", error);
         return res.status(500).json({
           success: false,
-          message: 'Failed to create payment intent. Please try again.'
+          message: "Failed to create payment intent. Please try again.",
         });
       }
-    } else if (req.body.paymentMethod === 'cash_on_delivery') {
+    } else if (req.body.paymentMethod === "cash_on_delivery") {
       // For cash on delivery, set payment status to pending
-      req.body.paymentStatus = 'pending';
+      req.body.paymentStatus = "pending";
     }
 
     // Create the order
@@ -855,13 +931,13 @@ exports.createOrder = async (req, res, next) => {
 
     // Deduct stock for managed products after successful order creation
     const stockDeduction = await deductStock(validatedProducts);
-    
+
     // Populate order data for response
     const populatedOrder = await Order.findById(order._id)
-      .populate('user', 'firstName lastName email phone')
-      .populate('branchId', 'name address')
+      .populate("user", "firstName lastName email phone")
+      .populate("branchId", "name address")
       .populate(populateOptions)
-      .populate('assignedTo', 'firstName lastName email');
+      .populate("assignedTo", "firstName lastName email");
 
     // Emit socket event to restaurant staff
     getIO().emit("order", { event: "order_created" });
@@ -874,17 +950,17 @@ exports.createOrder = async (req, res, next) => {
       finalTotal: finalTotal,
       savings: discountData ? discountData.discountAmount : 0,
       stockDeduction: stockDeduction.updated,
-      branchId: targetBranchId
+      branchId: targetBranchId,
     };
 
     // Add payment information if card payment
-    if (req.body.paymentMethod === 'card' && req.body.stripeClientSecret) {
+    if (req.body.paymentMethod === "card" && req.body.stripeClientSecret) {
       responseData.payment = {
         clientSecret: req.body.stripeClientSecret,
         paymentIntentId: req.body.stripePaymentIntentId,
         orderId: order._id,
         amount: Math.round(finalTotal * 100), // Amount in cents
-        currency: 'gbp' // Adjust as needed
+        currency: "gbp", // Adjust as needed
       };
     }
 
@@ -904,52 +980,75 @@ exports.updateOrder = async (req, res, next) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order not found with id of ${req.params.id}`
+        message: `Order not found with id of ${req.params.id}`,
       });
     }
 
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Only admin users can update orders
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
-        message: 'Only admin users can update orders'
+        message: "Only admin users can update orders",
       });
     }
-    
+
     // Admin users: Check if order belongs to their branch
     if (!req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: `${userRole} must be assigned to a branch`
+        message: `${userRole} must be assigned to a branch`,
       });
     }
-    
+
     if (order.branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to update orders from other branches'
+        message: "Not authorized to update orders from other branches",
       });
     }
 
     const oldStatus = order.status;
     const newStatus = req.body.status;
 
-    // If order is being cancelled, restore stock
-    if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
+    // If order is being cancelled, restore stock and process refund if needed
+    if (newStatus === "cancelled" && oldStatus !== "cancelled") {
       const stockRestoration = await restoreStock(order.products);
-      
+
+      // Process refund if payment was made online or by card
+      let refundResult = null;
+      if (
+        (order.paymentMethod === "card" || order.paymentMethod === "online") &&
+        order.stripePaymentIntentId &&
+        order.paymentStatus === "paid"
+      ) {
+        try {
+          console.log(
+            `Processing refund for order ${order._id} with payment intent ${order.stripePaymentIntentId}`
+          );
+          refundResult = await refundPayment(order.stripePaymentIntentId);
+
+          // Update payment status to refunded
+          req.body.paymentStatus = "refunded";
+          console.log("Refund processed successfully:", refundResult);
+        } catch (refundError) {
+          console.error("Error processing refund:", refundError);
+          // Continue with cancellation even if refund fails
+        }
+      }
+
       // Update with full body
       order = await Order.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
-        runValidators: true
-      }).populate('user', 'firstName lastName email phone')
-        .populate('branchId', 'name address')
+        runValidators: true,
+      })
+        .populate("user", "firstName lastName email phone")
+        .populate("branchId", "name address")
         .populate(populateOptions)
-        .populate('assignedTo', 'firstName lastName email');
+        .populate("assignedTo", "firstName lastName email");
 
       // Emit socket event for cancelled order
       getIO().emit("order", { event: "order_cancelled" });
@@ -957,31 +1056,32 @@ exports.updateOrder = async (req, res, next) => {
       res.status(200).json({
         success: true,
         data: order,
-        stockRestoration: stockRestoration.restored
+        stockRestoration: stockRestoration.restored,
+        refundResult: refundResult,
       });
     } else {
       // Update with full body (no stock changes)
       order = await Order.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
-        runValidators: true
-      }).populate('user', 'firstName lastName email phone')
-        .populate('branchId', 'name address')
+        runValidators: true,
+      })
+        .populate("user", "firstName lastName email phone")
+        .populate("branchId", "name address")
         .populate(populateOptions)
-        .populate('assignedTo', 'firstName lastName email');
+        .populate("assignedTo", "firstName lastName email");
 
       // Emit socket event for order update
       getIO().emit("order", { event: "order_updated" });
 
       res.status(200).json({
         success: true,
-        data: order
+        data: order,
       });
-         }
-
-   } catch (error) {
-     next(error);
-   }
- };
+    }
+  } catch (error) {
+    next(error);
+  }
+};
 
 // @desc    Stripe webhook handler
 // @route   POST /api/orders/stripe-webhook
@@ -989,30 +1089,30 @@ exports.updateOrder = async (req, res, next) => {
 exports.stripeWebhook = async (req, res, next) => {
   try {
     const event = req.body;
-    
-    console.log('Stripe webhook event received:', event.type);
-    
+
+    console.log("Stripe webhook event received:", event.type);
+
     // Handle different event types
     switch (event.type) {
-      case 'payment_intent.succeeded':
+      case "payment_intent.succeeded":
         await handlePaymentIntentSucceeded(event.data.object);
         break;
-      case 'payment_intent.payment_failed':
+      case "payment_intent.payment_failed":
         await handlePaymentIntentFailed(event.data.object);
         break;
-      case 'payment_intent.canceled':
+      case "payment_intent.canceled":
         await handlePaymentIntentCanceled(event.data.object);
         break;
-      case 'payment_intent.processing':
+      case "payment_intent.processing":
         await handlePaymentIntentProcessing(event.data.object);
         break;
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
-    
+
     res.status(200).json({ received: true });
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error("Webhook error:", error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -1020,128 +1120,144 @@ exports.stripeWebhook = async (req, res, next) => {
 // Helper function to handle payment intent succeeded
 async function handlePaymentIntentSucceeded(paymentIntent) {
   try {
-    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
-    
+    const order = await Order.findOne({
+      stripePaymentIntentId: paymentIntent.id,
+    });
+
     if (!order) {
-      console.log('Order not found for payment intent:', paymentIntent.id);
+      console.log("Order not found for payment intent:", paymentIntent.id);
       return;
     }
-    
+
     // Update order payment status
     const updateData = {
-      paymentStatus: 'paid',
+      paymentStatus: "paid",
       stripePaymentDate: new Date(),
-      stripePaymentMethod: paymentIntent.payment_method || 'card'
+      stripePaymentMethod: paymentIntent.payment_method || "card",
     };
-    
+
     // If order was in pending status, move to processing
-    if (order.status === 'pending') {
-      updateData.status = 'processing';
+    if (order.status === "pending") {
+      updateData.status = "processing";
     }
-    
+
     await Order.findByIdAndUpdate(order._id, updateData);
-    
-    console.log('Order payment succeeded:', order._id);
-    
+
+    console.log("Order payment succeeded:", order._id);
+
     // Emit socket event for order update
-    getIO().emit("order", { event: "order_payment_succeeded", orderId: order._id });
-    
+    getIO().emit("order", {
+      event: "order_payment_succeeded",
+      orderId: order._id,
+    });
   } catch (error) {
-    console.error('Error handling payment intent succeeded:', error);
+    console.error("Error handling payment intent succeeded:", error);
   }
 }
 
 // Helper function to handle payment intent failed
 async function handlePaymentIntentFailed(paymentIntent) {
   try {
-    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
-    
+    const order = await Order.findOne({
+      stripePaymentIntentId: paymentIntent.id,
+    });
+
     if (!order) {
-      console.log('Order not found for payment intent:', paymentIntent.id);
+      console.log("Order not found for payment intent:", paymentIntent.id);
       return;
     }
-    
+
     // Update order payment status
     const updateData = {
-      paymentStatus: 'failed',
-      stripePaymentDate: new Date()
+      paymentStatus: "failed",
+      stripePaymentDate: new Date(),
     };
-    
+
     // If order was in pending status, mark as cancelled
-    if (order.status === 'pending') {
-      updateData.status = 'cancelled';
+    if (order.status === "pending") {
+      updateData.status = "cancelled";
     }
-    
+
     await Order.findByIdAndUpdate(order._id, updateData);
-    
-    console.log('Order payment failed:', order._id);
-    
+
+    console.log("Order payment failed:", order._id);
+
     // Emit socket event for order update
-    getIO().emit("order", { event: "order_payment_failed", orderId: order._id });
-    
+    getIO().emit("order", {
+      event: "order_payment_failed",
+      orderId: order._id,
+    });
   } catch (error) {
-    console.error('Error handling payment intent failed:', error);
+    console.error("Error handling payment intent failed:", error);
   }
 }
 
 // Helper function to handle payment intent canceled
 async function handlePaymentIntentCanceled(paymentIntent) {
   try {
-    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
-    
+    const order = await Order.findOne({
+      stripePaymentIntentId: paymentIntent.id,
+    });
+
     if (!order) {
-      console.log('Order not found for payment intent:', paymentIntent.id);
+      console.log("Order not found for payment intent:", paymentIntent.id);
       return;
     }
-    
+
     // Update order payment status
     const updateData = {
-      paymentStatus: 'failed',
-      stripePaymentDate: new Date()
+      paymentStatus: "failed",
+      stripePaymentDate: new Date(),
     };
-    
+
     // If order was in pending status, mark as cancelled
-    if (order.status === 'pending') {
-      updateData.status = 'cancelled';
+    if (order.status === "pending") {
+      updateData.status = "cancelled";
     }
-    
+
     await Order.findByIdAndUpdate(order._id, updateData);
-    
-    console.log('Order payment canceled:', order._id);
-    
+
+    console.log("Order payment canceled:", order._id);
+
     // Emit socket event for order update
-    getIO().emit("order", { event: "order_payment_canceled", orderId: order._id });
-    
+    getIO().emit("order", {
+      event: "order_payment_canceled",
+      orderId: order._id,
+    });
   } catch (error) {
-    console.error('Error handling payment intent canceled:', error);
+    console.error("Error handling payment intent canceled:", error);
   }
 }
 
 // Helper function to handle payment intent processing
 async function handlePaymentIntentProcessing(paymentIntent) {
   try {
-    const order = await Order.findOne({ stripePaymentIntentId: paymentIntent.id });
-    
+    const order = await Order.findOne({
+      stripePaymentIntentId: paymentIntent.id,
+    });
+
     if (!order) {
-      console.log('Order not found for payment intent:', paymentIntent.id);
+      console.log("Order not found for payment intent:", paymentIntent.id);
       return;
     }
-    
+
     // Update order payment status
     const updateData = {
-      paymentStatus: 'processing',
-      stripePaymentDate: new Date()
+      paymentStatus: "processing",
+      stripePaymentDate: new Date(),
     };
-    
+
     await Order.findByIdAndUpdate(order._id, updateData);
-    
-    console.log('Order payment processing:', order._id);
-    
+
+    console.log("Order payment processing:", order._id);
+
     // Emit socket event for order update
-    getIO().emit("order", { event: "order_payment_processing", orderId: order._id });
-    
+    getIO().emit("order", {
+      event: "order_payment_processing",
+      orderId: order._id,
+    });
   } catch (error) {
-    console.error('Error handling payment intent processing:', error);
+    console.error("Error handling payment intent processing:", error);
   }
 }
 
@@ -1150,13 +1266,15 @@ async function handlePaymentIntentProcessing(paymentIntent) {
 // @access  Public (temporarily)
 exports.deleteOrder = async (req, res, next) => {
   try {
-    const order = await Order.findById(req.params.id)
-      .populate('branchId', '_id name');
+    const order = await Order.findById(req.params.id).populate(
+      "branchId",
+      "_id name"
+    );
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order not found with id of ${req.params.id}`
+        message: `Order not found with id of ${req.params.id}`,
       });
     }
 
@@ -1164,7 +1282,7 @@ exports.deleteOrder = async (req, res, next) => {
     const orderInfo = {
       orderId: order._id,
       orderNumber: order.orderNumber,
-      branchId: order.branchId._id
+      branchId: order.branchId._id,
     };
 
     await order.deleteOne();
@@ -1174,7 +1292,7 @@ exports.deleteOrder = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: {}
+      data: {},
     });
   } catch (error) {
     next(error);
@@ -1190,24 +1308,24 @@ exports.getMyOrders = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
-    
+
     // Determine user role and branch
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
     let targetBranchId = null;
-    
+
     let query = { user: req.user.id };
-    
+
     // Handle branch determination based on user type
     if (isAdmin) {
       // Admin users: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       targetBranchId = req.user.branchId;
@@ -1220,17 +1338,17 @@ exports.getMyOrders = async (req, res, next) => {
       }
       // If no branchId provided, get orders from all branches
     }
-    
+
     const orders = await Order.find(query)
-      .populate('branchId', 'name address')
+      .populate("branchId", "name address")
       .populate(populateOptions)
-      .sort('-createdAt');
-    
+      .sort("-createdAt");
+
     res.status(200).json({
       success: true,
       count: orders.length,
       data: orders,
-      branchId: targetBranchId
+      branchId: targetBranchId,
     });
   } catch (error) {
     next(error);
@@ -1246,61 +1364,61 @@ exports.getTodayOrders = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
-    
+
     // Determine user role
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Only admin users can access today's orders
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
-        message: 'Only admin users can access today\'s orders'
+        message: "Only admin users can access today's orders",
       });
     }
-    
+
     // Admin users: Use their assigned branchId
     if (!req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: `${userRole} must be assigned to a branch`
+        message: `${userRole} must be assigned to a branch`,
       });
     }
-    
+
     // Get today's date range
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
     const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-    
+
     // Initialize query with date filter and branch filter
     let query = {
       branchId: req.user.branchId,
       createdAt: {
         $gte: startOfDay,
-        $lte: endOfDay
-      }
+        $lte: endOfDay,
+      },
     };
-    
+
     // Apply status filter if provided
     if (req.query.status) {
       query.status = req.query.status;
     }
-    
+
     const orders = await Order.find(query)
-      .populate('user', 'firstName lastName email phone')
-      .populate('branchId', 'name address')
+      .populate("user", "firstName lastName email phone")
+      .populate("branchId", "name address")
       .populate(populateOptions)
-      .populate('assignedTo', 'firstName lastName email')
+      .populate("assignedTo", "firstName lastName email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       count: orders.length,
       data: orders,
-      branchId: req.user.branchId
+      branchId: req.user.branchId,
     });
   } catch (error) {
     next(error);
@@ -1313,21 +1431,21 @@ exports.getTodayOrders = async (req, res, next) => {
 exports.checkPaymentStatus = async (req, res, next) => {
   try {
     const { orderId } = req.body;
-    
+
     if (!orderId) {
       return res.status(400).json({
         success: false,
-        message: 'Order ID is required'
+        message: "Order ID is required",
       });
     }
 
     // Find the order
     const order = await Order.findById(orderId);
-    
+
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: "Order not found",
       });
     }
 
@@ -1335,51 +1453,59 @@ exports.checkPaymentStatus = async (req, res, next) => {
     if (!order.stripePaymentIntentId) {
       return res.status(400).json({
         success: false,
-        message: 'No payment intent found for this order'
+        message: "No payment intent found for this order",
       });
     }
 
     try {
       // Get payment status from Stripe
-      const paymentStatus = await getPaymentIntentStatus(order.stripePaymentIntentId);
-      
+      const paymentStatus = await getPaymentIntentStatus(
+        order.stripePaymentIntentId
+      );
+
       // Update order based on payment status
       let updateData = {};
       let orderStatus = order.status;
-      
-      if (paymentStatus.success && paymentStatus.message === 'Payment successful') {
+
+      if (
+        paymentStatus.success &&
+        paymentStatus.message === "Payment successful"
+      ) {
         // Payment succeeded - update order status
-        updateData.paymentStatus = 'paid';
+        updateData.paymentStatus = "paid";
         updateData.stripePaymentDate = new Date();
-        
+
         // If order was in pending payment status, move to processing
-        if (order.status === 'pending') {
-          updateData.status = 'processing';
-          orderStatus = 'processing';
+        if (order.status === "pending") {
+          updateData.status = "pending";
+          orderStatus = "processing";
         }
-      } else if (paymentStatus.message === 'Payment is still processing') {
+      } else if (paymentStatus.message === "Payment is still processing") {
         // Payment still processing
-        updateData.paymentStatus = 'processing';
-      } else if (paymentStatus.message.includes('failed') || paymentStatus.message.includes('canceled')) {
+        updateData.paymentStatus = "processing";
+      } else if (
+        paymentStatus.message.includes("failed") ||
+        paymentStatus.message.includes("canceled")
+      ) {
         // Payment failed
-        updateData.paymentStatus = 'failed';
-        
+        updateData.paymentStatus = "failed";
+
         // If order was in pending status, mark as cancelled
-        if (order.status === 'pending') {
-          updateData.status = 'cancelled';
-          orderStatus = 'cancelled';
+        if (order.status === "pending") {
+          updateData.status = "cancelled";
+          orderStatus = "cancelled";
         }
       }
 
       // Update order with new payment status
-      const updatedOrder = await Order.findByIdAndUpdate(
-        orderId,
-        updateData,
-        { new: true, runValidators: true }
-      ).populate('user', 'firstName lastName email phone')
-        .populate('branchId', 'name address')
+      const updatedOrder = await Order.findByIdAndUpdate(orderId, updateData, {
+        new: true,
+        runValidators: true,
+      })
+        .populate("user", "firstName lastName email phone")
+        .populate("branchId", "name address")
         .populate(populateOptions)
-        .populate('assignedTo', 'firstName lastName email');
+        .populate("assignedTo", "firstName lastName email");
 
       // Emit socket event for order update
       getIO().emit("order", { event: "order_payment_updated" });
@@ -1390,23 +1516,21 @@ exports.checkPaymentStatus = async (req, res, next) => {
           order: updatedOrder,
           paymentStatus: paymentStatus,
           orderStatus: orderStatus,
-          message: paymentStatus.message
-        }
+          message: paymentStatus.message,
+        },
       });
-
     } catch (stripeError) {
-      console.error('Error checking payment status:', stripeError);
+      console.error("Error checking payment status:", stripeError);
       return res.status(500).json({
         success: false,
-        message: 'Error checking payment status',
-        error: stripeError.message
+        message: "Error checking payment status",
+        error: stripeError.message,
       });
     }
-
   } catch (error) {
     next(error);
   }
-}; 
+};
 
 // @desc    Cancel (refund) a payment
 // @route   POST /api/orders/cancel-payment/:paymentIntentId
@@ -1417,19 +1541,19 @@ exports.cancelPayment = async (req, res) => {
     if (!paymentIntentId) {
       return res.status(400).json({
         success: false,
-        message: 'Payment Intent ID is required'
+        message: "Payment Intent ID is required",
       });
     }
     const refund = await refundPayment(paymentIntentId);
     return res.status(200).json({
       success: true,
-      message: 'Payment cancelled and refunded successfully',
-      refund
+      message: "Payment cancelled and refunded successfully",
+      refund,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to cancel payment'
+      message: error.message || "Failed to cancel payment",
     });
   }
-}; 
+};
