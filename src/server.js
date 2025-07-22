@@ -40,6 +40,7 @@ const customerRoutes = require("./routes/customer.routes");
 const discountRoutes = require("./routes/discount.routes");
 const businessOfferRoutes = require("./routes/business-offer.routes");
 const profileRoutes = require("./routes/profile.routes");
+const paymentRoutes = require("./routes/payment.routes");
 
 // Settings routes
 const outletsRoutes = require("./routes/settings/outlets.routes");
@@ -97,6 +98,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/discounts", discountRoutes);
 app.use("/api/business-offers", businessOfferRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/payments", paymentRoutes);
 app.use("/api/settings/outlets", outletsRoutes);
 app.use("/api/settings/delivery-charges", deliveryChargesRoutes);
 app.use("/api/settings/service-charges", serviceChargesRoutes);
