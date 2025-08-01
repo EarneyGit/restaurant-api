@@ -37,8 +37,8 @@ exports.getProducts = async (req, res, next) => {
       });
     }
 
-    // Verify branch exists
-    const branch = await Branch.findById(targetBranchId);
+    // Verify branch exists (optimized with lean and select)
+    const branch = await Branch.findById(targetBranchId).lean().select('_id');
     if (!branch) {
       return res.status(404).json({
         success: false,
@@ -59,76 +59,103 @@ exports.getProducts = async (req, res, next) => {
       query.name = { $regex: req.query.searchText, $options: "i" };
     }
 
-    // Get products with populated fields
-    const products = await Product.find(query)
-      .populate("category", "name slug")
-      .populate("branchId", "name address")
-      .populate("selectedItems", "name price category")
-      .populate({
-        path: "priceChanges",
-        match: {
-          active: true,
-          startDate: { $lte: new Date() },
-          endDate: { $gte: new Date() },
-        },
+    // Optimized: Use Promise.all to run queries in parallel
+    const [products, attributes, productAttributeItems] = await Promise.all([
+      // Get products with optimized population and lean queries
+      Product.find(query)
+        .populate("category", "name slug", null, { lean: true })
+        .populate("branchId", "name address", null, { lean: true })
+        .populate("selectedItems", "name price category", null, { lean: true })
+        .populate({
+          path: "priceChanges",
+          match: {
+            active: true,
+            startDate: { $lte: new Date() },
+            endDate: { $gte: new Date() },
+          },
+          options: { lean: true }
+        })
+        .lean()
+        .sort("name"),
+      
+      // Get attributes for the branch
+      Attribute.find({ branchId: targetBranchId }).lean(),
+      
+      // Get product attribute items with optimized population
+      ProductAttributeItem.find({
+        isActive: true
       })
-      .sort("name");
+      .populate("attributeId", "_id name type requiresSelection description", null, { lean: true })
+      .lean()
+    ]);
 
-    // Get product attributes for all products
-    const productIds = products.map((product) => product._id);
-    const attributes = await Attribute.find({ branchId: targetBranchId });
-    const productAttributeItems = await ProductAttributeItem.find({
-      productId: { $in: productIds },
-      isActive: true,
-    }).populate("attributeId");
+    // Filter product attribute items by productIds after fetching
+    const productIds = new Set(products.map(product => product._id.toString()));
+    const filteredProductAttributeItems = productAttributeItems.filter(
+      item => item.productId && productIds.has(item.productId.toString())
+    );
 
-    // Group attribute items by product
-    const productAttributesMap = {};
-    productAttributeItems.forEach((item) => {
-      if (item.productId) {
-        // Add null check
+    // Optimized: Create attribute lookup map for faster access
+    const attributeMap = new Map();
+    attributes.forEach(attr => {
+      attributeMap.set(attr._id.toString(), attr);
+    });
+
+    // Optimized: Group attribute items by product using Map for better performance
+    const productAttributesMap = new Map();
+    filteredProductAttributeItems.forEach((item) => {
+      if (item.productId && item.attributeId) {
         const productIdStr = item.productId.toString();
-        if (!productAttributesMap[productIdStr]) {
-          productAttributesMap[productIdStr] = [];
+        const attrIdStr = item.attributeId._id.toString();
+        
+        if (!productAttributesMap.has(productIdStr)) {
+          productAttributesMap.set(productIdStr, new Map());
         }
-        productAttributesMap[productIdStr].push(item);
+        
+        const productAttrs = productAttributesMap.get(productIdStr);
+        if (!productAttrs.has(attrIdStr)) {
+          productAttrs.set(attrIdStr, []);
+        }
+        
+        productAttrs.get(attrIdStr).push({
+          id: item._id,
+          name: item.name,
+          price: item.price,
+        });
       }
     });
 
-    // Transform products to match frontend structure
+    // Optimized: Transform products with improved performance
     const transformedProducts = products.map((product) => {
       const productId = product._id.toString();
+      const productAttrs = productAttributesMap.get(productId);
+      
+      // Build attributes array more efficiently
+      const productAttributes = [];
+      if (productAttrs) {
+        for (const [attrId, choices] of productAttrs) {
+          const attr = attributeMap.get(attrId);
+          if (attr && choices.length > 0) {
+            productAttributes.push({
+              id: attr._id,
+              name: attr.name,
+              type: attr.type,
+              requiresSelection: attr.requiresSelection,
+              description: attr.description,
+              choices: choices,
+            });
+          }
+        }
+      }
+
       return {
         id: product._id,
         name: product.name,
         price: product.price,
-        // currentEffectivePrice: product.currentEffectivePrice || product.price,
-        // hasActivePriceChanges: product.hasActivePriceChanges || false,
-        // activePriceChangeId: product.activePriceChangeId || null,
-        attributes: attributes
-          .map((attr) => ({
-            id: attr._id,
-            name: attr.name,
-            type: attr.type,
-            requiresSelection: attr.requiresSelection,
-            description: attr.description,
-            choices: (productAttributesMap[productId] || [])
-              .filter(
-                (item) =>
-                  item.attributeId &&
-                  item.attributeId._id.toString() === attr._id.toString()
-              )
-              .map((item) => ({
-                id: item._id,
-                name: item.name,
-                price: item.price,
-              })),
-          }))
-          .filter((attr) => attr.choices.length > 0),
+        attributes: productAttributes,
         hideItem: product.hideItem ?? false,
         delivery: product.delivery !== undefined ? product.delivery : true,
-        collection:
-          product.collection !== undefined ? product.collection : true,
+        collection: product.collection !== undefined ? product.collection : true,
         dineIn: product.dineIn !== undefined ? product.dineIn : true,
         description: product.description,
         weight: product.weight,
