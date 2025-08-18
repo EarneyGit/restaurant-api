@@ -1,6 +1,6 @@
-const OrderingTimes = require('../models/ordering-times.model');
-const Branch = require('../models/branch.model');
-const { MANAGEMENT_ROLES } = require('../constants/roles');
+const OrderingTimes = require("../models/ordering-times.model");
+const Branch = require("../models/branch.model");
+const { MANAGEMENT_ROLES } = require("../constants/roles");
 
 // @desc    Get ordering times for a branch
 // @route   GET /api/ordering-times/:branchId or GET /api/ordering-times (for admin users)
@@ -8,18 +8,18 @@ const { MANAGEMENT_ROLES } = require('../constants/roles');
 exports.getOrderingTimes = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -27,7 +27,7 @@ exports.getOrderingTimes = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
@@ -36,31 +36,36 @@ exports.getOrderingTimes = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
-      });
-    }
-    
-    // For manager/staff, only allow access to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        req.user.branchId && 
-        branchId.toString() !== req.user.branchId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this branch ordering times'
+        message: "Branch not found",
       });
     }
 
-    let orderingTimes = await OrderingTimes.findOne({ branchId }).populate('branchId', 'name');
+    // For manager/staff, only allow access to their branch
+    if (
+      (userRole === "manager" || userRole === "staff") &&
+      req.user.branchId &&
+      branchId.toString() !== req.user.branchId.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access this branch ordering times",
+      });
+    }
+
+    let orderingTimes = await OrderingTimes.findOne({ branchId }).populate(
+      "branchId",
+      "name"
+    );
 
     // Create default ordering times if none exist
     if (!orderingTimes) {
       orderingTimes = await OrderingTimes.create({ branchId });
-      await orderingTimes.populate('branchId', 'name');
+      await orderingTimes.populate("branchId", "name");
     }
 
     res.status(200).json({
       success: true,
-      data: orderingTimes
+      data: orderingTimes,
     });
   } catch (error) {
     next(error);
@@ -74,18 +79,18 @@ exports.updateWeeklySchedule = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
     const { weeklySchedule } = req.body;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -93,7 +98,7 @@ exports.updateWeeklySchedule = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
@@ -102,24 +107,24 @@ exports.updateWeeklySchedule = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
+
     // Staff cannot update ordering times
-    if (userRole === 'staff') {
+    if (userRole === "staff") {
       return res.status(403).json({
         success: false,
-        message: 'Staff are not authorized to update ordering times'
+        message: "Staff are not authorized to update ordering times",
       });
     }
-    
+
     // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
+    if (userRole === "manager") {
       if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to update other branch ordering times'
+          message: "Not authorized to update other branch ordering times",
         });
       }
     }
@@ -127,9 +132,9 @@ exports.updateWeeklySchedule = async (req, res, next) => {
     let orderingTimes = await OrderingTimes.findOne({ branchId });
 
     if (!orderingTimes) {
-      orderingTimes = await OrderingTimes.create({ 
-        branchId, 
-        weeklySchedule 
+      orderingTimes = await OrderingTimes.create({
+        branchId,
+        weeklySchedule,
       });
     } else {
       orderingTimes.weeklySchedule = weeklySchedule;
@@ -138,26 +143,37 @@ exports.updateWeeklySchedule = async (req, res, next) => {
 
     // Sync changes back to Branch model based on today's settings
     const today = new Date();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayNames = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ];
     const todayDayName = dayNames[today.getDay()];
-    
+
     const todaySettings = weeklySchedule[todayDayName];
     if (todaySettings) {
       // Update branch settings based on today's ordering times
       const updateBranchSettings = {};
-      
+
       if (todaySettings.isCollectionAllowed !== undefined) {
-        updateBranchSettings.isCollectionEnabled = todaySettings.isCollectionAllowed;
+        updateBranchSettings.isCollectionEnabled =
+          todaySettings.isCollectionAllowed;
       }
-      
+
       if (todaySettings.isDeliveryAllowed !== undefined) {
-        updateBranchSettings.isDeliveryEnabled = todaySettings.isDeliveryAllowed;
+        updateBranchSettings.isDeliveryEnabled =
+          todaySettings.isDeliveryAllowed;
       }
-      
+
       if (todaySettings.isTableOrderingAllowed !== undefined) {
-        updateBranchSettings.isTableOrderingEnabled = todaySettings.isTableOrderingAllowed;
+        updateBranchSettings.isTableOrderingEnabled =
+          todaySettings.isTableOrderingAllowed;
       }
-      
+
       // Only update if there are changes
       if (Object.keys(updateBranchSettings).length > 0) {
         await Branch.findByIdAndUpdate(
@@ -168,12 +184,12 @@ exports.updateWeeklySchedule = async (req, res, next) => {
       }
     }
 
-    await orderingTimes.populate('branchId', 'name');
+    await orderingTimes.populate("branchId", "name");
 
     res.status(200).json({
       success: true,
-      message: 'Weekly schedule updated successfully',
-      data: orderingTimes
+      message: "Weekly schedule updated successfully",
+      data: orderingTimes,
     });
   } catch (error) {
     next(error);
@@ -188,27 +204,27 @@ exports.updateDaySchedule = async (req, res, next) => {
     let branchId = req.params.branchId;
     const { dayName } = req.params;
     const daySettings = req.body;
-    
+
     // Ensure breakTime has all required fields
     if (daySettings.breakTime) {
       daySettings.breakTime = {
         enabled: daySettings.breakTime.enabled || false,
         start: daySettings.breakTime.start || "15:00",
-        end: daySettings.breakTime.end || "16:00"
+        end: daySettings.breakTime.end || "16:00",
       };
     }
 
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -216,15 +232,23 @@ exports.updateDaySchedule = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
-    const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const validDays = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
     if (!validDays.includes(dayName.toLowerCase())) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid day name. Must be one of: ' + validDays.join(', ')
+        message: "Invalid day name. Must be one of: " + validDays.join(", "),
       });
     }
 
@@ -233,24 +257,24 @@ exports.updateDaySchedule = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
+
     // Staff cannot update ordering times
-    if (userRole === 'staff') {
+    if (userRole === "staff") {
       return res.status(403).json({
         success: false,
-        message: 'Staff are not authorized to update ordering times'
+        message: "Staff are not authorized to update ordering times",
       });
     }
-    
+
     // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
+    if (userRole === "manager") {
       if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to update other branch ordering times'
+          message: "Not authorized to update other branch ordering times",
         });
       }
     }
@@ -267,25 +291,35 @@ exports.updateDaySchedule = async (req, res, next) => {
 
     // Sync changes back to Branch model if this is today's settings
     const today = new Date();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayNames = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ];
     const todayDayName = dayNames[today.getDay()];
-    
+
     if (dayName.toLowerCase() === todayDayName) {
       // Update branch settings based on today's ordering times
       const updateBranchSettings = {};
-      
+
       if (daySettings.isCollectionAllowed !== undefined) {
-        updateBranchSettings.isCollectionEnabled = daySettings.isCollectionAllowed;
+        updateBranchSettings.isCollectionEnabled =
+          daySettings.isCollectionAllowed;
       }
-      
+
       if (daySettings.isDeliveryAllowed !== undefined) {
         updateBranchSettings.isDeliveryEnabled = daySettings.isDeliveryAllowed;
       }
-      
+
       if (daySettings.isTableOrderingAllowed !== undefined) {
-        updateBranchSettings.isTableOrderingEnabled = daySettings.isTableOrderingAllowed;
+        updateBranchSettings.isTableOrderingEnabled =
+          daySettings.isTableOrderingAllowed;
       }
-      
+
       // Only update if there are changes
       if (Object.keys(updateBranchSettings).length > 0) {
         await Branch.findByIdAndUpdate(
@@ -296,12 +330,12 @@ exports.updateDaySchedule = async (req, res, next) => {
       }
     }
 
-    await orderingTimes.populate('branchId', 'name');
+    await orderingTimes.populate("branchId", "name");
 
     res.status(200).json({
       success: true,
       message: `${dayName} schedule updated successfully`,
-      data: orderingTimes
+      data: orderingTimes,
     });
   } catch (error) {
     next(error);
@@ -311,48 +345,53 @@ exports.updateDaySchedule = async (req, res, next) => {
 // @desc    Get closed dates for a branch
 // @route   GET /api/ordering-times/:branchId/closed-dates or GET /api/ordering-times/closed-dates (for admin users)
 // @access  Private/Admin/Manager
+// Helper function to strip time from a date
+const stripTime = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
 exports.getClosedDates = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
-      // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
     } else if (!branchId) {
-      // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
-    // Check if branch exists
     const branch = await Branch.findById(branchId);
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
-    // For manager/staff, only allow access to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        req.user.branchId && 
-        branchId.toString() !== req.user.branchId.toString()) {
+
+    if (
+      (userRole === "manager" || userRole === "staff") &&
+      req.user.branchId &&
+      branchId.toString() !== req.user.branchId.toString()
+    ) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this branch closed dates'
+        message: "Not authorized to access this branch closed dates",
       });
     }
 
@@ -362,18 +401,23 @@ exports.getClosedDates = async (req, res, next) => {
       orderingTimes = await OrderingTimes.create({ branchId });
     }
 
-    // Filter future closed dates
     const now = new Date();
-    const futureClosedDates = orderingTimes.closedDates.filter(closedDate => {
-      const compareDate = closedDate.type === 'range' && closedDate.endDate 
-        ? closedDate.endDate 
-        : closedDate.date;
-      return new Date(compareDate) >= now;
+    const today = stripTime(now);
+
+    const futureClosedDates = orderingTimes.closedDates.filter((closedDate) => {
+      const compareDate =
+        closedDate.type === "range" && closedDate.endDate
+          ? closedDate.endDate
+          : closedDate.date;
+
+      const strippedCompareDate = stripTime(compareDate);
+
+      return strippedCompareDate >= today;
     });
 
     res.status(200).json({
       success: true,
-      data: futureClosedDates
+      data: futureClosedDates,
     });
   } catch (error) {
     next(error);
@@ -387,18 +431,18 @@ exports.addClosedDate = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
     const { date, type, endDate, reason } = req.body;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -406,7 +450,7 @@ exports.addClosedDate = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
@@ -414,14 +458,14 @@ exports.addClosedDate = async (req, res, next) => {
     if (!date || !type) {
       return res.status(400).json({
         success: false,
-        message: 'Date and type are required'
+        message: "Date and type are required",
       });
     }
 
-    if (type === 'range' && !endDate) {
+    if (type === "range" && !endDate) {
       return res.status(400).json({
         success: false,
-        message: 'End date is required for range type'
+        message: "End date is required for range type",
       });
     }
 
@@ -430,24 +474,24 @@ exports.addClosedDate = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
+
     // Staff cannot add closed dates
-    if (userRole === 'staff') {
+    if (userRole === "staff") {
       return res.status(403).json({
         success: false,
-        message: 'Staff are not authorized to add closed dates'
+        message: "Staff are not authorized to add closed dates",
       });
     }
-    
+
     // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
+    if (userRole === "manager") {
       if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to add closed dates for other branches'
+          message: "Not authorized to add closed dates for other branches",
         });
       }
     }
@@ -461,10 +505,10 @@ exports.addClosedDate = async (req, res, next) => {
     const newClosedDate = {
       date: new Date(date),
       type,
-      reason: reason || 'Closed'
+      reason: reason || "Closed",
     };
 
-    if (type === 'range') {
+    if (type === "range") {
       newClosedDate.endDate = new Date(endDate);
     }
 
@@ -473,8 +517,8 @@ exports.addClosedDate = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Closed date added successfully',
-      data: newClosedDate
+      message: "Closed date added successfully",
+      data: newClosedDate,
     });
   } catch (error) {
     next(error);
@@ -488,18 +532,18 @@ exports.deleteClosedDate = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
     const { closedDateId } = req.params;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -507,7 +551,7 @@ exports.deleteClosedDate = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
@@ -516,24 +560,24 @@ exports.deleteClosedDate = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
+
     // Staff cannot delete closed dates
-    if (userRole === 'staff') {
+    if (userRole === "staff") {
       return res.status(403).json({
         success: false,
-        message: 'Staff are not authorized to delete closed dates'
+        message: "Staff are not authorized to delete closed dates",
       });
     }
-    
+
     // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
+    if (userRole === "manager") {
       if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to delete closed dates for other branches'
+          message: "Not authorized to delete closed dates for other branches",
         });
       }
     }
@@ -543,18 +587,18 @@ exports.deleteClosedDate = async (req, res, next) => {
     if (!orderingTimes) {
       return res.status(404).json({
         success: false,
-        message: 'Ordering times not found'
+        message: "Ordering times not found",
       });
     }
 
     const closedDateIndex = orderingTimes.closedDates.findIndex(
-      date => date._id.toString() === closedDateId
+      (date) => date._id.toString() === closedDateId
     );
 
     if (closedDateIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: 'Closed date not found'
+        message: "Closed date not found",
       });
     }
 
@@ -563,7 +607,7 @@ exports.deleteClosedDate = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Closed date deleted successfully'
+      message: "Closed date deleted successfully",
     });
   } catch (error) {
     next(error);
@@ -576,18 +620,18 @@ exports.deleteClosedDate = async (req, res, next) => {
 exports.deleteAllClosedDates = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -595,7 +639,7 @@ exports.deleteAllClosedDates = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
@@ -604,24 +648,24 @@ exports.deleteAllClosedDates = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
+
     // Staff cannot delete closed dates
-    if (userRole === 'staff') {
+    if (userRole === "staff") {
       return res.status(403).json({
         success: false,
-        message: 'Staff are not authorized to delete closed dates'
+        message: "Staff are not authorized to delete closed dates",
       });
     }
-    
+
     // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
+    if (userRole === "manager") {
       if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to delete closed dates for other branches'
+          message: "Not authorized to delete closed dates for other branches",
         });
       }
     }
@@ -631,7 +675,7 @@ exports.deleteAllClosedDates = async (req, res, next) => {
     if (!orderingTimes) {
       return res.status(404).json({
         success: false,
-        message: 'Ordering times not found'
+        message: "Ordering times not found",
       });
     }
 
@@ -640,7 +684,7 @@ exports.deleteAllClosedDates = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'All closed dates deleted successfully'
+      message: "All closed dates deleted successfully",
     });
   } catch (error) {
     next(error);
@@ -653,18 +697,18 @@ exports.deleteAllClosedDates = async (req, res, next) => {
 exports.getOrderRestrictions = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -672,7 +716,7 @@ exports.getOrderRestrictions = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
@@ -681,17 +725,19 @@ exports.getOrderRestrictions = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
+
     // For manager/staff, only allow access to their branch
-    if ((userRole === 'manager' || userRole === 'staff') && 
-        req.user.branchId && 
-        branchId.toString() !== req.user.branchId.toString()) {
+    if (
+      (userRole === "manager" || userRole === "staff") &&
+      req.user.branchId &&
+      branchId.toString() !== req.user.branchId.toString()
+    ) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this branch order restrictions'
+        message: "Not authorized to access this branch order restrictions",
       });
     }
 
@@ -703,7 +749,7 @@ exports.getOrderRestrictions = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: orderingTimes.restrictions
+      data: orderingTimes.restrictions,
     });
   } catch (error) {
     next(error);
@@ -717,18 +763,18 @@ exports.updateOrderRestrictions = async (req, res, next) => {
   try {
     let branchId = req.params.branchId;
     const { restrictions } = req.body;
-    
+
     // Get user role from roleId
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (!branchId && isAdmin) {
       // Admin users without branchId in URL: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       branchId = req.user.branchId;
@@ -736,7 +782,7 @@ exports.updateOrderRestrictions = async (req, res, next) => {
       // Non-admin users must provide branchId
       return res.status(400).json({
         success: false,
-        message: 'Branch ID is required'
+        message: "Branch ID is required",
       });
     }
 
@@ -745,24 +791,24 @@ exports.updateOrderRestrictions = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
-    
+
     // Staff cannot update restrictions
-    if (userRole === 'staff') {
+    if (userRole === "staff") {
       return res.status(403).json({
         success: false,
-        message: 'Staff are not authorized to update order restrictions'
+        message: "Staff are not authorized to update order restrictions",
       });
     }
-    
+
     // For manager, allow updates only to their branch
-    if (userRole === 'manager') {
+    if (userRole === "manager") {
       if (branchId.toString() !== req.user.branchId.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to update restrictions for other branches'
+          message: "Not authorized to update restrictions for other branches",
         });
       }
     }
@@ -778,8 +824,8 @@ exports.updateOrderRestrictions = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Order restrictions updated successfully',
-      data: orderingTimes.restrictions
+      message: "Order restrictions updated successfully",
+      data: orderingTimes.restrictions,
     });
   } catch (error) {
     next(error);
@@ -797,7 +843,7 @@ exports.checkOrderingAvailability = async (req, res, next) => {
     if (!orderType || !date || !time) {
       return res.status(400).json({
         success: false,
-        message: 'Order type, date, and time are required'
+        message: "Order type, date, and time are required",
       });
     }
 
@@ -806,7 +852,7 @@ exports.checkOrderingAvailability = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
 
@@ -816,7 +862,7 @@ exports.checkOrderingAvailability = async (req, res, next) => {
       return res.status(200).json({
         success: true,
         available: false,
-        reason: 'Ordering times not configured'
+        reason: "Ordering times not configured",
       });
     }
 
@@ -826,12 +872,20 @@ exports.checkOrderingAvailability = async (req, res, next) => {
       return res.status(200).json({
         success: true,
         available: false,
-        reason: 'Outlet is closed on this date'
+        reason: "Outlet is closed on this date",
       });
     }
 
     // Get day of week
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayNames = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ];
     const dayName = dayNames[requestDate.getDay()];
 
     // Check if ordering is allowed for this day and time
@@ -840,9 +894,11 @@ exports.checkOrderingAvailability = async (req, res, next) => {
     res.status(200).json({
       success: true,
       available: isAllowed,
-      reason: isAllowed ? 'Available' : `${orderType} ordering not available at this time`
+      reason: isAllowed
+        ? "Available"
+        : `${orderType} ordering not available at this time`,
     });
   } catch (error) {
     next(error);
   }
-}; 
+};

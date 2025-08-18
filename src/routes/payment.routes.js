@@ -1,5 +1,8 @@
 const express = require("express");
-const { getPayments, getPaymentStats } = require("../controllers/payment-controller");
+const {
+  getPayments,
+  getPaymentStats,
+} = require("../controllers/payment-controller");
 const router = express.Router();
 // Get payments with filters
 router.get("/", getPayments);
