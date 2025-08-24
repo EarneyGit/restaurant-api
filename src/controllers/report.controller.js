@@ -48,7 +48,7 @@ const getDateRange = (period, customStart, customEnd) => {
 
 // @desc    Get end of night report
 // @route   GET /api/reports/end-of-night
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getEndOfNightReport = async (req, res, next) => {
   try {
     const { date, branchId } = req.query;
@@ -64,8 +64,16 @@ exports.getEndOfNightReport = async (req, res, next) => {
       status: { $in: ['completed', 'delivered'] }
     };
     
-    if (branchId) {
-      filter.branchId = branchId;
+    // Handle branch filtering based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, restrict to their branch only
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
     }
 
     // Get sales summary
@@ -144,7 +152,7 @@ exports.getEndOfNightReport = async (req, res, next) => {
 
 // @desc    Get end of month report
 // @route   GET /api/reports/end-of-month
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getEndOfMonthReport = async (req, res, next) => {
   try {
     const { month, year, branchId } = req.query;
@@ -160,8 +168,16 @@ exports.getEndOfMonthReport = async (req, res, next) => {
       status: { $in: ['completed', 'delivered'] }
     };
     
-    if (branchId) {
-      filter.branchId = branchId;
+    // Handle branch filtering based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, restrict to their branch only
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
     }
 
     // Monthly summary
@@ -261,7 +277,7 @@ exports.getEndOfMonthReport = async (req, res, next) => {
 
 // @desc    Get sales history
 // @route   GET /api/reports/sales-history
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getSalesHistory = async (req, res, next) => {
   try {
     const { startDate: start, endDate: end, branchId, page = 1, limit = 50 } = req.query;
@@ -274,8 +290,16 @@ exports.getSalesHistory = async (req, res, next) => {
       createdAt: { $gte: startDate, $lte: endDate }
     };
     
-    if (branchId) {
-      filter.branchId = branchId;
+    // Handle branch filtering based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, restrict to their branch only
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
     }
 
     // Pagination
@@ -291,18 +315,27 @@ exports.getSalesHistory = async (req, res, next) => {
       .lean();
 
     // Transform data to match frontend interface
-    const salesData = orders.map(order => ({
-      id: order._id.toString(),
-      customer: order.customerId?.name || 'Guest',
-      value: order.total || 0,
-      discount: order.discount || 0,
-      tip: order.tips || 0,
-      postcode: order.deliveryAddress?.zipCode || 'N/A',
-      pay: order.paymentMethod === 'card' ? 'Card' : 'Cash',
-      type: order.orderType === 'delivery' ? 'Delivery' : 'Collection',
-      created: order.createdAt.toISOString().split('T')[0],
-      platform: 'Web'
-    }));
+    const salesData = orders.map(order => {
+      // Format date to DD/MM/YYYY
+      const date = new Date(order.createdAt);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const formattedDate = `${day}/${month}/${year}`;
+      
+      return {
+        id: order._id.toString(),
+        customer: order.customerId?.name || 'Guest',
+        value: order.total || 0,
+        discount: order.discount || 0,
+        tip: order.tips || 0,
+        postcode: order.deliveryAddress?.zipCode || order.deliveryAddress?.postalCode || 'N/A',
+        pay: order.paymentMethod === 'card' ? 'Card' : 'Cash',
+        type: order.orderType === 'delivery' ? 'Delivery' : 'Collection',
+        created: formattedDate,
+        platform: 'Web'
+      };
+    });
 
     // Get total count for pagination
     const totalCount = await Order.countDocuments(filter);
@@ -324,10 +357,10 @@ exports.getSalesHistory = async (req, res, next) => {
 
 // @desc    Get sales of item history
 // @route   GET /api/reports/item-sales-history
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getItemSalesHistory = async (req, res, next) => {
   try {
-    const { startDate: start, endDate: end, productId, categoryId, page = 1, limit = 50 } = req.query;
+    const { startDate: start, endDate: end, productId, categoryId, page = 1, limit = 50, branchId } = req.query;
     
     // Date range
     const { startDate, endDate } = getDateRange('custom', start, end);
@@ -337,6 +370,18 @@ exports.getItemSalesHistory = async (req, res, next) => {
       createdAt: { $gte: startDate, $lte: endDate },
       status: { $in: ['completed', 'delivered'] }
     };
+    
+    // Handle branch filtering based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, restrict to their branch only
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
+    }
 
     // Aggregation pipeline
     const pipeline = [
@@ -414,10 +459,10 @@ exports.getItemSalesHistory = async (req, res, next) => {
 
 // @desc    Get discount history
 // @route   GET /api/reports/discount-history
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getDiscountHistory = async (req, res, next) => {
   try {
-    const { startDate: start, endDate: end, discountType, page = 1, limit = 50 } = req.query;
+    const { startDate: start, endDate: end, discountType, page = 1, limit = 50, branchId } = req.query;
     
     // Date range
     const { startDate, endDate } = getDateRange('custom', start, end);
@@ -425,8 +470,23 @@ exports.getDiscountHistory = async (req, res, next) => {
     // Build filter
     const filter = {
       createdAt: { $gte: startDate, $lte: endDate },
-      discount: { $gt: 0 }
+      $or: [
+        { 'discount.discountAmount': { $gt: 0 } },
+        { 'discountApplied.discountAmount': { $gt: 0 } }
+      ]
     };
+    
+    // Handle branch filtering based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, restrict to their branch only
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
+    }
 
     // Add discount type filter if specified
     if (discountType && discountType !== 'all') {
@@ -442,13 +502,20 @@ exports.getDiscountHistory = async (req, res, next) => {
       .lean();
 
     // Transform data to match frontend interface
-    const discountData = orders.map(order => ({
-      id: order._id.toString(),
-      customer: order.customerId?.name || 'Guest',
-      discount: order.discountType || 'General',
-      value: order.discount || 0,
-      date: order.createdAt.toISOString()
-    }));
+    const discountData = orders.map(order => {
+      // Get discount info from either discount or discountApplied field
+      const discountInfo = order.discountApplied || order.discount || {};
+      const discountName = discountInfo.name || discountInfo.code || order.discountType || 'General';
+      const discountAmount = discountInfo.discountAmount || order.discount || 0;
+      
+      return {
+        id: order._id.toString(),
+        customer: order.customerId?.name || 'Guest',
+        discount: discountName,
+        value: discountAmount,
+        date: order.createdAt.toISOString()
+      };
+    });
 
     // Get total count
     const totalCount = await Order.countDocuments(filter);
@@ -470,12 +537,20 @@ exports.getDiscountHistory = async (req, res, next) => {
 
 // @desc    Get outlet/branch reports
 // @route   GET /api/reports/outlet-reports
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getOutletReports = async (req, res, next) => {
   try {
     const { branchId, period = 'month' } = req.query;
     
-    if (!branchId) {
+    // Handle branch based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, use their branch
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (!effectiveBranchId) {
       return res.status(400).json({
         success: false,
         message: 'Branch ID is required'
@@ -496,7 +571,7 @@ exports.getOutletReports = async (req, res, next) => {
 
     // Build filter
     const filter = {
-      branchId,
+      branchId: effectiveBranchId,
       createdAt: { $gte: startDate, $lte: endDate },
       status: { $in: ['completed', 'delivered'] }
     };
@@ -580,7 +655,7 @@ exports.getOutletReports = async (req, res, next) => {
 
 // @desc    Get custom reports
 // @route   GET /api/reports/custom
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getCustomReports = async (req, res, next) => {
   try {
     const { type, startDate: start, endDate: end, branchId } = req.query;
@@ -594,8 +669,16 @@ exports.getCustomReports = async (req, res, next) => {
       status: { $in: ['completed', 'delivered'] }
     };
     
-    if (branchId) {
-      filter.branchId = branchId;
+    // Handle branch filtering based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, restrict to their branch only
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
     }
 
     let reportData = {};
@@ -704,7 +787,7 @@ exports.getCustomReports = async (req, res, next) => {
 
 // @desc    Get dashboard summary metrics
 // @route   GET /api/reports/dashboard-summary
-// @access  Private/Admin/Manager
+// @access  Private/Staff or higher
 exports.getDashboardSummary = async (req, res, next) => {
   try {
     const { period = 'today', branchId } = req.query;
@@ -718,8 +801,16 @@ exports.getDashboardSummary = async (req, res, next) => {
       status: { $in: ['completed', 'delivered'] }
     };
     
-    if (branchId) {
-      filter.branchId = branchId;
+    // Handle branch filtering based on user role
+    let effectiveBranchId = branchId;
+    
+    // If user is staff/manager, restrict to their branch only
+    if (req.user.role === 'staff' || req.user.role === 'manager') {
+      effectiveBranchId = req.user.branchId;
+    }
+    
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
     }
 
     // Current period metrics

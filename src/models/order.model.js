@@ -169,13 +169,73 @@ const orderSchema = new mongoose.Schema(
       enum: ['pickup', 'delivery', 'dine_in'],
       default: 'pickup'
     },
+    // Order type (same as deliveryMethod but using frontend naming)
+    orderType: {
+      type: String,
+      enum: ['collection', 'delivery', 'dine-in'],
+      default: function() {
+        // Map deliveryMethod to orderType
+        const methodToType = {
+          'pickup': 'collection',
+          'delivery': 'delivery',
+          'dine_in': 'dine-in'
+        };
+        return methodToType[this.deliveryMethod] || 'collection';
+      }
+    },
+    // Tips
+    tips: {
+      type: Number,
+      default: 0,
+      min: [0, 'Tips cannot be negative']
+    },
+    // Delivery fee
+    deliveryFee: {
+      type: Number,
+      default: 0,
+      min: [0, 'Delivery fee cannot be negative']
+    },
+    // Service charge
+    serviceCharge: {
+      type: Number,
+      default: 0,
+      min: [0, 'Service charge cannot be negative']
+    },
+    // Subtotal (before tax, discounts, etc)
+    subtotal: {
+      type: Number,
+      default: 0,
+      min: [0, 'Subtotal cannot be negative']
+    },
+    // Tax amount
+    tax: {
+      type: Number,
+      default: 0,
+      min: [0, 'Tax cannot be negative']
+    },
+    // Total amount (deprecated, use finalTotal instead)
+    total: {
+      type: Number,
+      default: function() {
+        return this.finalTotal || this.totalAmount;
+      }
+    },
     deliveryAddress: {
       street: String,
       city: String,
       state: String,
       postalCode: String,
+      zipCode: String, // Alias for postalCode
       country: String,
       notes: String
+    },
+    // Customer ID reference (in addition to user field)
+    customerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: function() {
+        return this.user;
+      }
     },
     estimatedDeliveryTime: Date,
     estimatedTimeToComplete: {
@@ -263,7 +323,8 @@ orderSchema.pre('save', async function(next) {
 // Calculate total amount before saving (including attribute prices)
 orderSchema.pre('save', function(next) {
   if (this.products && this.products.length > 0) {
-    this.totalAmount = this.products.reduce((total, item) => {
+    // Calculate subtotal from products
+    this.subtotal = this.products.reduce((total, item) => {
       let itemTotal = item.price * item.quantity;
       
       // Add attribute item prices
@@ -284,7 +345,41 @@ orderSchema.pre('save', function(next) {
       
       return total + itemTotal;
     }, 0);
+    
+    // Calculate totalAmount including all charges
+    this.totalAmount = this.subtotal + (this.tax || 0) + (this.deliveryFee || 0) + (this.serviceCharge || 0) + (this.tips || 0);
+    
+    // Update finalTotal
+    this.finalTotal = this.totalAmount - (this.discount?.discountAmount || this.discountApplied?.discountAmount || 0);
+    
+    // Update total field for backward compatibility
+    this.total = this.finalTotal;
   }
+  
+  // Sync customerId with user field
+  if (this.user && !this.customerId) {
+    this.customerId = this.user;
+  }
+  
+  // Sync orderType with deliveryMethod
+  if (this.deliveryMethod && !this.orderType) {
+    const methodToType = {
+      'pickup': 'collection',
+      'delivery': 'delivery',
+      'dine_in': 'dine-in'
+    };
+    this.orderType = methodToType[this.deliveryMethod] || 'collection';
+  }
+  
+  // Sync zipCode with postalCode
+  if (this.deliveryAddress) {
+    if (this.deliveryAddress.postalCode && !this.deliveryAddress.zipCode) {
+      this.deliveryAddress.zipCode = this.deliveryAddress.postalCode;
+    } else if (this.deliveryAddress.zipCode && !this.deliveryAddress.postalCode) {
+      this.deliveryAddress.postalCode = this.deliveryAddress.zipCode;
+    }
+  }
+  
   next();
 });
 
