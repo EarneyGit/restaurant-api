@@ -1,4 +1,5 @@
 const express = require('express');
+const { protect, staff } = require('../middleware/auth.middleware');
 const {
   getEndOfNightReport,
   getEndOfMonthReport,
@@ -11,6 +12,9 @@ const {
 } = require('../controllers/report.controller');
 
 const router = express.Router();
+
+// Apply authentication and staff role check to all report routes
+router.use(protect, staff);
 
 // End of day/night reports
 router.get('/end-of-night', getEndOfNightReport);
