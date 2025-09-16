@@ -396,6 +396,7 @@ exports.getOrder = async (req, res, next) => {
     if (isGuestOrder || !req.user) {
       const publicOrderData = {
         _id: populatedOrder._id,
+        user: populatedOrder.user,
         orderNumber: populatedOrder.orderNumber,
         status: populatedOrder.status,
         estimatedTimeToComplete: populatedOrder.estimatedTimeToComplete,
