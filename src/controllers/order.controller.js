@@ -791,6 +791,43 @@ exports.createOrder = async (req, res, next) => {
           message,
         });
       }
+
+      // Check delivery method compatibility
+      const deliveryMethod = req.body.deliveryMethod;
+      if (deliveryMethod) {
+        let isDeliveryMethodSupported = true;
+        let deliveryMethodMessage = '';
+
+        switch (deliveryMethod.toLowerCase()) {
+          case 'delivery':
+            if (product.delivery === false) {
+              isDeliveryMethodSupported = false;
+              deliveryMethodMessage = `Product "${product.name}" is not available for delivery`;
+            }
+            break;
+          case 'pickup':
+          case 'collection':
+            if (product.collection === false) {
+              isDeliveryMethodSupported = false;
+              deliveryMethodMessage = `Product "${product.name}" is not available for collection/pickup`;
+            }
+            break;
+          case 'dine_in':
+          case 'table_ordering':
+            if (product.dineIn === false) {
+              isDeliveryMethodSupported = false;
+              deliveryMethodMessage = `Product "${product.name}" is not available for dine-in`;
+            }
+            break;
+        }
+
+        if (!isDeliveryMethodSupported) {
+          return res.status(400).json({
+            success: false,
+            message: deliveryMethodMessage,
+          });
+        }
+      }
       
 
       // Calculate effective price considering active price changes
