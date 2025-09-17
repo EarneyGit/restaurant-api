@@ -3,6 +3,7 @@ const Product = require("../models/product.model");
 const User = require("../models/user.model");
 const Discount = require("../models/discount.model");
 const OrderingTimes = require("../models/ordering-times.model");
+const Category = require("../models/category.model");
 const {
   checkStockAvailability,
   deductStock,
@@ -49,6 +50,95 @@ const calculateEffectivePrice = (basePrice, priceChanges) => {
     default:
       return basePrice;
   }
+};
+
+// Helper function to check if category is available at current time
+const isCategoryAvailable = (category) => {
+  if (!category?.availability) return true; // If no availability data, assume available
+
+  const now = new Date();
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }); // Get full day name (Monday, Tuesday, etc.)
+  const currentTime = now.toTimeString().substring(0, 5); // Get time in HH:MM format
+
+  const dayAvailability = category.availability[currentDay];
+  if (!dayAvailability) return true;
+
+  // If not available for this day
+  if (dayAvailability.type === 'Not Available') {
+    return false;
+  }
+
+  // If available all day
+  if (dayAvailability.type === 'All Day') {
+    return true;
+  }
+
+  // If specific times, check if current time falls within the time slot
+  if (dayAvailability.type === 'Specific Times') {
+    if (!dayAvailability.startTime || !dayAvailability.endTime) {
+      return false;
+    }
+
+    return currentTime >= dayAvailability.startTime && currentTime <= dayAvailability.endTime;
+  }
+
+  return true;
+};
+
+// Helper function to check if product is available at current time
+const isProductAvailable = (product) => {
+  // First check if the category is available - if not, product is not available
+  if (product.category && typeof product.category === 'object' && product.category.availability) {
+    if (!isCategoryAvailable(product.category)) {
+      return false;
+    }
+  }
+
+  if (!product.availability) return true; // If no availability data, assume available
+
+  const now = new Date();
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase(); // Get day name (mon, tue, etc.)
+  const currentTime = now.toTimeString().substring(0, 5); // Get time in HH:MM format
+
+  // Map day names to availability keys
+  const dayMap = {
+    'mon': 'monday',
+    'tue': 'tuesday', 
+    'wed': 'wednesday',
+    'thu': 'thursday',
+    'fri': 'friday',
+    'sat': 'saturday',
+    'sun': 'sunday'
+  };
+
+  const dayKey = dayMap[currentDay];
+  if (!dayKey || !product.availability[dayKey]) return true;
+
+  const dayAvailability = product.availability[dayKey];
+
+  // If not available for this day - type takes priority over isAvailable
+  if (dayAvailability.type === 'Not Available') {
+    return false;
+  }
+
+  // If available all day
+  if (dayAvailability.type === 'All Day') {
+    return dayAvailability.isAvailable;
+  }
+
+  // If specific times, check if current time falls within any time slot
+  if (dayAvailability.type === 'Specific Times') {
+    // For specific times, we need both isAvailable to be true AND have valid time slots
+    if (!dayAvailability.isAvailable || !dayAvailability.times || dayAvailability.times.length === 0) {
+      return false;
+    }
+
+    return dayAvailability.times.some(timeSlot => {
+      return currentTime >= timeSlot.start && currentTime <= timeSlot.end;
+    });
+  }
+
+  return true;
 };
 
 // @desc    Get all orders
@@ -662,14 +752,16 @@ exports.createOrder = async (req, res, next) => {
         });
       }
 
-      const product = await Product.findById(item.product).populate({
-        path: "priceChanges",
-        match: {
-          active: true,
-          startDate: { $lte: new Date() },
-          endDate: { $gte: new Date() },
-        },
-      });
+      const product = await Product.findById(item.product)
+        .populate("category", "name availability")
+        .populate({
+          path: "priceChanges",
+          match: {
+            active: true,
+            startDate: { $lte: new Date() },
+            endDate: { $gte: new Date() },
+          },
+        });
 
       if (!product) {
         return res.status(404).json({
@@ -684,6 +776,22 @@ exports.createOrder = async (req, res, next) => {
           message: `Product ${product.name} does not belong to the selected branch`,
         });
       }
+
+      // Check product and category availability
+      if (!isProductAvailable(product)) {
+        const categoryName = product.category?.name || 'Unknown Category';
+        const categoryUnavailable = product.category && !isCategoryAvailable(product.category);
+      
+        const message = categoryUnavailable
+          ? `Product "${product.name}" and its category "${categoryName}" are not available at this time.`
+          : `Product "${product.name}" is not available at this time.`;
+      
+        return res.status(400).json({
+          success: false,
+          message,
+        });
+      }
+      
 
       // Calculate effective price considering active price changes
       const effectivePrice = calculateEffectivePrice(

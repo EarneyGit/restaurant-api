@@ -61,9 +61,9 @@ exports.getProducts = async (req, res, next) => {
 
     // Optimized: Use Promise.all to run queries in parallel
     const [products, attributes, productAttributeItems] = await Promise.all([
-      // Get products with optimized population and lean queries
+      // Get products with optimized population and lean queries - include category availability
       Product.find(query)
-        .populate("category", "name slug", null, { lean: true })
+        .populate("category", "name slug availability", null, { lean: true })
         .populate("branchId", "name address", null, { lean: true })
         .populate("selectedItems", "name price category", null, { lean: true })
         .populate({
@@ -211,7 +211,7 @@ exports.getProducts = async (req, res, next) => {
 exports.getProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate("category", "name slug")
+      .populate("category", "name slug availability")
       .populate("branchId", "name address")
       .populate("selectedItems", "name price category");
 
@@ -480,7 +480,7 @@ exports.createProduct = async (req, res, next) => {
 
     // Fetch the populated product to return
     const populatedProduct = await Product.findById(product._id)
-      .populate("category", "name slug")
+      .populate("category", "name slug availability")
       .populate("branchId", "name address")
       .populate("selectedItems", "name price category");
 
@@ -698,7 +698,7 @@ exports.updateProduct = async (req, res, next) => {
       new: true,
       runValidators: true,
     })
-      .populate("category", "name slug")
+      .populate("category", "name slug availability")
       .populate("branchId", "name address")
       .populate("selectedItems", "name price category");
 
@@ -796,7 +796,7 @@ exports.deleteProduct = async (req, res, next) => {
 exports.getPopularProducts = async (req, res, next) => {
   try {
     const products = await Product.find({ isPopular: true })
-      .populate("category", "name")
+      .populate("category", "name availability")
       .populate("branchId", "name address")
       .populate("selectedItems", "name price category")
       .populate({
@@ -871,7 +871,7 @@ exports.getPopularProducts = async (req, res, next) => {
 exports.getRecommendedProducts = async (req, res, next) => {
   try {
     const products = await Product.find({ isRecommended: true })
-      .populate("category", "name")
+      .populate("category", "name availability")
       .populate("branchId", "name address")
       .populate("selectedItems", "name price category")
       .limit(8);
@@ -1120,7 +1120,7 @@ exports.getOfflineProducts = async (req, res, next) => {
     }
 
     const products = await Product.find(query)
-      .populate("category", "name slug")
+      .populate("category", "name slug availability")
       .populate("branchId", "name address")
       .sort("name");
 
@@ -1201,7 +1201,7 @@ exports.toggleProductOffline = async (req, res, next) => {
       { hideItem: isOffline },
       { new: true, runValidators: true }
     )
-      .populate("category", "name slug")
+      .populate("category", "name slug availability")
       .populate("branchId", "name address");
 
     // Transform product data to match frontend structure
