@@ -1109,12 +1109,31 @@ exports.createOrder = async (req, res, next) => {
         currency: "gbp", // Adjust as needed
       };
     }
+    // clear cart after order creation
+    clearCart(req.user.id, req.body.sessionId);
 
     res.status(201).json(responseData);
   } catch (error) {
     next(error);
   }
 };
+
+// clear cart
+async function clearCart(userId, sessionId) {
+  try {
+    if (userId) {
+      await Cart.findOneAndUpdate({ userId: userId }, { $set: { items: [] } });
+    }
+    if (sessionId) {
+      await Cart.findOneAndUpdate(
+        { sessionId: sessionId },
+        { $set: { items: [] } }
+      );
+    }
+  } catch (error) {
+    console.error("Error clearing cart:", error);
+  }
+}
 
 // @desc    Update order
 // @route   PUT /api/orders/:id
