@@ -1111,7 +1111,7 @@ exports.createOrder = async (req, res, next) => {
       };
     }
     // clear cart after order creation
-    clearCart(req.user.id, req.body.sessionId);
+    clearCart(responseData.data.customerId, req.body.sessionId, targetBranchId);
 
     res.status(201).json(responseData);
   } catch (error) {
@@ -1120,14 +1120,15 @@ exports.createOrder = async (req, res, next) => {
 };
 
 // clear cart
-async function clearCart(userId, sessionId) {
+async function clearCart(userId, sessionId, branchId) {
+  console.log("Clearing cart for user:", userId, "session:", sessionId, "branch:", branchId);
   try {
     if (userId) {
-      await Cart.findOneAndUpdate({ userId: userId }, { $set: { items: [] } });
+      await Cart.findOneAndUpdate({ userId: userId, branchId: branchId }, { $set: { items: [] } });
     }
     if (sessionId) {
       await Cart.findOneAndUpdate(
-        { sessionId: sessionId },
+        { sessionId: sessionId, branchId: branchId },
         { $set: { items: [] } }
       );
     }
