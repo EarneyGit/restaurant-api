@@ -192,17 +192,15 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    // If roleId is provided, validate it
-    let userRole = null;
-    if (roleId) {
-      const Role = mongoose.model('Role');
-      userRole = await Role.findById(roleId);
-      if (!userRole) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid role ID provided'
-        });
-      }
+    // Get the 'user' role for regular customers
+    const Role = mongoose.model('Role');
+    const userRole = await Role.findOne({ slug: 'user' });
+    
+    if (!userRole) {
+      return res.status(500).json({
+        success: false,
+        message: 'User role not found in system'
+      });
     }
 
     // Create user
@@ -214,7 +212,7 @@ exports.register = async (req, res, next) => {
       password,
       phone,
       address,
-      roleId: userRole ? userRole._id : null,
+      roleId: userRole._id, // Always assign 'user' role for regular customers
       emailVerified: true,
       isActive: true
     });
@@ -252,7 +250,7 @@ exports.register = async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        role: userRole ? userRole.slug : 'user'
+        role: userRole.slug
       }
     });
   } catch (error) {
