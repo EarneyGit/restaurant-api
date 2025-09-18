@@ -16,6 +16,7 @@ const {
   getPaymentIntentStatus,
   refundPayment,
 } = require("../utils/stripe-config/stripe-config");
+const Cart = require("../models/cart.model");
 
 // Update the populate options in all relevant methods
 const populateOptions = {
