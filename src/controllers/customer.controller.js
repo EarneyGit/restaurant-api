@@ -610,18 +610,9 @@ const updateCustomer = async (req, res) => {
 
 // @desc    Get simple customers list (POST method)
 // @route   POST /api/customers/list
-// @access  Private (Admin/Manager/Staff only)
+// @access  Public - no auth needed
 const getCustomersList = async (req, res) => {
   try {
-    // First, get the user role ID from roles collection
-    const userRole = await Role.findOne({ slug: 'user' });
-    if (!userRole) {
-      return res.status(404).json({
-        success: false,
-        message: 'User role not found'
-      });
-    }
-    
     // Get filters from request body
     const {
       page = 1,
@@ -632,79 +623,165 @@ const getCustomersList = async (req, res) => {
       email,
       mobile,
       postcode,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortBy = 'lastOrderDate',
+      sortOrder = 'desc',
+      branchId
     } = req.body;
     
-    // Build simple query to filter users by roleId
-    let query = { roleId: userRole._id };
+    // If branchId is provided, find customers who have orders in that branch
+    let customerIds = [];
+    if (branchId && mongoose.Types.ObjectId.isValid(branchId)) {
+      // Get all unique user IDs who have orders in this branch
+      const orders = await Order.find({ 
+        branchId: new mongoose.Types.ObjectId(branchId),
+        user: { $exists: true, $ne: null }
+      }).distinct('user');
+      
+      customerIds = orders;
+    }
+    
+    // Build aggregation pipeline to get customers with their order statistics
+    const pipeline = [
+      // Match users who have orders in the specified branch (if branchId provided)
+      ...(customerIds.length > 0 ? [{
+        $match: {
+          _id: { $in: customerIds }
+        }
+      }] : []),
+      
+      // Lookup orders for each user
+      {
+        $lookup: {
+          from: 'orders',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$user', '$$userId'] },
+                    ...(branchId && mongoose.Types.ObjectId.isValid(branchId) ? 
+                      [{ $eq: ['$branchId', new mongoose.Types.ObjectId(branchId)] }] : [])
+                  ]
+                }
+              }
+            }
+          ],
+          as: 'orders'
+        }
+      },
+      
+      // Only include users who have at least one order
+      {
+        $match: {
+          'orders.0': { $exists: true }
+        }
+      },
+      
+      // Project user data with order statistics
+      {
+        $project: {
+          id: '$_id',
+          firstName: { $ifNull: ['$firstName', 'Guest'] },
+          lastName: { $ifNull: ['$lastName', 'User'] },
+          email: { $ifNull: ['$email', ''] },
+          mobile: { $ifNull: ['$phone', ''] },
+          address: { $ifNull: ['$address', ''] },
+          postcode: { $ifNull: ['$postcode', ''] },
+          totalOrders: { $size: '$orders' },
+          totalSpent: { 
+            $round: [
+              { $sum: '$orders.totalAmount' }, 
+              2
+            ] 
+          },
+          averageOrderValue: {
+            $round: [
+              { $avg: '$orders.totalAmount' },
+              2
+            ]
+          },
+          lastOrderDate: { $max: '$orders.createdAt' },
+          firstOrderDate: { $min: '$orders.createdAt' },
+          customerType: {
+            $cond: {
+              if: { $gte: [{ $size: '$orders' }, 5] },
+              then: 'Regular',
+              else: 'New'
+            }
+          },
+          createdAt: 1
+        }
+      }
+    ];
     
     // Add filtering conditions
+    const matchConditions = {};
+    
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-      query._id = new mongoose.Types.ObjectId(userId);
+      matchConditions.id = new mongoose.Types.ObjectId(userId);
     }
     
     if (firstName) {
-      query.firstName = { $regex: firstName, $options: 'i' };
+      matchConditions.firstName = { $regex: firstName, $options: 'i' };
     }
     
     if (lastName) {
-      // For lastname, we'll search in the name field as well
-      query.lastName = { $regex: lastName, $options: 'i' };
+      matchConditions.lastName = { $regex: lastName, $options: 'i' };
     }
     
     if (email) {
-      query.email = { $regex: email, $options: 'i' };
+      matchConditions.email = { $regex: email, $options: 'i' };
     }
     
     if (mobile) {
-      query.phone = { $regex: mobile, $options: 'i' };
+      matchConditions.mobile = { $regex: mobile, $options: 'i' };
     }
     
     if (postcode) {
-      query.postcode = { $regex: postcode, $options: 'i' };
+      matchConditions.postcode = { $regex: postcode, $options: 'i' };
     }
     
-    // Build sort criteria
-    let sortCriteria = {};
+    // Add match stage for filtering if there are conditions
+    if (Object.keys(matchConditions).length > 0) {
+      pipeline.push({ $match: matchConditions });
+    }
+    
+    // Add sorting
+    const sortStage = {};
     switch (sortBy) {
       case 'firstName':
-        sortCriteria.firstName = sortOrder === 'desc' ? -1 : 1;
+        sortStage.firstName = sortOrder === 'desc' ? -1 : 1;
         break;
       case 'email':
-        sortCriteria.email = sortOrder === 'desc' ? -1 : 1;
+        sortStage.email = sortOrder === 'desc' ? -1 : 1;
         break;
+      case 'totalOrders':
+        sortStage.totalOrders = sortOrder === 'desc' ? -1 : 1;
+        break;
+      case 'totalSpent':
+        sortStage.totalSpent = sortOrder === 'desc' ? -1 : 1;
+        break;
+      case 'lastOrderDate':
       default:
-        sortCriteria.createdAt = sortOrder === 'desc' ? -1 : 1;
+        sortStage.lastOrderDate = sortOrder === 'desc' ? -1 : 1;
         break;
     }
     
+    pipeline.push({ $sort: sortStage });
+    
     // Get total count for pagination
-    const totalCustomers = await User.countDocuments(query);
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await User.aggregate(countPipeline);
+    const totalCustomers = countResult.length > 0 ? countResult[0].total : 0;
     
-    // Calculate pagination
+    // Add pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: parseInt(limit) });
     
-    // Fetch users with pagination
-    const users = await User.find(query)
-      .select('_id firstName lastName email phone address postcode createdAt')
-      .sort(sortCriteria)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
-    
-    // Format response data
-    const customers = users.map(user => ({
-      id: user._id,
-      firstName: user.firstName ? user.firstName : 'Guest',
-      lastName: user.lastName ? user.lastName : 'User',
-      email: user.email || '',
-      mobile: user.phone || '',
-      totalOrders: 0,
-      totalSpent: 0,
-      lastOrderDate: null,
-      customerType: 'New'
-    }));
+    // Execute aggregation
+    const customers = await User.aggregate(pipeline);
     
     // Calculate pagination info
     const totalPages = Math.ceil(totalCustomers / parseInt(limit));
