@@ -139,9 +139,26 @@ const createBusinessOffer = async (req, res) => {
       });
     }
     
+    // Validate required fields
+    if (!req.body.title || !req.body.title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Offer title is required'
+      });
+    }
+    
+    if (!req.body.content || !req.body.content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Offer content is required'
+      });
+    }
+    
     // Create offer
     const offerData = {
       ...req.body,
+      title: req.body.title.trim(),
+      content: req.body.content.trim(),
       branchId: req.user.branchId,
       createdBy: req.user.id
     };
@@ -197,9 +214,29 @@ const updateBusinessOffer = async (req, res) => {
       });
     }
     
+    // Validate required fields if provided
+    if (req.body.title !== undefined && (!req.body.title || !req.body.title.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Offer title is required'
+      });
+    }
+    
+    if (req.body.content !== undefined && (!req.body.content || !req.body.content.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Offer content is required'
+      });
+    }
+    
+    // Prepare update data
+    const updateData = { ...req.body };
+    if (updateData.title) updateData.title = updateData.title.trim();
+    if (updateData.content) updateData.content = updateData.content.trim();
+    
     const offer = await BusinessOffer.findOneAndUpdate(
       { _id: req.params.id, branchId: req.user.branchId },
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     ).populate('createdBy', 'name email');
     
