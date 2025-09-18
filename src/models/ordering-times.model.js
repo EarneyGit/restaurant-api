@@ -433,7 +433,9 @@ orderingTimesSchema.methods.isOrderingAllowed = function(day, orderType, current
   const times = orderType === 'delivery' && daySettings.delivery.useDifferentTimes
     ? daySettings.delivery.customTimes
     : orderType === 'tableOrdering' && daySettings.tableOrdering.useDifferentTimes
-    ? daySettings.tableOrdering.customTimes
+      ? daySettings.tableOrdering.customTimes
+    : orderType === 'collection' && daySettings.collection.useDifferentTimes
+      ? daySettings.collection.customTimes
     : daySettings.defaultTimes;
 
   if (!times.start || !times.end) return false;
