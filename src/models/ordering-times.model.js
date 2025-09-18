@@ -430,13 +430,23 @@ orderingTimesSchema.methods.isOrderingAllowed = function(day, orderType, current
   }
 
   // Check if current time is within allowed hours
-  const times = orderType === 'delivery' && daySettings.delivery.useDifferentTimes
-    ? daySettings.delivery.customTimes
-    : orderType === 'tableOrdering' && daySettings.tableOrdering.useDifferentTimes
-      ? daySettings.tableOrdering.customTimes
-    : orderType === 'collection' && daySettings.collection.useDifferentTimes
-      ? daySettings.collection.customTimes
-    : daySettings.defaultTimes;
+  let times;
+  if (orderType === "delivery" && daySettings.delivery.useDifferentTimes) {
+    times = daySettings.delivery.customTimes;
+  } else if (
+    orderType === "tableOrdering" &&
+    daySettings.tableOrdering.useDifferentTimes
+  ) {
+    times = daySettings.tableOrdering.customTimes;
+  } else if (
+    orderType === "collection" &&
+    daySettings.collection.useDifferentTimes
+  ) {
+    times = daySettings.collection.customTimes;
+  } else {
+    times = daySettings.defaultTimes;
+  }
+
 
   if (!times.start || !times.end) return false;
 
