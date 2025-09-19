@@ -17,6 +17,7 @@ const {
   refundPayment,
 } = require("../utils/stripe-config/stripe-config");
 const Cart = require("../models/cart.model");
+const ServiceCharge = require("../models/service-charge.model");
 
 // Update the populate options in all relevant methods
 const populateOptions = {
@@ -895,9 +896,118 @@ exports.createOrder = async (req, res, next) => {
 
     req.body.totalAmount = totalAmount;
 
+    // Helper function to map frontend order types to service charge order types
+    const mapOrderTypeForServiceCharge = (orderType) => {
+      const orderTypeMap = {
+        'delivery': 'delivery',
+        'pickup': 'pickup', 
+        'collect': 'pickup',
+        'collection': 'pickup',
+        'dine-in': 'dine-in',
+        'dine_in': 'dine-in'
+      };
+      
+      return orderTypeMap[orderType.toLowerCase()] || 'delivery';
+    };
+
+    // Helper function to normalize order types for cart model
+    const normalizeOrderTypeForCart = (orderType) => {
+      const orderTypeMap = {
+        'delivery': 'delivery',
+        'deliver': 'delivery', // Handle common typo
+        'pickup': 'pickup',
+        'collect': 'collect',
+        'collection': 'collection',
+        'dine-in': 'dine-in',
+        'dine_in': 'dine-in'
+      };
+      
+      return orderTypeMap[orderType.toLowerCase()] || 'delivery';
+    };
+
+    // Calculate service charges
+    let serviceCharges = {
+      totalMandatory: 0,
+      totalOptional: 0,
+      totalAll: 0,
+      breakdown: []
+    };
+
+    try {
+      // Map the order type for service charge calculation
+      const mappedOrderType = mapOrderTypeForServiceCharge(req.body.deliveryMethod || 'delivery');
+      
+      // Get accepted optional service charges from request
+      const acceptedOptionalCharges = req.body.acceptedOptionalServiceCharges || [];
+      
+      const calculatedCharges = await ServiceCharge.calculateTotalCharges(
+        targetBranchId, 
+        mappedOrderType, 
+        totalAmount, 
+        true // include optional charges
+      );
+      
+      // Filter optional charges based on acceptance
+      if (acceptedOptionalCharges && acceptedOptionalCharges.length > 0) {
+        const filteredBreakdown = calculatedCharges.breakdown.map(charge => {
+          if (charge.optional) {
+            return {
+              ...charge,
+              accepted: acceptedOptionalCharges.includes(charge.id)
+            };
+          }
+          return charge;
+        });
+        
+        const acceptedOptionalTotal = filteredBreakdown
+          .filter(charge => charge.optional && charge.accepted)
+          .reduce((total, charge) => total + charge.amount, 0);
+        
+        serviceCharges = {
+          totalMandatory: calculatedCharges.totalMandatory || 0,
+          totalOptional: acceptedOptionalTotal,
+          totalAll: calculatedCharges.totalMandatory + acceptedOptionalTotal,
+          breakdown: filteredBreakdown.map(item => ({
+            id: item.id ? item.id.toString() : '',
+            name: item.name || '',
+            type: item.type || '',
+            value: item.value || 0,
+            amount: item.amount || 0,
+            optional: item.optional || false,
+            accepted: item.accepted || false
+          }))
+        };
+      } else {
+        // No optional charges accepted
+        serviceCharges = {
+          totalMandatory: calculatedCharges.totalMandatory || 0,
+          totalOptional: 0,
+          totalAll: calculatedCharges.totalMandatory || 0,
+          breakdown: calculatedCharges.breakdown.map(item => ({
+            id: item.id ? item.id.toString() : '',
+            name: item.name || '',
+            type: item.type || '',
+            value: item.value || 0,
+            amount: item.amount || 0,
+            optional: item.optional || false,
+            accepted: false
+          }))
+        };
+      }
+    } catch (error) {
+      console.error('Error calculating service charges:', error);
+      // Continue with order creation even if service charge calculation fails
+    }
+
+    // Add service charges to total amount
+    const totalWithServiceCharges = totalAmount + serviceCharges.totalMandatory;
+    req.body.totalAmount = totalWithServiceCharges;
+    req.body.serviceCharges = serviceCharges;
+    req.body.serviceCharge = serviceCharges.totalMandatory; // Legacy field for backward compatibility
+
     // Coupon validation and discount calculation
     let discountData = null;
-    let finalTotal = totalAmount;
+    let finalTotal = totalWithServiceCharges;
 
     if (req.body.couponCode) {
       try {
@@ -916,7 +1026,7 @@ exports.createOrder = async (req, res, next) => {
 
         // Create order object for validation
         const orderForValidation = {
-          totalAmount: totalAmount,
+          totalAmount: totalWithServiceCharges,
           deliveryMethod: req.body.deliveryMethod,
           orderType: req.body.orderType,
         };
@@ -944,8 +1054,8 @@ exports.createOrder = async (req, res, next) => {
         console.log(`Coupon validation passed for ${req.body.couponCode}`);
 
         // Calculate discount amount
-        const discountAmount = discount.calculateDiscount(totalAmount);
-        finalTotal = Math.max(0, totalAmount - discountAmount);
+        const discountAmount = discount.calculateDiscount(totalWithServiceCharges);
+        finalTotal = Math.max(0, totalWithServiceCharges - discountAmount);
 
         // Prepare discount data for order
         discountData = {
@@ -955,7 +1065,7 @@ exports.createOrder = async (req, res, next) => {
           discountType: discount.discountType,
           discountValue: discount.discountValue,
           discountAmount: discountAmount,
-          originalTotal: totalAmount,
+          originalTotal: totalWithServiceCharges,
         };
 
         // Set discount information in the order data
@@ -977,8 +1087,8 @@ exports.createOrder = async (req, res, next) => {
         });
       }
     } else {
-      // No coupon applied, final total equals total amount
-      req.body.finalTotal = totalAmount;
+      // No coupon applied, final total equals total with service charges
+      req.body.finalTotal = totalWithServiceCharges;
     }
 
     // Get estimated time to complete based on ordering times configuration
@@ -1094,6 +1204,7 @@ exports.createOrder = async (req, res, next) => {
       success: true,
       data: populatedOrder,
       discount: discountData,
+      serviceCharges: serviceCharges,
       finalTotal: finalTotal,
       savings: discountData ? discountData.discountAmount : 0,
       stockDeduction: stockDeduction.updated,

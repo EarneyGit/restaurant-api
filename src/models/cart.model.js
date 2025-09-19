@@ -169,7 +169,7 @@ const cartSchema = new mongoose.Schema({
   // For delivery/order context
   orderType: {
     type: String,
-    enum: ['delivery', 'pickup', 'dine-in'],
+    enum: ['delivery', 'pickup', 'dine-in', 'collect', 'collection'],
     default: 'delivery'
   },
   branchId: {

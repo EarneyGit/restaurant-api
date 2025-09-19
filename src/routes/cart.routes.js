@@ -9,7 +9,8 @@ const {
   clearCart,
   updateCartDelivery,
   mergeCart,
-  getCartSummary
+  getCartSummary,
+  updateServiceChargePreferences
 } = require('../controllers/cart.controller');
 
 const router = express.Router();
@@ -96,6 +97,9 @@ router.delete('/', optionalAuth, clearCart);
 
 // Update cart delivery settings
 router.put('/delivery', optionalAuth, updateCartDelivery);
+
+// Update service charge preferences
+router.put('/service-charges', optionalAuth, updateServiceChargePreferences);
 
 // Merge guest cart with user cart (requires authentication)
 router.post('/merge', requireAuth, mergeCart);
