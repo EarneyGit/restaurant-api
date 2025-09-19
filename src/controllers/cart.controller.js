@@ -17,6 +17,21 @@ const mapOrderTypeForServiceCharge = (orderType) => {
   return orderTypeMap[orderType.toLowerCase()] || 'delivery';
 };
 
+// Helper function to normalize order types for cart model
+const normalizeOrderTypeForCart = (orderType) => {
+  const orderTypeMap = {
+    'delivery': 'delivery',
+    'deliver': 'delivery', // Handle common typo
+    'pickup': 'pickup',
+    'collect': 'collect',
+    'collection': 'collection',
+    'dine-in': 'dine-in',
+    'dine_in': 'dine-in'
+  };
+  
+  return orderTypeMap[orderType.toLowerCase()] || 'delivery';
+};
+
 // Helper function to calculate service charges for cart
 const calculateServiceCharges = async (branchId, orderType, orderTotal, acceptedOptionalCharges = []) => {
   try {
@@ -360,9 +375,9 @@ exports.addToCart = async (req, res, next) => {
     // Find or create cart
     let cart = await Cart.findOrCreateCart(userId, sessionId, branchId);
     
-    // Update cart order type if provided
+    // Update cart order type if provided (normalize first)
     if (orderType && cart.orderType !== orderType) {
-      cart.orderType = orderType;
+      cart.orderType = normalizeOrderTypeForCart(orderType);
       await cart.save();
     }
     
@@ -644,7 +659,7 @@ exports.updateCartDelivery = async (req, res, next) => {
     }
     
     // Update delivery settings
-    if (orderType) cart.orderType = orderType;
+    if (orderType) cart.orderType = normalizeOrderTypeForCart(orderType);
     if (branchId) cart.branchId = branchId;
     if (deliveryFee !== undefined) cart.deliveryFee = deliveryFee;
     
