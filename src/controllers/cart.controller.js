@@ -1,9 +1,82 @@
 const Cart = require('../models/cart.model');
 const Product = require('../models/product.model');
 const User = require('../models/user.model');
+const ServiceCharge = require('../models/service-charge.model');
+
+// Helper function to map frontend order types to service charge order types
+const mapOrderTypeForServiceCharge = (orderType) => {
+  const orderTypeMap = {
+    'delivery': 'delivery',
+    'pickup': 'pickup', 
+    'collect': 'pickup',
+    'collection': 'pickup',
+    'dine-in': 'dine-in',
+    'dine_in': 'dine-in'
+  };
+  
+  return orderTypeMap[orderType.toLowerCase()] || 'delivery';
+};
+
+// Helper function to calculate service charges for cart
+const calculateServiceCharges = async (branchId, orderType, orderTotal, acceptedOptionalCharges = []) => {
+  try {
+    if (!branchId || !orderType || orderTotal === undefined) {
+      return {
+        totalMandatory: 0,
+        totalOptional: 0,
+        totalAll: 0,
+        breakdown: []
+      };
+    }
+
+    // Map the order type for service charge calculation
+    const mappedOrderType = mapOrderTypeForServiceCharge(orderType);
+
+    const charges = await ServiceCharge.calculateTotalCharges(
+      branchId, 
+      mappedOrderType, 
+      orderTotal, 
+      true // include optional charges
+    );
+    
+    // Filter optional charges based on acceptance
+    if (acceptedOptionalCharges && acceptedOptionalCharges.length > 0) {
+      const filteredBreakdown = charges.breakdown.map(charge => {
+        if (charge.optional) {
+          return {
+            ...charge,
+            accepted: acceptedOptionalCharges.includes(charge.id)
+          };
+        }
+        return charge;
+      });
+      
+      const acceptedOptionalTotal = filteredBreakdown
+        .filter(charge => charge.optional && charge.accepted)
+        .reduce((total, charge) => total + charge.amount, 0);
+      
+      return {
+        ...charges,
+        totalOptional: acceptedOptionalTotal,
+        totalAll: charges.totalMandatory + acceptedOptionalTotal,
+        breakdown: filteredBreakdown
+      };
+    }
+    
+    return charges;
+  } catch (error) {
+    console.error('Error calculating service charges:', error);
+    return {
+      totalMandatory: 0,
+      totalOptional: 0,
+      totalAll: 0,
+      breakdown: []
+    };
+  }
+};
 
 // Helper function to transform cart data for frontend
-const transformCartForResponse = (cart) => {
+const transformCartForResponse = async (cart) => {
   if (!cart) return null;
   
   // Helper function to calculate effective price from price changes
@@ -88,8 +161,15 @@ const transformCartForResponse = (cart) => {
     };
   });
 
-  // Recalculate totals with correct prices
-  const recalculatedTotal = recalculatedSubtotal + cart.deliveryFee;
+  // Calculate service charges
+  const serviceCharges = await calculateServiceCharges(
+    cart.branchId, 
+    cart.orderType, 
+    recalculatedSubtotal
+  );
+  
+  // Recalculate totals with correct prices including service charges
+  const recalculatedTotal = recalculatedSubtotal + cart.deliveryFee + serviceCharges.totalMandatory;
   
   return {
     id: cart._id,
@@ -98,6 +178,7 @@ const transformCartForResponse = (cart) => {
     items: transformedItems,
     subtotal: recalculatedSubtotal,
     deliveryFee: cart.deliveryFee,
+    serviceCharges: serviceCharges,
     total: recalculatedTotal,
     itemCount: cart.itemCount,
     orderType: cart.orderType,
@@ -173,7 +254,7 @@ exports.getCart = async (req, res, next) => {
     
     res.status(200).json({
       success: true,
-      data: transformCartForResponse(cart)
+      data: await transformCartForResponse(cart)
     });
   } catch (error) {
     next(error);
@@ -191,7 +272,8 @@ exports.addToCart = async (req, res, next) => {
       selectedOptions = {}, 
       specialRequirements = '', 
       branchId,
-      selectedAttributes = []
+      selectedAttributes = [],
+      orderType = 'delivery'
     } = req.body;
     const userId = req.user?.id;
     const sessionId = req.headers['x-session-id'] || req.body.sessionId;
@@ -278,6 +360,12 @@ exports.addToCart = async (req, res, next) => {
     // Find or create cart
     let cart = await Cart.findOrCreateCart(userId, sessionId, branchId);
     
+    // Update cart order type if provided
+    if (orderType && cart.orderType !== orderType) {
+      cart.orderType = orderType;
+      await cart.save();
+    }
+    
     // Add item to cart with processed attributes
     await cart.addItem(
       productId,
@@ -305,7 +393,7 @@ exports.addToCart = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Item added to cart successfully',
-      data: transformCartForResponse(cart)
+      data: await transformCartForResponse(cart)
     });
   } catch (error) {
     console.error('Error in addToCart:', error);
@@ -400,7 +488,7 @@ exports.updateCartItem = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Cart item updated successfully',
-      data: transformCartForResponse(cart)
+      data: await transformCartForResponse(cart)
     });
   } catch (error) {
     next(error);
@@ -465,7 +553,7 @@ exports.removeFromCart = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Item removed from cart successfully',
-      data: transformCartForResponse(cart)
+      data: await transformCartForResponse(cart)
     });
   } catch (error) {
     next(error);
@@ -509,7 +597,7 @@ exports.clearCart = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Cart cleared successfully',
-      data: transformCartForResponse(cart)
+      data: await transformCartForResponse(cart)
     });
   } catch (error) {
     next(error);
@@ -579,7 +667,7 @@ exports.updateCartDelivery = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Cart delivery settings updated successfully',
-      data: transformCartForResponse(cart)
+      data: await transformCartForResponse(cart)
     });
   } catch (error) {
     next(error);
@@ -622,7 +710,7 @@ exports.mergeCart = async (req, res, next) => {
       return res.status(200).json({
         success: true,
         message: 'No guest cart to merge',
-        data: transformCartForResponse(userCart)
+        data: await transformCartForResponse(userCart)
       });
     }
     
@@ -660,7 +748,80 @@ exports.mergeCart = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Cart merged successfully',
-      data: transformCartForResponse(userCart)
+      data: await transformCartForResponse(userCart)
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update optional service charge preferences
+// @route   PUT /api/cart/service-charges
+// @access  Private/Public
+exports.updateServiceChargePreferences = async (req, res, next) => {
+  try {
+    const { acceptedOptionalCharges = [] } = req.body;
+    const userId = req.user?.id;
+    const sessionId = req.headers['x-session-id'] || req.body.sessionId;
+    const branchId = req.query.branchId || req.body.branchId;
+    
+    if (!userId && !sessionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User authentication or session ID required'
+      });
+    }
+    
+    // Find cart
+    let query = { status: 'active' };
+    if (userId) {
+      query.userId = userId;
+    } else {
+      query.sessionId = sessionId;
+    }
+
+    // Add branchId to query if provided
+    if (branchId) {
+      query.branchId = branchId;
+    }
+    
+    const cart = await Cart.findOne(query);
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cart not found'
+      });
+    }
+    
+    // Recalculate service charges with new preferences
+    const serviceCharges = await calculateServiceCharges(
+      cart.branchId, 
+      cart.orderType, 
+      cart.subtotal,
+      acceptedOptionalCharges
+    );
+    
+    // Update cart totals
+    const recalculatedTotal = cart.subtotal + cart.deliveryFee + serviceCharges.totalMandatory + serviceCharges.totalOptional;
+    
+    // Populate cart items for response
+    await cart.populate({
+      path: 'items.productId',
+      select: 'name price images category description allergens stockManagement',
+      populate: {
+        path: 'priceChanges',
+        match: {
+          active: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        },
+      }
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Service charge preferences updated successfully',
+      data: await transformCartForResponse(cart)
     });
   } catch (error) {
     next(error);
@@ -674,6 +835,7 @@ exports.getCartSummary = async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const sessionId = req.headers['x-session-id'] || req.query.sessionId;
+    const branchId = req.query.branchId;
     
     if (!userId && !sessionId) {
       return res.status(400).json({
@@ -688,14 +850,35 @@ exports.getCartSummary = async (req, res, next) => {
     } else {
       query.sessionId = sessionId;
     }
+
+    // Add branchId to query if provided
+    if (branchId) {
+      query.branchId = branchId;
+    }
     
     const cart = await Cart.findOne(query);
+    
+    let serviceCharges = {
+      totalMandatory: 0,
+      totalOptional: 0,
+      totalAll: 0,
+      breakdown: []
+    };
+    
+    if (cart && cart.branchId && cart.orderType) {
+      serviceCharges = await calculateServiceCharges(
+        cart.branchId, 
+        cart.orderType, 
+        cart.subtotal
+      );
+    }
     
     const summary = {
       itemCount: cart ? cart.itemCount : 0,
       subtotal: cart ? cart.subtotal : 0,
       deliveryFee: cart ? cart.deliveryFee : 0,
-      total: cart ? cart.total : 0,
+      serviceCharges: serviceCharges,
+      total: cart ? (cart.subtotal + cart.deliveryFee + serviceCharges.totalMandatory) : 0,
       hasItems: cart ? cart.items.length > 0 : false
     };
     

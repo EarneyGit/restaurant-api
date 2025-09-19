@@ -153,9 +153,26 @@ const createServiceCharge = async (req, res) => {
     const branchId = req.user.branchId;
 
     // Check for overlapping price ranges for the same branch and order type
+    // If the new charge is for "All" order type, it conflicts with any existing charge
+    // If the new charge is for a specific order type, it conflicts with "All" or the same specific order type
+    let query = { branchId };
+    
+    if (orderType === 'All') {
+      // "All" conflicts with any existing charge
+      query = { branchId };
+    } else {
+      // Specific order type conflicts with "All" or the same specific order type
+      query = { 
+        branchId,
+        $or: [
+          { orderType: 'All' },
+          { orderType: orderType }
+        ]
+      };
+    }
+    
     const overlappingCharges = await ServiceCharge.find({
-      branchId,
-      orderType,
+      ...query,
       $or: [
         // New range completely contains an existing range
         { 
@@ -181,9 +198,22 @@ const createServiceCharge = async (req, res) => {
     });
 
     if (overlappingCharges.length > 0) {
+      const overlappingCharge = overlappingCharges[0];
+      const existingRange = `£${overlappingCharge.minSpend} - £${overlappingCharge.maxSpend > 0 ? overlappingCharge.maxSpend : 'No limit'}`;
+      const newRange = `£${minSpend} - £${maxSpend > 0 ? maxSpend : 'No limit'}`;
+      
+      let conflictMessage = '';
+      if (overlappingCharge.orderType === 'All' && orderType !== 'All') {
+        conflictMessage = `A service charge for "All Order Types" already exists for price range ${existingRange}. You cannot create a specific order type charge for the overlapping range ${newRange}.`;
+      } else if (orderType === 'All' && overlappingCharge.orderType !== 'All') {
+        conflictMessage = `A service charge for "${overlappingCharge.orderType}" already exists for price range ${existingRange}. You cannot create an "All Order Types" charge for the overlapping range ${newRange}.`;
+      } else {
+        conflictMessage = `Service charge already exists for price range ${existingRange} (${overlappingCharge.orderType}). Your new range ${newRange} (${orderType}) overlaps with the existing range.`;
+      }
+      
       return res.status(400).json({
         success: false,
-        message: 'Price range overlaps with an existing service charge'
+        message: conflictMessage
       });
     }
     
