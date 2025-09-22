@@ -195,11 +195,59 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Delivery fee cannot be negative']
     },
-    // Service charge
+    // Service charge (legacy field)
     serviceCharge: {
       type: Number,
       default: 0,
       min: [0, 'Service charge cannot be negative']
+    },
+    // Detailed service charges
+    serviceCharges: {
+      totalMandatory: {
+        type: Number,
+        default: 0,
+        min: [0, 'Mandatory service charges cannot be negative']
+      },
+      totalOptional: {
+        type: Number,
+        default: 0,
+        min: [0, 'Optional service charges cannot be negative']
+      },
+      totalAll: {
+        type: Number,
+        default: 0,
+        min: [0, 'Total service charges cannot be negative']
+      },
+      breakdown: [{
+        id: {
+          type: String,
+          required: true
+        },
+        name: {
+          type: String,
+          required: true
+        },
+        type: {
+          type: String,
+          required: true
+        },
+        value: {
+          type: Number,
+          required: true
+        },
+        amount: {
+          type: Number,
+          required: true
+        },
+        optional: {
+          type: Boolean,
+          default: false
+        },
+        accepted: {
+          type: Boolean,
+          default: false
+        }
+      }]
     },
     // Subtotal (before tax, discounts, etc)
     subtotal: {
