@@ -292,9 +292,14 @@ exports.getOrders = async (req, res, next) => {
       }
 
       if (req.query.startDate && req.query.endDate) {
+        const start = new Date(req.query.startDate);
+        const end = new Date(req.query.endDate);
+        // Normalize to cover full days
+        const startOfDay = new Date(start.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(end.setHours(23, 59, 59, 999));
         query.createdAt = {
-          $gte: new Date(req.query.startDate),
-          $lte: new Date(req.query.endDate),
+          $gte: startOfDay,
+          $lte: endOfDay,
         };
       }
     }

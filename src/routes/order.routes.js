@@ -21,8 +21,8 @@ const router = express.Router();
 router.get('/myorders', protect, getMyOrders); // Requires authentication
 router.get('/today', protect, getTodayOrders); // Admin only
 router.post('/', optionalAuth, createOrder); // Public with optional auth
-router.get('/', optionalAuth, getOrders); // Public with optional auth
-router.get('/:id', optionalAuth, getOrder); // Public with optional auth
+router.get('/', protect, getOrders); // Auth required to ensure branch scoping
+router.get('/:id', protect, getOrder); // Auth required to ensure branch scoping
 
 // Payment-related routes
 router.post('/check-payment-status', optionalAuth, checkPaymentStatus); // Public with optional auth
