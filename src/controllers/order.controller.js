@@ -1840,3 +1840,115 @@ exports.cancelPayment = async (req, res) => {
     });
   }
 };
+
+// @desc    Get customer orders with pagination
+// @route   GET /api/orders/customer/:customerId
+// @access  Private (Admin/Manager/Staff only)
+exports.getCustomerOrders = async (req, res, next) => {
+  try {
+    // Determine user role and authentication status
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
+    
+    // Only admin users can access customer orders
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin users can access customer orders"
+      });
+    }
+    
+    // Admin users: Check if they are assigned to a branch
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    const { customerId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+    
+    // Validate customerId
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required"
+      });
+    }
+    
+    // Find orders for this customer in admin's branch
+    const query = {
+      $or: [
+        { user: customerId },
+        { customerId: customerId }
+      ],
+      branchId: req.user.branchId
+    };
+    
+    // Get total count for pagination
+    const total = await Order.countDocuments(query);
+    
+    // Get orders with pagination
+    const orders = await Order.find(query)
+      .populate("branchId", "name address")
+      .populate(populateOptions)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    // Transform orders for response
+    const transformedOrders = orders.map(order => {
+      const orderObj = order.toObject();
+      
+      // Calculate proper totals
+      orderObj.subtotal = orderObj.products.reduce((total, p) => {
+        return total + p.price * p.quantity;
+      }, 0);
+      
+      orderObj.deliveryFee = orderObj.deliveryFee || 0;
+      orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
+      
+      // Format dates for easier display
+      orderObj.formattedDate = new Date(orderObj.createdAt).toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      return {
+        id: orderObj._id,
+        orderNumber: orderObj.orderNumber,
+        status: orderObj.status,
+        paymentStatus: orderObj.paymentStatus,
+        paymentMethod: orderObj.paymentMethod,
+        orderType: orderObj.orderType || orderObj.deliveryMethod,
+        totalAmount: orderObj.totalAmount,
+        finalTotal: orderObj.finalTotal,
+        createdAt: orderObj.createdAt,
+        formattedDate: orderObj.formattedDate,
+        products: orderObj.products.map(p => ({
+          name: p.product ? p.product.name : 'Unknown Product',
+          quantity: p.quantity,
+          price: p.price
+        }))
+      };
+    });
+    
+    res.status(200).json({
+      success: true,
+      count: transformedOrders.length,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      data: transformedOrders,
+      total: total
+    });
+  } catch (error) {
+    console.error('Error fetching customer orders:', error);
+    next(error);
+  }
+};
