@@ -15,7 +15,7 @@ const attributeSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['single', 'multiple'],
+      enum: ['single', 'multiple', 'multiple-times'],
       required: [true, 'Attribute type is required'],
       default: 'single'
     },
