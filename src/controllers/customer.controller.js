@@ -257,43 +257,100 @@ const getCustomer = async (req, res) => {
       });
     }
     
-    // Find the user by ID
-    console.log('Looking for user with ID:', customerId);
-    const user = await User.findById(customerId)
-      .select('_id name email phone address postcode createdAt updatedAt')
-      .lean();
+    // Use aggregation pipeline to get customer with order statistics
+    const customerPipeline = [
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(customerId)
+        }
+      },
+      
+      // Lookup orders for this customer
+      {
+        $lookup: {
+          from: 'orders',
+          localField: '_id',
+          foreignField: 'user',
+          as: 'orders'
+        }
+      },
+      
+      // Project customer details with order statistics
+      {
+        $project: {
+          id: '$_id',
+          firstName: { $ifNull: ['$firstName', 'Guest'] },
+          lastName: { $ifNull: ['$lastName', 'User'] },
+          email: { $ifNull: ['$email', ''] },
+          mobile: { $ifNull: ['$phone', ''] },
+          address: { $ifNull: ['$address', ''] },
+          postcode: { $ifNull: ['$postcode', ''] },
+          createdAt: 1,
+          updatedAt: 1,
+          totalOrders: { $size: '$orders' },
+          totalSpent: { 
+            $round: [
+              { $sum: '$orders.totalAmount' }, 
+              2
+            ] 
+          },
+          averageOrderValue: {
+            $cond: {
+              if: { $gt: [{ $size: '$orders' }, 0] },
+              then: {
+                $round: [
+                  { $avg: '$orders.totalAmount' },
+                  2
+                ]
+              },
+              else: 0
+            }
+          },
+          lastOrderDate: { $max: '$orders.createdAt' },
+          firstOrderDate: { $min: '$orders.createdAt' },
+          customerType: {
+            $cond: {
+              if: { $gte: [{ $size: '$orders' }, 5] },
+              then: 'Regular',
+              else: 'New'
+            }
+          },
+          orders: {
+            $map: {
+              input: '$orders',
+              as: 'order',
+              in: {
+                id: '$$order._id',
+                orderNumber: '$$order.orderNumber',
+                totalAmount: '$$order.totalAmount',
+                status: '$$order.status',
+                orderType: '$$order.orderType',
+                createdAt: '$$order.createdAt',
+                branchId: '$$order.branchId'
+              }
+            }
+          }
+        }
+      }
+    ];
     
-    console.log('Found user:', user);
+    console.log('Executing aggregation pipeline for customer:', customerId);
+    const customerResult = await User.aggregate(customerPipeline);
     
-    if (!user) {
+    if (!customerResult || customerResult.length === 0) {
+      console.log('Customer not found with ID:', customerId);
       return res.status(404).json({
         success: false,
         message: 'Customer not found'
       });
     }
     
-    // Format the response
-    const customerDetails = {
-      id: user._id,
-      firstName: user.firstName || "Guest",
-      lastName: user.lastName || "User",
-      email: user.email || "",
-      mobile: user.phone || "",
-      address: user.address || "",
-      postcode: user.postcode || "",
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      // Static values for now since we're not fetching orders
-      totalOrders: 0,
-      totalSpent: 0,
-      averageOrderValue: 0,
-      lastOrderDate: null,
-      firstOrderDate: null,
-      customerType: "New",
-      orders: [],
-    };
-    
-    console.log('Returning customer details:', customerDetails);
+    const customerDetails = customerResult[0];
+    console.log('Returning customer details with order stats:', {
+      id: customerDetails.id,
+      totalOrders: customerDetails.totalOrders,
+      totalSpent: customerDetails.totalSpent
+    });
     
     res.status(200).json({
       success: true,
