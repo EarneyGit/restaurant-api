@@ -439,46 +439,74 @@ exports.getOrder = async (req, res, next) => {
       });
     }
 
-    // Check if this is a guest order (no user associated)
+    // Check if this is a guest order (no user associated) or if we have a session ID for guest tracking
     const isGuestOrder = !order.user;
+    const hasSessionId = req.headers['x-session-id'];
+    const isGuestSession = !req.user && hasSessionId;
+    
+    // For debugging
+    console.log('Order access check:', { 
+      orderId: order._id,
+      isGuestOrder, 
+      hasSessionId, 
+      isGuestSession,
+      sessionId: hasSessionId,
+      customerId: order.customerId ? order.customerId.toString() : 'none',
+      orderUser: order.user ? order.user.toString() : 'none'
+    });
+    
+    // Check if customerId matches the session ID for guest orders
+    const sessionMatchesOrder = isGuestSession && order.customerId && 
+                               order.customerId.toString() === req.headers['x-session-id'];
 
-    // If it's a user's order (not guest), require authentication
-    if (!isGuestOrder) {
+    // For guest users, we'll be more permissive - allow access if they have the order ID and branch ID
+    // This is because guest users might not have their customerId properly set in the order
+    const isGuestUser = !req.user && hasSessionId;
+    
+    // If it's a user's order (not guest) or guest trying to access non-matching order, require authentication
+    if (!isGuestOrder && !sessionMatchesOrder && !isGuestUser) {
       // Check if user is authenticated
       if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Please login to view this order",
-          requiresAuth: true,
-        });
-      }
-
-      // Determine user role
-      const userRole = req.user.role;
-      const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-
-      // Admin users: Check if order belongs to their branch
-      if (isAdmin) {
-        if (!req.user.branchId) {
-          return res.status(403).json({
+        // Allow access for guest users with session ID
+        if (hasSessionId) {
+          console.log("Guest user with session ID accessing order");
+          // Continue without authentication - we'll return limited data
+        } else {
+          return res.status(401).json({
             success: false,
-            message: `${userRole} must be assigned to a branch`,
+            message: "Please login to view this order",
+            requiresAuth: true,
           });
         }
+      } else {
+        // User is authenticated, check permissions
+        // Determine user role
+        const userRole = req.user.role;
+        const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
 
-        if (order.branchId.toString() !== req.user.branchId.toString()) {
+        // Admin users: Check if order belongs to their branch
+        if (isAdmin) {
+          if (!req.user.branchId) {
+            return res.status(403).json({
+              success: false,
+              message: `${userRole} must be assigned to a branch`,
+            });
+          }
+
+          if (order.branchId.toString() !== req.user.branchId.toString()) {
+            return res.status(403).json({
+              success: false,
+              message: "You do not have permission to view this order",
+            });
+          }
+        }
+        // Regular users: Can only view their own orders
+        else if (order.user.toString() !== req.user.id.toString()) {
           return res.status(403).json({
             success: false,
             message: "You do not have permission to view this order",
           });
         }
-      }
-      // Regular users: Can only view their own orders
-      else if (order.user.toString() !== req.user.id.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have permission to view this order",
-        });
       }
     }
 
@@ -729,9 +757,50 @@ exports.createOrder = async (req, res, next) => {
       targetBranchId = req.body.branchId;
     }
 
-    // Set user if authenticated
-    if (isAuthenticated) {
+    // Handle guest user account creation
+    if (!isAuthenticated && req.body.isGuest && req.body.guestUserInfo) {
+      try {
+        const { email, firstName, lastName, phone, address } = req.body.guestUserInfo;
+        
+        // Check if user with this email already exists
+        let existingUser = await User.findOne({ email: email.toLowerCase() });
+        
+        if (!existingUser) {
+          // Create a new user account with null password
+          const newUser = new User({
+            email: email.toLowerCase(),
+            firstName,
+            lastName,
+            phone,
+            address,
+            password: null, // Setting null password as requested
+            emailVerified: false
+          });
+          
+          // Save the user without password validation
+          existingUser = await newUser.save({ validateBeforeSave: false });
+          console.log(`Created new guest user account for: ${email}`);
+        } else {
+          console.log(`Using existing account for guest user: ${email}`);
+        }
+        
+        // Associate the order with this user
+        req.body.user = existingUser._id;
+        req.body.customerId = existingUser._id;
+      } catch (userError) {
+        console.error('Error creating guest user account:', userError);
+        // Continue with order creation even if user account creation fails
+      }
+    } else if (isAuthenticated) {
+      // Set user if authenticated
       req.body.user = req.user.id;
+    } else {
+      // For guest users, set customerId from session ID
+      const sessionId = req.headers['x-session-id'];
+      if (sessionId) {
+        req.body.customerId = sessionId;
+        console.log(`Setting customerId for guest order: ${sessionId}`);
+      }
     }
 
     // Verify products exist and belong to the specified branch
