@@ -591,6 +591,8 @@ exports.getOrder = async (req, res, next) => {
             }
           : null,
         stripePaymentIntentId: populatedOrder.stripePaymentIntentId || null,
+        customerNotes: populatedOrder.customerNotes || null,
+        serviceCharge: populatedOrder.serviceCharge || null,
       };
 
       return res.status(200).json({
@@ -682,6 +684,8 @@ exports.getOrder = async (req, res, next) => {
     }
     orderObj.stripePaymentIntentId =
       populatedOrder.stripePaymentIntentId || null;
+    orderObj.customerNotes = populatedOrder.customerNotes || null;
+    orderObj.serviceCharge = populatedOrder.serviceCharge || null;
 
     return res.status(200).json({
       success: true,
