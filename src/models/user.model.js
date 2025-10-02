@@ -34,7 +34,10 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Please add a password'],
+      required: function() {
+        // Password is required unless explicitly set to null (for guest users)
+        return this.password !== null;
+      },
       minlength: [6, 'Password must be at least 6 characters'],
       select: false
     },
@@ -132,8 +135,8 @@ const userSchema = new mongoose.Schema(
 
 // Encrypt password using bcrypt
 userSchema.pre('save', async function(next) {
-  // Only run this function if password was modified
-  if (!this.isModified('password')) {
+  // Only run this function if password was modified and not null
+  if (!this.isModified('password') || this.password === null) {
     return next();
   }
 
@@ -221,6 +224,10 @@ userSchema.methods.getSignedJwtToken = async function() {
 
 // Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function(enteredPassword) {
+  // If the user has a null password (guest user), they can't login with password
+  if (this.password === null) {
+    return false;
+  }
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
