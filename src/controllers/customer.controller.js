@@ -65,7 +65,7 @@ const getCustomers = async (req, res) => {
           firstOrderDate: { $min: '$createdAt' },
           averageOrderValue: { $avg: '$totalAmount' },
           // Get delivery address from most recent order
-          lastDeliveryAddress: { $last: '$deliveryAddress' }
+          lastDeliveryAddress: { $last: '$  ' }
         }
       },
       
@@ -127,7 +127,7 @@ const getCustomers = async (req, res) => {
           postcode: {
             $ifNull: [
               '$lastDeliveryAddress.postalCode',
-              { $ifNull: ['$userDetails.postcode', ''] }
+              { $ifNull: ['$userDetails.postalCode', ''] }
             ]
           },
           totalOrders: 1,

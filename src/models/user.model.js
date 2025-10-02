@@ -108,6 +108,10 @@ const userSchema = new mongoose.Schema(
     emailVerificationOtpExpire: Date,
     passwordResetOtp: String,
     passwordResetOtpExpire: Date,
+    isGuest: {
+      type: Boolean,
+      default: false
+    },
     // Audit Log Fields
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

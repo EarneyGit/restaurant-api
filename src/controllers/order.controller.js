@@ -778,7 +778,8 @@ exports.createOrder = async (req, res, next) => {
             phone,
             address,
             password: null, // Setting null password as requested
-            emailVerified: false
+            emailVerified: false,
+            isGuest: true,
           });
           
           // Save the user without password validation

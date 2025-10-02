@@ -449,6 +449,12 @@ exports.login = async (req, res, next) => {
       purpose: 'login',
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
     });
+    
+    // update Guest to false
+    if (user.isGuest) {
+      user.isGuest = false;
+      await user.save();
+    }
 
     res.status(200).json({
       success: true,
