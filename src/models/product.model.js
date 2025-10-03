@@ -63,6 +63,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       maxlength: [1000, 'Description cannot be more than 1000 characters']
     },
+    displayOrder: {
+      type: Number,
+      default: 0
+    },
     price: {
       type: Number,
       required: [true, 'Please add a price'],
