@@ -158,6 +158,7 @@ exports.getProducts = async (req, res, next) => {
         collection: product.collection !== undefined ? product.collection : true,
         dineIn: product.dineIn !== undefined ? product.dineIn : true,
         description: product.description,
+        displayOrder: product.displayOrder ?? 0,
         weight: product.weight,
         calorificValue: product.calorificValue,
         calorieDetails: product.calorieDetails,
@@ -312,6 +313,7 @@ exports.getProduct = async (req, res, next) => {
       collection: product.collection !== undefined ? product.collection : true,
       dineIn: product.dineIn !== undefined ? product.dineIn : true,
       description: product.description,
+      displayOrder: product.displayOrder ?? 0,
       weight: product.weight,
       calorificValue: product.calorificValue,
       calorieDetails: product.calorieDetails,
@@ -505,6 +507,7 @@ exports.createProduct = async (req, res, next) => {
       dineIn:
         populatedProduct.dineIn !== undefined ? populatedProduct.dineIn : true,
       description: populatedProduct.description,
+      displayOrder: populatedProduct.displayOrder ?? 0,
       weight: populatedProduct.weight,
       calorificValue: populatedProduct.calorificValue,
       calorieDetails: populatedProduct.calorieDetails,
@@ -715,6 +718,7 @@ exports.updateProduct = async (req, res, next) => {
       collection: product.collection !== undefined ? product.collection : true,
       dineIn: product.dineIn !== undefined ? product.dineIn : true,
       description: product.description,
+      displayOrder: product.displayOrder ?? 0,
       weight: product.weight,
       calorificValue: product.calorificValue,
       calorieDetails: product.calorieDetails,
@@ -822,6 +826,7 @@ exports.getPopularProducts = async (req, res, next) => {
       collection: product.collection !== undefined ? product.collection : true,
       dineIn: product.dineIn !== undefined ? product.dineIn : true,
       description: product.description,
+      displayOrder: product.displayOrder ?? 0,
       weight: product.weight,
       calorificValue: product.calorificValue,
       calorieDetails: product.calorieDetails,
@@ -889,6 +894,7 @@ exports.getRecommendedProducts = async (req, res, next) => {
       collection: product.collection !== undefined ? product.collection : true,
       dineIn: product.dineIn !== undefined ? product.dineIn : true,
       description: product.description,
+      displayOrder: product.displayOrder ?? 0,
       weight: product.weight,
       calorificValue: product.calorificValue,
       calorieDetails: product.calorieDetails,
@@ -1137,6 +1143,7 @@ exports.getOfflineProducts = async (req, res, next) => {
       collection: product.collection !== undefined ? product.collection : true,
       dineIn: product.dineIn !== undefined ? product.dineIn : true,
       description: product.description,
+      displayOrder: product.displayOrder ?? 0,
       category: product.category,
       isOffline: product.hideItem ?? false, // hideItem represents offline status
     }));
@@ -1217,6 +1224,7 @@ exports.toggleProductOffline = async (req, res, next) => {
       collection: product.collection !== undefined ? product.collection : true,
       dineIn: product.dineIn !== undefined ? product.dineIn : true,
       description: product.description,
+      displayOrder: product.displayOrder ?? 0,
       category: product.category,
       isOffline: product.hideItem ?? false,
     };
