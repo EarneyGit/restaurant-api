@@ -211,6 +211,12 @@ exports.getOrders = async (req, res, next) => {
           $lte: endOfDay,
         };
       }
+      
+      // Filter out card payment orders that are not paid yet
+      query.$or = [
+        { paymentMethod: { $ne: "card" } },
+        { paymentMethod: "card", paymentStatus: "paid" }
+      ];
 
       // Handle specific search parameters
       if (req.query.orderNumber) {
@@ -1317,8 +1323,12 @@ exports.createOrder = async (req, res, next) => {
       .populate(populateOptions)
       .populate("assignedTo", "firstName lastName email");
 
-    // Emit socket event to restaurant staff
-    getIO().emit("order", { event: "order_created" });
+    // Only emit socket event for non-card payments or paid card payments
+    if (req.body.paymentMethod !== "card" || req.body.paymentStatus === "paid") {
+      getIO().emit("order", { event: "order_created" });
+    } else {
+      console.log("Not emitting order_created event for unpaid card payment order:", order._id);
+    }
 
     // Prepare response data
     const responseData = {
@@ -1544,10 +1554,17 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
 
     console.log("Order payment succeeded:", order._id);
 
-    // Emit socket event for order update
+    // Emit socket events for order update
     getIO().emit("order", {
       event: "order_payment_succeeded",
       orderId: order._id,
+    });
+    
+    // Also emit order_created event to make the order appear in live orders
+    getIO().emit("order", { 
+      event: "order_created",
+      orderId: order._id,
+      orderNumber: order.orderNumber
     });
   } catch (error) {
     console.error("Error handling payment intent succeeded:", error);
