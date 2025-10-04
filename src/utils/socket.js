@@ -7,13 +7,17 @@ const { ALL_ROLES } = require('../constants/roles');
 let io;
 
 const initSocket = (server) => {
+
+  const allowedOrigins = JSON.parse(process.env.ALLOWED_ORIGINS || '["*"]');
+
   io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
       credentials: true
     },
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'],
+    path: "/api/socket"
   });
 
   io.on('connection', (socket) => {
