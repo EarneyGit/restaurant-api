@@ -917,6 +917,320 @@ const calculateDeliveryCharge = async (req, res) => {
   }
 };
 
+// @desc    Calculate delivery charge by coordinates
+// @route   POST /api/settings/delivery-charges/calculate-by-coordinates
+// @access  Public (for order calculation)
+const calculateDeliveryChargeByCoordinates = async (req, res) => {
+  try {
+    const { branchId, customerLat, customerLng, postcode, orderTotal } = req.body;
+    
+    if (!branchId || customerLat === undefined || customerLng === undefined || !orderTotal) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID, customer coordinates, and order total are required'
+      });
+    }
+    
+    // Get branch details with coordinates
+    const Branch = mongoose.model('Branch');
+    const branch = await Branch.findById(branchId);
+    
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
+      });
+    }
+    
+    // Check if branch has coordinates
+    if (!branch.location || !branch.location.coordinates || branch.location.coordinates.length !== 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch coordinates not configured. Please update branch location settings.',
+        deliverable: false
+      });
+    }
+    
+    const branchLng = branch.location.coordinates[0];
+    const branchLat = branch.location.coordinates[1];
+    
+    // Check if postcode is excluded (if postcode is provided)
+    if (postcode) {
+      const isExcluded = await PostcodeExclusion.isPostcodeExcluded(branchId, postcode);
+      if (isExcluded) {
+        return res.status(400).json({
+          success: false,
+          message: 'Delivery not available to this postcode',
+          deliverable: false
+        });
+      }
+      
+      // Check for postcode override first
+      const override = await PriceOverride.findPostcodeOverride(branchId, postcode);
+      if (override && orderTotal >= override.minSpend) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            charge: override.charge,
+            type: 'postcode_override',
+            postcode: override.fullPostcode,
+            minSpend: override.minSpend,
+            distance: null // Distance not calculated for postcode overrides
+          },
+          deliverable: true
+        });
+      }
+    }
+    
+    // Calculate distance using Google Maps API
+    const googleMapsService = require('../utils/googleMaps');
+    const distanceResult = await googleMapsService.calculateDistance(
+      { lat: branchLat, lng: branchLng },
+      { lat: customerLat, lng: customerLng },
+      'imperial', // Use miles
+      'driving'
+    );
+    
+    if (!distanceResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: distanceResult.error || 'Failed to calculate distance',
+        deliverable: false
+      });
+    }
+    
+    // Extract distance in miles
+    const distanceInMeters = distanceResult.data.distance.value;
+    const distanceInMiles = distanceInMeters / 1609.34;
+    
+    // Find applicable distance-based charge
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMiles, orderTotal);
+    if (!charge) {
+      return res.status(400).json({
+        success: false,
+        message: 'No delivery charge found for this distance and order total. You may be outside our delivery area.',
+        deliverable: false,
+        distance: distanceInMiles.toFixed(2)
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        charge: charge.charge,
+        type: 'distance_based',
+        distance: distanceInMiles.toFixed(2),
+        distanceText: distanceResult.data.distance.text,
+        duration: distanceResult.data.duration.text,
+        maxDistance: charge.maxDistance,
+        minSpend: charge.minSpend,
+        maxSpend: charge.maxSpend
+      },
+      deliverable: true
+    });
+    
+  } catch (error) {
+    console.error('Error in calculateDeliveryChargeByCoordinates:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'production' ? null : error.message
+    });
+  }
+};
+
+// @desc    Calculate delivery charge for checkout with user address validation
+// @route   POST /api/settings/delivery-charges/calculate-checkout
+// @access  Public (for checkout calculation)
+const calculateDeliveryChargeForCheckout = async (req, res) => {
+  try {
+    const { branchId, orderTotal, userAddress, searchedAddress } = req.body;
+    
+    if (!branchId || !orderTotal) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID and order total are required'
+      });
+    }
+    
+    let customerAddress = null;
+    let addressSource = 'none';
+    
+    // Priority 1: Use searched address if provided
+    if (searchedAddress && searchedAddress.postcode) {
+      customerAddress = searchedAddress;
+      addressSource = 'searched';
+    }
+    // Priority 2: Use user saved address if provided
+    else if (userAddress) {
+      // Handle different user address formats
+      if (typeof userAddress === 'string') {
+        // Simple address string - try to extract postcode
+        const postcodeMatch = userAddress.match(/([A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2})/i);
+        if (postcodeMatch) {
+          customerAddress = { postcode: postcodeMatch[1].toUpperCase() };
+          addressSource = 'user_string';
+        }
+      } else if (userAddress.postcode || userAddress.postalCode) {
+        // Structured address object
+        customerAddress = {
+          postcode: userAddress.postcode || userAddress.postalCode,
+          street: userAddress.street || userAddress.addressLine1,
+          city: userAddress.city,
+          country: userAddress.country || 'GB'
+        };
+        addressSource = 'user_structured';
+      }
+    }
+    
+    if (!customerAddress || !customerAddress.postcode) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid address provided. Please provide a delivery address with postcode.',
+        deliverable: false,
+        addressSource
+      });
+    }
+    
+    // Check if postcode is excluded
+    const isExcluded = await PostcodeExclusion.isPostcodeExcluded(branchId, customerAddress.postcode);
+    if (isExcluded) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery not available to this postcode',
+        deliverable: false,
+        addressSource
+      });
+    }
+    
+    // Check for postcode override first
+    const override = await PriceOverride.findPostcodeOverride(branchId, customerAddress.postcode);
+    if (override && orderTotal >= override.minSpend) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          charge: override.charge,
+          type: 'postcode_override',
+          postcode: override.fullPostcode,
+          minSpend: override.minSpend,
+          distance: null,
+          addressSource
+        },
+        deliverable: true
+      });
+    }
+    
+    // Get branch details with coordinates
+    const Branch = mongoose.model('Branch');
+    const branch = await Branch.findById(branchId);
+    
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
+      });
+    }
+    
+    // Check if branch has coordinates
+    if (!branch.location || !branch.location.coordinates || branch.location.coordinates.length !== 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch coordinates not configured. Please update branch location settings.',
+        deliverable: false
+      });
+    }
+    
+    const branchLng = branch.location.coordinates[0];
+    const branchLat = branch.location.coordinates[1];
+    
+    // Get customer coordinates from postcode if not already provided
+    let customerLat, customerLng;
+    
+    if (searchedAddress && searchedAddress.latitude && searchedAddress.longitude) {
+      customerLat = searchedAddress.latitude;
+      customerLng = searchedAddress.longitude;
+    } else {
+      // Get coordinates from Google Maps
+      const googleMapsService = require('../utils/googleMaps');
+      const addressResult = await googleMapsService.postcodeToAddress(customerAddress.postcode);
+      if (!addressResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to get coordinates for the provided postcode',
+          deliverable: false,
+          addressSource
+        });
+      }
+      customerLat = addressResult.data.latitude;
+      customerLng = addressResult.data.longitude;
+    }
+    
+    // Calculate distance using Google Maps API
+    const googleMapsService = require('../utils/googleMaps');
+    const distanceResult = await googleMapsService.calculateDistance(
+      { lat: branchLat, lng: branchLng },
+      { lat: customerLat, lng: customerLng },
+      'imperial', // Use miles
+      'driving'
+    );
+    
+    if (!distanceResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: distanceResult.error || 'Failed to calculate distance',
+        deliverable: false,
+        addressSource
+      });
+    }
+    
+    // Extract distance in miles
+    const distanceInMeters = distanceResult.data.distance.value;
+    const distanceInMiles = distanceInMeters / 1609.34;
+    
+    // Find applicable distance-based charge
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMiles, orderTotal);
+    if (!charge) {
+      return res.status(400).json({
+        success: false,
+        message: 'No delivery charge found for this distance and order total. You may be outside our delivery area or order total may not meet minimum spend requirements.',
+        deliverable: false,
+        distance: distanceInMiles.toFixed(2),
+        addressSource,
+        debug: {
+          distance: distanceInMiles,
+          orderTotal,
+          postcode: customerAddress.postcode
+        }
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        charge: charge.charge,
+        type: 'distance_based',
+        distance: distanceInMiles.toFixed(2),
+        distanceText: distanceResult.data.distance.text,
+        duration: distanceResult.data.duration.text,
+        maxDistance: charge.maxDistance,
+        minSpend: charge.minSpend,
+        maxSpend: charge.maxSpend,
+        postcode: customerAddress.postcode,
+        addressSource
+      },
+      deliverable: true
+    });
+    
+  } catch (error) {
+    console.error('Error in calculateDeliveryChargeForCheckout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'production' ? null : error.message
+    });
+  }
+};
+
 module.exports = {
   // Delivery Charges
   getDeliveryCharges,
@@ -939,5 +1253,7 @@ module.exports = {
   deletePostcodeExclusion,
   
   // Public
-  calculateDeliveryCharge
+  calculateDeliveryCharge,
+  calculateDeliveryChargeByCoordinates,
+  calculateDeliveryChargeForCheckout
 }; 

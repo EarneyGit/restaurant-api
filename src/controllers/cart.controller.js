@@ -183,8 +183,8 @@ const transformCartForResponse = async (cart) => {
     recalculatedSubtotal
   );
   
-  // Recalculate totals with correct prices including service charges
-  const recalculatedTotal = recalculatedSubtotal + cart.deliveryFee + serviceCharges.totalMandatory;
+  // Cart should NOT include delivery fee - only items and service charges
+  const recalculatedTotal = recalculatedSubtotal + serviceCharges.totalMandatory;
   
   return {
     id: cart._id,
@@ -192,7 +192,7 @@ const transformCartForResponse = async (cart) => {
     sessionId: cart.sessionId,
     items: transformedItems,
     subtotal: recalculatedSubtotal,
-    deliveryFee: cart.deliveryFee,
+    deliveryFee: 0, // Always 0 in cart - calculated only in checkout
     serviceCharges: serviceCharges,
     total: recalculatedTotal,
     itemCount: cart.itemCount,
@@ -891,9 +891,9 @@ exports.getCartSummary = async (req, res, next) => {
     const summary = {
       itemCount: cart ? cart.itemCount : 0,
       subtotal: cart ? cart.subtotal : 0,
-      deliveryFee: cart ? cart.deliveryFee : 0,
+      deliveryFee: 0, // Always 0 in cart - calculated only in checkout
       serviceCharges: serviceCharges,
-      total: cart ? (cart.subtotal + cart.deliveryFee + serviceCharges.totalMandatory) : 0,
+      total: cart ? (cart.subtotal + serviceCharges.totalMandatory) : 0,
       hasItems: cart ? cart.items.length > 0 : false
     };
     

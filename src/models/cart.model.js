@@ -154,6 +154,16 @@ const cartSchema = new mongoose.Schema({
     min: [0, 'Final total cannot be negative']
   },
   
+  // Delivery address for calculating delivery fee
+  deliveryAddress: {
+    street: String,
+    city: String,
+    state: String,
+    postcode: String,
+    country: String,
+    fullAddress: String
+  },
+  
   // Cart metadata
   status: {
     type: String,
@@ -234,15 +244,14 @@ cartSchema.pre('save', function(next) {
     return total + itemTotal;
   }, 0);
   
-  // Set default delivery fee if not set
-  if (this.deliveryFee === undefined) {
-    this.deliveryFee = this.orderType === 'delivery' ? 5.00 : 0;
-  }
+  // Cart should NOT calculate delivery fee - only set to 0
+  // Delivery fee is calculated only in checkout when address is provided
+  this.deliveryFee = 0;
   
-  // Calculate total
-  this.total = this.subtotal + this.deliveryFee;
+  // Calculate total (cart only includes items, no delivery fee)
+  this.total = this.subtotal;
   
-  // Calculate final total with discount
+  // Calculate final total with discount (no delivery fee in cart)
   const discountAmount = this.discount?.discountAmount || 0;
   this.finalTotal = Math.max(0, this.total - discountAmount);
   

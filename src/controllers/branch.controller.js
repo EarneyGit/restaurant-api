@@ -671,6 +671,152 @@ exports.updateOutletLocation = async (req, res, next) => {
   }
 };
 
+// @desc    Update branch coordinates
+// @route   PUT /api/branches/coordinates
+// @access  Private (Admin/Manager/Staff - their assigned branch)
+exports.updateBranchCoordinates = async (req, res, next) => {
+  try {
+    const { latitude, longitude, postcode } = req.body;
+
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    // Allow admin, manager, and staff to update coordinates
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can update branch coordinates'
+      });
+    }
+
+    // Validate coordinates
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Latitude and longitude are required'
+      });
+    }
+
+    // Validate coordinate ranges
+    if (latitude < -90 || latitude > 90) {
+      return res.status(400).json({
+        success: false,
+        message: 'Latitude must be between -90 and 90'
+      });
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      return res.status(400).json({
+        success: false,
+        message: 'Longitude must be between -180 and 180'
+      });
+    }
+
+    // Get the user's assigned branch
+    let branch = await Branch.findById(req.user.branchId);
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Your assigned branch not found'
+      });
+    }
+
+    // Prepare location object in GeoJSON format
+    const locationUpdate = {
+      'location.type': 'Point',
+      'location.coordinates': [longitude, latitude], // GeoJSON uses [lng, lat] format
+      'location.formattedAddress': postcode || branch.address?.postalCode || ''
+    };
+
+    branch = await Branch.findByIdAndUpdate(
+      req.user.branchId,
+      { $set: locationUpdate },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Branch coordinates updated successfully',
+      data: {
+        location: branch.location,
+        latitude,
+        longitude
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get branch coordinates by postcode
+// @route   POST /api/branches/coordinates/from-postcode
+// @access  Private (Admin/Manager/Staff - their assigned branch)
+exports.getCoordinatesFromPostcode = async (req, res, next) => {
+  try {
+    const { postcode } = req.body;
+
+    // Get user role from roleId
+    const userRole = req.user ? req.user.role : null;
+    
+    // Ensure user has branch assignment
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+    
+    // Allow admin, manager, and staff
+    if (!MANAGEMENT_ROLES.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin, manager, or staff users can access this endpoint'
+      });
+    }
+
+    if (!postcode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Postcode is required'
+      });
+    }
+
+    // Use Google Maps service to get coordinates from postcode
+    const googleMapsService = require('../utils/googleMaps');
+    const result = await googleMapsService.postcodeToAddress(postcode);
+
+    if (!result.success || !result.data) {
+      return res.status(400).json({
+        success: false,
+        message: result.error || 'Failed to get coordinates for the provided postcode'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        latitude: result.data.latitude,
+        longitude: result.data.longitude,
+        formattedAddress: result.data.formattedAddress,
+        postcode: result.data.postcode
+      },
+      message: 'Coordinates retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Error in getCoordinatesFromPostcode:', error);
+    next(error);
+  }
+};
+
 // @desc    Update outlet ordering options (admin's assigned branch)
 // @route   PUT /api/branches/outlet-ordering-options
 // @access  Private (Admin/Manager/Staff - their assigned branch)

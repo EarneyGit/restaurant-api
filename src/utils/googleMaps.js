@@ -88,7 +88,7 @@ class GoogleMapsService {
         } else if (data.status === 'REQUEST_DENIED') {
           return {
             success: false,
-            error: 'Google Maps API request denied - check API key'
+            error: 'Google Maps API request denied - check API key',
           };
         } else {
           return {
