@@ -14,7 +14,9 @@ const {
   createPostcodeExclusion,
   updatePostcodeExclusion,
   deletePostcodeExclusion,
-  calculateDeliveryCharge
+  calculateDeliveryCharge,
+  calculateDeliveryChargeByCoordinates,
+  calculateDeliveryChargeForCheckout
 } = require('../../controllers/delivery-charge.controller');
 
 const { protect } = require('../../middleware/auth.middleware');
@@ -26,9 +28,16 @@ const router = express.Router();
 router.route('/bulk')
   .post(protect, createBulkDeliveryCharges);
 
-// Calculate delivery charge (public endpoint)
+// Calculate delivery charge (public endpoints)
 router.route('/calculate')
   .post(calculateDeliveryCharge);
+
+router.route('/calculate-by-coordinates')
+  .post(calculateDeliveryChargeByCoordinates);
+
+// Calculate delivery charge for checkout (with user address handling)
+router.route('/calculate-checkout')
+  .post(calculateDeliveryChargeForCheckout);
 
 // Price Overrides Routes
 router.route('/price-overrides')

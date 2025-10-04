@@ -1,5 +1,6 @@
 const googleMapsService = require('../utils/googleMaps');
 const axios = require('axios');
+const AddressCache = require('../models/address-cache.model');
 
 // @desc    Convert UK postcode to address
 // @route   POST /api/address/postcode-to-address
@@ -97,8 +98,8 @@ const getAddressByPostcode = async (req, res) => {
   }
 };
 
-// @desc    Get all addresses for a UK postcode using Ideal Postcodes API
-// @route   GET /api/address/postcode1/:postcode
+// @desc    Get all addresses for a UK postcode using Ideal Postcodes API (with caching)
+// @route   GET /api/address/postcode/:postcode
 // @access  Public
 const getAddressByPostcodeIdeal = async (req, res) => {
   try {
@@ -119,30 +120,49 @@ const getAddressByPostcodeIdeal = async (req, res) => {
       });
     }
 
-    // Get API key from environment variables
-    const apiKey = process.env.IDEAL_POSTCODES_API_KEY;
-    
-    if (!apiKey) {
-      return res.status(500).json({
-        success: false,
-        message: 'Ideal Postcodes API key is not configured'
-      });
-    }
-
     // Clean and format postcode
     const cleanPostcode = postcode.trim().toUpperCase().replace(/\s+/g, '');
     
-    // Make API request to Ideal Postcodes
-    const url = `https://api.ideal-postcodes.co.uk/v1/postcodes/${cleanPostcode}?api_key=${apiKey}`;
+    // Step 1: Check if we have a valid cached entry
+    const cachedData = await AddressCache.findValidCache(cleanPostcode);
     
-    const response = await axios.get(url);
-    
-    // Check if we got a successful response
-    if (response.data && response.data.result) {
+    if (cachedData && !cachedData.isExpired) {
+      console.log(`Cache hit for postcode: ${cleanPostcode}`);
+      
+      // Check if cache needs refresh (asynchronously in background)
+      if (cachedData.needsRefresh) {
+        console.log(`Cache needs refresh for postcode: ${cleanPostcode}, refreshing in background...`);
+        // Refresh cache in background without waiting
+        refreshAddressCache(cleanPostcode).catch(err => 
+          console.error('Background cache refresh error:', err)
+        );
+      }
+      
       return res.status(200).json({
         success: true,
-        data: response.data.result,
-        message: `Found ${response.data.result.length} addresses for postcode ${postcode}`
+        data: cachedData.addresses,
+        message: `Found ${cachedData.addresses.length} addresses for postcode ${postcode}`,
+        cached: true,
+        lastFetched: cachedData.lastFetchedAt
+      });
+    }
+    
+    // Step 2: Cache miss or expired, fetch from API
+    console.log(`Cache miss for postcode: ${cleanPostcode}, fetching from Ideal Postcodes API...`);
+    
+    const addresses = await fetchFromIdealPostcodesAPI(cleanPostcode);
+    
+    if (addresses && addresses.length > 0) {
+      // Step 3: Save to cache asynchronously
+      AddressCache.upsertCache(cleanPostcode, addresses).catch(err => 
+        console.error('Error caching addresses:', err)
+      );
+      
+      return res.status(200).json({
+        success: true,
+        data: addresses,
+        message: `Found ${addresses.length} addresses for postcode ${postcode}`,
+        cached: false
       });
     } else {
       return res.status(404).json({
@@ -185,6 +205,37 @@ const getAddressByPostcodeIdeal = async (req, res) => {
     });
   }
 };
+
+// Helper function to fetch from Ideal Postcodes API
+async function fetchFromIdealPostcodesAPI(cleanPostcode) {
+  const apiKey = process.env.IDEAL_POSTCODES_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('Ideal Postcodes API key is not configured');
+  }
+  
+  const url = `https://api.ideal-postcodes.co.uk/v1/postcodes/${cleanPostcode}?api_key=${apiKey}`;
+  const response = await axios.get(url);
+  
+  if (response.data && response.data.result) {
+    return response.data.result;
+  }
+  
+  return null;
+}
+
+// Helper function to refresh address cache in background
+async function refreshAddressCache(cleanPostcode) {
+  try {
+    const addresses = await fetchFromIdealPostcodesAPI(cleanPostcode);
+    if (addresses && addresses.length > 0) {
+      await AddressCache.upsertCache(cleanPostcode, addresses);
+      console.log(`Successfully refreshed cache for postcode: ${cleanPostcode}`);
+    }
+  } catch (error) {
+    console.error(`Error refreshing cache for postcode ${cleanPostcode}:`, error.message);
+  }
+}
 
 // @desc    Validate UK postcode format
 // @route   POST /api/address/validate-postcode

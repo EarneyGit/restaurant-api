@@ -12,7 +12,9 @@ const {
   updateOutletLocation,
   updateOutletOrderingOptions,
   updateOutletPreOrdering,
-  getPublicOutletSettings
+  getPublicOutletSettings,
+  updateBranchCoordinates,
+  getCoordinatesFromPostcode
 } = require('../controllers/branch.controller');
 
 // Import authentication middleware
@@ -41,5 +43,9 @@ router.put('/outlet-details', protect, updateOutletDetails);
 router.put('/outlet-location', protect, updateOutletLocation);
 router.put('/outlet-ordering-options', protect, updateOutletOrderingOptions);
 router.put('/outlet-pre-ordering', protect, updateOutletPreOrdering);
+
+// Branch coordinates routes
+router.put('/coordinates', protect, updateBranchCoordinates);
+router.post('/coordinates/from-postcode', protect, getCoordinatesFromPostcode);
 
 module.exports = router; 

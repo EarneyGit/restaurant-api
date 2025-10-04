@@ -211,6 +211,12 @@ exports.getOrders = async (req, res, next) => {
           $lte: endOfDay,
         };
       }
+      
+      // Filter out card payment orders that are not paid yet
+      query.$or = [
+        { paymentMethod: { $ne: "card" } },
+        { paymentMethod: "card", paymentStatus: "paid" }
+      ];
 
       // Handle specific search parameters
       if (req.query.orderNumber) {
@@ -973,6 +979,53 @@ exports.createOrder = async (req, res, next) => {
       return total + itemTotal;
     }, 0);
 
+    // Calculate delivery fee based on delivery address and order total
+    let deliveryFee = 0;
+    if (req.body.deliveryMethod === 'delivery' && req.body.deliveryAddress) {
+      try {
+        const deliveryChargeController = require('./delivery-charge.controller');
+        
+        // Prepare address for delivery calculation
+        const customerAddress = {
+          postcode: req.body.deliveryAddress.postalCode || req.body.deliveryAddress.postcode,
+          street: req.body.deliveryAddress.street,
+          city: req.body.deliveryAddress.city,
+          country: req.body.deliveryAddress.country || 'GB'
+        };
+        
+        // Create a mock request/response for the delivery charge calculation
+        const mockReq = {
+          body: {
+            branchId: targetBranchId,
+            orderTotal: totalAmount,
+            searchedAddress: customerAddress
+          }
+        };
+        
+        const mockRes = {
+          status: (code) => ({
+            json: (data) => {
+              if (code === 200 && data.success) {
+                deliveryFee = data.data.charge;
+              }
+              return { statusCode: code, data };
+            }
+          })
+        };
+        
+        // Call the delivery charge calculation function
+        const { calculateDeliveryChargeForCheckout } = require('./delivery-charge.controller');
+        await calculateDeliveryChargeForCheckout(mockReq, mockRes);
+        
+      } catch (error) {
+        console.error('Error calculating delivery fee for order:', error);
+        // Continue with order creation even if delivery fee calculation fails
+        deliveryFee = 0;
+      }
+    }
+
+    // Add delivery fee to request body
+    req.body.deliveryFee = deliveryFee;
     req.body.totalAmount = totalAmount;
 
     // Helper function to map frontend order types to service charge order types
@@ -1022,7 +1075,7 @@ exports.createOrder = async (req, res, next) => {
       const calculatedCharges = await ServiceCharge.calculateTotalCharges(
         targetBranchId, 
         mappedOrderType, 
-        totalAmount, 
+        totalAmount + deliveryFee, // Include delivery fee in service charge calculation
         true // include optional charges
       );
       
@@ -1078,15 +1131,15 @@ exports.createOrder = async (req, res, next) => {
       // Continue with order creation even if service charge calculation fails
     }
 
-    // Add service charges to total amount
-    const totalWithServiceCharges = totalAmount + serviceCharges.totalMandatory;
-    req.body.totalAmount = totalWithServiceCharges;
+    // Add service charges and delivery fee to total amount
+    const totalWithDeliveryAndServiceCharges = totalAmount + deliveryFee + serviceCharges.totalMandatory;
+    req.body.totalAmount = totalWithDeliveryAndServiceCharges;
     req.body.serviceCharges = serviceCharges;
     req.body.serviceCharge = serviceCharges.totalMandatory; // Legacy field for backward compatibility
 
     // Coupon validation and discount calculation
     let discountData = null;
-    let finalTotal = totalWithServiceCharges;
+    let finalTotal = totalWithDeliveryAndServiceCharges;
 
     if (req.body.couponCode) {
       try {
@@ -1105,7 +1158,7 @@ exports.createOrder = async (req, res, next) => {
 
         // Create order object for validation
         const orderForValidation = {
-          totalAmount: totalWithServiceCharges,
+          totalAmount: totalWithDeliveryAndServiceCharges,
           deliveryMethod: req.body.deliveryMethod,
           orderType: req.body.orderType,
         };
@@ -1133,8 +1186,8 @@ exports.createOrder = async (req, res, next) => {
         console.log(`Coupon validation passed for ${req.body.couponCode}`);
 
         // Calculate discount amount
-        const discountAmount = discount.calculateDiscount(totalWithServiceCharges);
-        finalTotal = Math.max(0, totalWithServiceCharges - discountAmount);
+        const discountAmount = discount.calculateDiscount(totalWithDeliveryAndServiceCharges);
+        finalTotal = Math.max(0, totalWithDeliveryAndServiceCharges - discountAmount);
 
         // Prepare discount data for order
         discountData = {
@@ -1144,7 +1197,7 @@ exports.createOrder = async (req, res, next) => {
           discountType: discount.discountType,
           discountValue: discount.discountValue,
           discountAmount: discountAmount,
-          originalTotal: totalWithServiceCharges,
+          originalTotal: totalWithDeliveryAndServiceCharges,
         };
 
         // Set discount information in the order data
@@ -1165,10 +1218,10 @@ exports.createOrder = async (req, res, next) => {
           message: "Error validating coupon code",
         });
       }
-    } else {
-      // No coupon applied, final total equals total with service charges
-      req.body.finalTotal = totalWithServiceCharges;
-    }
+      } else {
+        // No coupon applied, final total equals total with delivery and service charges
+        req.body.finalTotal = totalWithDeliveryAndServiceCharges;
+      }
 
     // Get estimated time to complete based on ordering times configuration
     let estimatedTimeToComplete = 45; // Default 45 minutes
@@ -1275,8 +1328,12 @@ exports.createOrder = async (req, res, next) => {
       .populate(populateOptions)
       .populate("assignedTo", "firstName lastName email");
 
-    // Emit socket event to restaurant staff
-    getIO().emit("order", { event: "order_created" });
+    // Only emit socket event for non-card payments or paid card payments
+    if (req.body.paymentMethod !== "card" || req.body.paymentStatus === "paid") {
+      getIO().emit("order", { event: "order_created" });
+    } else {
+      console.log("Not emitting order_created event for unpaid card payment order:", order._id);
+    }
 
     // Prepare response data
     const responseData = {
@@ -1502,10 +1559,17 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
 
     console.log("Order payment succeeded:", order._id);
 
-    // Emit socket event for order update
+    // Emit socket events for order update
     getIO().emit("order", {
       event: "order_payment_succeeded",
       orderId: order._id,
+    });
+    
+    // Also emit order_created event to make the order appear in live orders
+    getIO().emit("order", { 
+      event: "order_created",
+      orderId: order._id,
+      orderNumber: order.orderNumber
     });
   } catch (error) {
     console.error("Error handling payment intent succeeded:", error);
