@@ -307,8 +307,8 @@ exports.getSalesHistory = async (req, res, next) => {
 
     // Get orders with customer details
     const orders = await Order.find(filter)
-      .populate('customerId', 'name email phone')
-      .populate('branchId', 'name')
+      .populate("customerId", "firstName lastName email phone")
+      .populate("branchId", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -325,15 +325,23 @@ exports.getSalesHistory = async (req, res, next) => {
       
       return {
         id: order._id.toString(),
-        customer: order.customerId?.name || 'Guest',
-        value: order.total || 0,
+        customer:
+          order.customerId?.firstName + " " + order.customerId?.lastName ||
+          "Guest",
+        email: order.customerId?.email || "N/A",
+        orderNumber: order.orderNumber || "N/A",
+        status: order.status,
+        total: order.total || 0,
         discount: order.discount || 0,
-        tip: order.tips || 0,
-        postcode: order.deliveryAddress?.zipCode || order.deliveryAddress?.postalCode || 'N/A',
-        pay: order.paymentMethod === 'card' ? 'Card' : 'Cash',
-        type: order.orderType === 'delivery' ? 'Delivery' : 'Collection',
+        postcode:
+          order.deliveryAddress?.zipCode ||
+          order.deliveryAddress?.postalCode ||
+          "N/A",
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        orderType: order.orderType,
+        deliveryAddress: order.deliveryAddress,
         created: formattedDate,
-        platform: 'Web'
       };
     });
 
@@ -495,7 +503,7 @@ exports.getDiscountHistory = async (req, res, next) => {
 
     // Get orders with discounts
     const orders = await Order.find(filter)
-      .populate('customerId', 'name email')
+      .populate('customerId', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .skip((parseInt(page) - 1) * parseInt(limit))
       .limit(parseInt(limit))
@@ -510,7 +518,8 @@ exports.getDiscountHistory = async (req, res, next) => {
       
       return {
         id: order._id.toString(),
-        customer: order.customerId?.name || 'Guest',
+        orderNumber: order.orderNumber || 'N/A',
+        customer: order.customerId?.firstName + ' ' + order.customerId?.lastName || 'Guest',
         discount: discountName,
         value: discountAmount,
         date: order.createdAt.toISOString()
