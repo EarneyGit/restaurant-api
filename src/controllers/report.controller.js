@@ -308,7 +308,7 @@ exports.getSalesHistory = async (req, res, next) => {
     // Get orders with customer details
     const orders = await Order.find(filter)
       .populate("customerId", "firstName lastName email phone")
-      .populate("branchId", "name")
+      .populate("branchId", " _id name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -325,7 +325,8 @@ exports.getSalesHistory = async (req, res, next) => {
       
       return {
         id: order._id.toString(),
-        branchId: order.branchId.toString(),
+        branchId: order.branchId._id.toString(),
+        branchName: order.branchId.name,
         customer:
           order.customerId?.firstName + " " + order.customerId?.lastName ||
           "Guest",
