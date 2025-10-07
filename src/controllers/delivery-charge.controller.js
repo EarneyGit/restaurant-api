@@ -885,8 +885,11 @@ const calculateDeliveryCharge = async (req, res) => {
       });
     }
     
-    // Find applicable distance-based charge
-    const charge = await DeliveryCharge.findApplicableCharge(branchId, distance, orderTotal);
+    // Convert provided distance (miles from admin/UI) to meters for comparison
+    const distanceInMetersFromMiles = Number(distance) * 1609.34;
+    
+    // Find applicable distance-based charge (expects meters)
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMetersFromMiles, orderTotal);
     if (!charge) {
       return res.status(400).json({
         success: false,
@@ -999,12 +1002,12 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
       });
     }
     
-    // Extract distance in miles
+    // Extract distance in meters (from Google) and derive miles for display only
     const distanceInMeters = distanceResult.data.distance.value;
     const distanceInMiles = distanceInMeters / 1609.34;
     
-    // Find applicable distance-based charge
-    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMiles, orderTotal);
+    // Find applicable distance-based charge (expects meters)
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMeters, orderTotal);
     if (!charge) {
       return res.status(400).json({
         success: false,
@@ -1183,12 +1186,12 @@ const calculateDeliveryChargeForCheckout = async (req, res) => {
       });
     }
     
-    // Extract distance in miles
+    // Extract distance in meters (from Google) and derive miles for display only
     const distanceInMeters = distanceResult.data.distance.value;
     const distanceInMiles = distanceInMeters / 1609.34;
     
-    // Find applicable distance-based charge
-    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMiles, orderTotal);
+    // Find applicable distance-based charge (expects meters)
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMeters, orderTotal);
     if (!charge) {
       return res.status(400).json({
         success: false,
