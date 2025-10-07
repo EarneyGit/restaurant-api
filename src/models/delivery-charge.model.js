@@ -187,15 +187,22 @@ postcodeExclusionSchema.virtual('fullPostcode').get(function() {
 });
 
 // Static method to find applicable delivery charge
+// NOTE: `distance` is expected in meters. `maxDistance` is stored in miles by admin.
 deliveryChargeSchema.statics.findApplicableCharge = async function(branchId, distance, orderTotal) {
   const charges = await this.find({
     branchId: branchId,
-    maxDistance: { $gte: distance },
     isActive: true
   }).sort({ maxDistance: 1 });
   
+  // Convert each saved maxDistance (miles) to meters for comparison
+  const MILES_TO_METERS = 1609.34;
   for (const charge of charges) {
-    if (charge.minSpend <= orderTotal && (charge.maxSpend === 0 || orderTotal <= charge.maxSpend)) {
+    const chargeMaxDistanceMeters = (charge.maxDistance || 0) * MILES_TO_METERS;
+    if (
+      chargeMaxDistanceMeters >= distance &&
+      charge.minSpend <= orderTotal &&
+      (charge.maxSpend === 0 || orderTotal <= charge.maxSpend)
+    ) {
       return charge;
     }
   }
