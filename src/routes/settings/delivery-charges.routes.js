@@ -16,7 +16,8 @@ const {
   deletePostcodeExclusion,
   calculateDeliveryCharge,
   calculateDeliveryChargeByCoordinates,
-  calculateDeliveryChargeForCheckout
+  calculateDeliveryChargeForCheckout,
+  getBranchLocationForCharges
 } = require('../../controllers/delivery-charge.controller');
 
 const { protect } = require('../../middleware/auth.middleware');
@@ -38,6 +39,10 @@ router.route('/calculate-by-coordinates')
 // Calculate delivery charge for checkout (with user address handling)
 router.route('/calculate-checkout')
   .post(calculateDeliveryChargeForCheckout);
+
+// Get branch location for delivery charges (protected)
+router.route('/branch-location')
+  .get(protect, getBranchLocationForCharges);
 
 // Price Overrides Routes
 router.route('/price-overrides')

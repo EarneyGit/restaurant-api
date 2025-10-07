@@ -2,6 +2,73 @@ const { DeliveryCharge, PriceOverride, PostcodeExclusion } = require('../models/
 const mongoose = require('mongoose');
 const { MANAGEMENT_ROLES } = require('../constants/roles');
 
+// @desc    Get branch location for delivery charges (coords)
+// @route   GET /api/settings/delivery-charges/branch-location
+// @access  Private (Admin/Manager/Staff only)
+const getBranchLocationForCharges = async (req, res) => {
+  try {
+    const userRole = req.user ? req.user.role : null;
+    const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can access branch location'
+      });
+    }
+
+    if (!req.user.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: `${userRole} must be assigned to a branch`
+      });
+    }
+
+    const Branch = mongoose.model('Branch');
+    const branch = await Branch.findById(req.user.branchId).select('location address name');
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
+      });
+    }
+
+    let latitude = null;
+    let longitude = null;
+    let formattedAddress = null;
+    let postcode = null;
+
+    if (branch.location && Array.isArray(branch.location.coordinates) && branch.location.coordinates.length === 2) {
+      longitude = branch.location.coordinates[0];
+      latitude = branch.location.coordinates[1];
+      formattedAddress = branch.location.formattedAddress || null;
+    }
+    if (branch.address && branch.address.postalCode) {
+      postcode = branch.address.postalCode;
+      if (!formattedAddress) formattedAddress = branch.address.postalCode;
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        branchId: req.user.branchId.toString(),
+        name: branch.name,
+        latitude,
+        longitude,
+        formattedAddress,
+        postcode
+      }
+    });
+  } catch (error) {
+    console.error('Error in getBranchLocationForCharges:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // @desc    Get all delivery charges for a branch
 // @route   GET /api/settings/delivery-charges
 // @access  Private (Admin/Manager/Staff only)
@@ -885,8 +952,11 @@ const calculateDeliveryCharge = async (req, res) => {
       });
     }
     
-    // Find applicable distance-based charge
-    const charge = await DeliveryCharge.findApplicableCharge(branchId, distance, orderTotal);
+    // Convert provided distance (miles from admin/UI) to meters for comparison
+    const distanceInMetersFromMiles = Number(distance) * 1609.34;
+    
+    // Find applicable distance-based charge (expects meters)
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMetersFromMiles, orderTotal);
     if (!charge) {
       return res.status(400).json({
         success: false,
@@ -999,12 +1069,12 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
       });
     }
     
-    // Extract distance in miles
+    // Extract distance in meters (from Google) and derive miles for display only
     const distanceInMeters = distanceResult.data.distance.value;
     const distanceInMiles = distanceInMeters / 1609.34;
     
-    // Find applicable distance-based charge
-    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMiles, orderTotal);
+    // Find applicable distance-based charge (expects meters)
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMeters, orderTotal);
     if (!charge) {
       return res.status(400).json({
         success: false,
@@ -1183,12 +1253,12 @@ const calculateDeliveryChargeForCheckout = async (req, res) => {
       });
     }
     
-    // Extract distance in miles
+    // Extract distance in meters (from Google) and derive miles for display only
     const distanceInMeters = distanceResult.data.distance.value;
     const distanceInMiles = distanceInMeters / 1609.34;
     
-    // Find applicable distance-based charge
-    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMiles, orderTotal);
+    // Find applicable distance-based charge (expects meters)
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMeters, orderTotal);
     if (!charge) {
       return res.status(400).json({
         success: false,
@@ -1255,5 +1325,8 @@ module.exports = {
   // Public
   calculateDeliveryCharge,
   calculateDeliveryChargeByCoordinates,
-  calculateDeliveryChargeForCheckout
+  calculateDeliveryChargeForCheckout,
+  
+  // Branch location for delivery charges
+  getBranchLocationForCharges
 }; 
