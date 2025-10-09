@@ -32,7 +32,7 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit per file
+    fileSize: 10 * 1024 * 1024, // 5MB limit per file
     files: 10 // Maximum 10 files per request
   }
 });
