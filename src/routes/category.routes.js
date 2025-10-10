@@ -8,22 +8,23 @@ const {
   getCategoryProducts,
   getCategoryProductCounts
 } = require('../controllers/category.controller');
-const { uploadSingle } = require('../middleware/upload');
 
-// Import authentication middleware
+const { uploadSingle } = require('../middleware/upload');
+const handleUploadErrors = require('../utils/handleUploadErrors');
+
 const { protect, admin, optionalAuth } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// Public routes with optional authentication (branch-based)
+// Public routes
 router.get('/', optionalAuth, getCategories);
 router.get('/counts', optionalAuth, getCategoryProductCounts);
 router.get('/:id', optionalAuth, getCategory);
 router.get('/:id/products', optionalAuth, getCategoryProducts);
 
-// Protected routes (write operations) - allow admin, manager, staff
-router.post('/', protect, uploadSingle, createCategory);
-router.put('/:id', protect, uploadSingle, updateCategory);
+// Protected routes with file upload + error handling
+router.post('/', protect, handleUploadErrors(uploadSingle), createCategory);
+router.put('/:id', protect, handleUploadErrors(uploadSingle), updateCategory);
 router.delete('/:id', protect, deleteCategory);
 
-module.exports = router; 
+module.exports = router;
