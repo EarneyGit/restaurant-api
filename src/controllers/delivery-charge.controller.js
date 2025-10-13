@@ -1,6 +1,7 @@
 const { DeliveryCharge, PriceOverride, PostcodeExclusion } = require('../models/delivery-charge.model');
 const mongoose = require('mongoose');
 const { MANAGEMENT_ROLES } = require('../constants/roles');
+const DistanceCache = require('../models/distance-cache.model');
 
 // @desc    Get branch location for delivery charges (coords)
 // @route   GET /api/settings/delivery-charges/branch-location
@@ -1052,25 +1053,34 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
       }
     }
     
-    // Calculate distance using Google Maps API
-    const googleMapsService = require('../utils/googleMaps');
-    const distanceResult = await googleMapsService.calculateDistance(
-      { lat: branchLat, lng: branchLng },
-      { lat: customerLat, lng: customerLng },
-      'imperial', // Use miles
-      'driving'
-    );
-    
-    if (!distanceResult.success) {
-      return res.status(400).json({
-        success: false,
-        message: distanceResult.error || 'Failed to calculate distance',
-        deliverable: false
-      });
+    // Prefer cached distance first
+    let distanceInMeters;
+    const cached = await DistanceCache.findCachedDistance(branchLat, branchLng, customerLat, customerLng);
+    if (cached) {
+      distanceInMeters = cached.distanceMeters;
+    } else {
+      // Calculate distance using Google Maps API
+      const googleMapsService = require('../utils/googleMaps');
+      const distanceResult = await googleMapsService.calculateDistance(
+        { lat: branchLat, lng: branchLng },
+        { lat: customerLat, lng: customerLng },
+        'imperial', // Use miles
+        'driving'
+      );
+      
+      if (!distanceResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: distanceResult.error || 'Failed to calculate distance',
+          deliverable: false
+        });
+      }
+      distanceInMeters = distanceResult.data.distance.value;
+      // Upsert cache
+      await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
     }
     
-    // Extract distance in meters (from Google) and derive miles for display only
-    const distanceInMeters = distanceResult.data.distance.value;
+    // Derive miles for display only
     const distanceInMiles = distanceInMeters / 1609.34;
     
     // Find applicable distance-based charge (expects meters)
@@ -1090,8 +1100,8 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
         charge: charge.charge,
         type: 'distance_based',
         distance: distanceInMiles.toFixed(2),
-        distanceText: distanceResult.data.distance.text,
-        duration: distanceResult.data.duration.text,
+        distanceText: `${distanceInMiles.toFixed(2)} mi`,
+        duration: null,
         maxDistance: charge.maxDistance,
         minSpend: charge.minSpend,
         maxSpend: charge.maxSpend
@@ -1112,6 +1122,243 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
 // @desc    Calculate delivery charge for checkout with user address validation
 // @route   POST /api/settings/delivery-charges/calculate-checkout
 // @access  Public (for checkout calculation)
+// @desc    Validate delivery distance and provide meaningful error messages
+// @route   POST /api/settings/delivery-charges/validate-delivery
+// @access  Public
+const validateDeliveryDistance = async (req, res) => {
+  try {
+    const { branchId, orderTotal, userAddress, searchedAddress } = req.body;
+    
+    if (!branchId || !orderTotal) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch ID and order total are required'
+      });
+    }
+    
+    let customerAddress = null;
+    let addressSource = 'none';
+    
+    // Priority 1: Use searched address if provided
+    if (searchedAddress && searchedAddress.postcode) {
+      customerAddress = searchedAddress;
+      addressSource = 'searched';
+    }
+    // Priority 2: Use user saved address if provided
+    else if (userAddress) {
+      // Handle different user address formats
+      if (typeof userAddress === 'string') {
+        // Simple address string - try to extract postcode
+        const postcodeMatch = userAddress.match(/([A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2})/i);
+        if (postcodeMatch) {
+          customerAddress = { postcode: postcodeMatch[1].toUpperCase() };
+          addressSource = 'user_string';
+        }
+      } else if (userAddress.postcode || userAddress.postalCode) {
+        // Structured address object
+        customerAddress = {
+          postcode: userAddress.postcode || userAddress.postalCode,
+          street: userAddress.street || userAddress.addressLine1,
+          city: userAddress.city,
+          country: userAddress.country || 'GB'
+        };
+        addressSource = 'user_structured';
+      }
+    }
+    
+    if (!customerAddress || !customerAddress.postcode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid delivery address with postcode.',
+        deliverable: false,
+        addressSource
+      });
+    }
+    
+    // Check if postcode is excluded
+    const isExcluded = await PostcodeExclusion.isPostcodeExcluded(branchId, customerAddress.postcode);
+    if (isExcluded) {
+      return res.status(400).json({
+        success: false,
+        message: 'We do not deliver to this postcode area. Please choose a different address or select pickup instead.',
+        deliverable: false,
+        addressSource
+      });
+    }
+    
+    // Check for postcode override first
+    const override = await PriceOverride.findPostcodeOverride(branchId, customerAddress.postcode);
+    if (override && orderTotal >= override.minSpend) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          charge: override.charge,
+          type: 'postcode_override',
+          postcode: override.fullPostcode,
+          minSpend: override.minSpend,
+          distance: null,
+          addressSource
+        },
+        deliverable: true
+      });
+    }
+    
+    // Get branch details with coordinates
+    const Branch = mongoose.model('Branch');
+    const branch = await Branch.findById(branchId);
+    
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Branch not found'
+      });
+    }
+    
+    // Check if branch has coordinates
+    if (!branch.location || !branch.location.coordinates || branch.location.coordinates.length !== 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Branch location not configured. Please contact support.',
+        deliverable: false
+      });
+    }
+    
+    const branchLng = branch.location.coordinates[0];
+    const branchLat = branch.location.coordinates[1];
+    
+    // Get customer coordinates from postcode if not already provided
+    let customerLat, customerLng;
+    
+    if (searchedAddress && searchedAddress.latitude && searchedAddress.longitude) {
+      customerLat = searchedAddress.latitude;
+      customerLng = searchedAddress.longitude;
+    } else {
+      // Get coordinates from Google Maps
+      const googleMapsService = require('../utils/googleMaps');
+      const addressResult = await googleMapsService.postcodeToAddress(customerAddress.postcode);
+      if (!addressResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Unable to verify this address. Please check your postcode and try again.',
+          deliverable: false,
+          addressSource
+        });
+      }
+      customerLat = addressResult.data.latitude;
+      customerLng = addressResult.data.longitude;
+    }
+    
+    // Prefer cached distance first
+    let distanceInMeters;
+    const cached = await DistanceCache.findCachedDistance(branchLat, branchLng, customerLat, customerLng);
+    if (cached) {
+      distanceInMeters = cached.distanceMeters;
+    } else {
+      const googleMapsService = require('../utils/googleMaps');
+      const distanceResult = await googleMapsService.calculateDistance(
+        { lat: branchLat, lng: branchLng },
+        { lat: customerLat, lng: customerLng },
+        'imperial',
+        'driving'
+      );
+      
+      if (!distanceResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Unable to calculate delivery distance. Please try again.',
+          deliverable: false,
+          addressSource
+        });
+      }
+      distanceInMeters = distanceResult.data.distance.value;
+      // Upsert cache
+      await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
+    }
+    
+    const distanceInMiles = distanceInMeters / 1609.34;
+    
+    // Get all active delivery charges for this branch to check max distance
+    const allCharges = await DeliveryCharge.find({
+      branchId: branchId,
+      isActive: true
+    }).sort({ maxDistance: 1 });
+    
+    if (allCharges.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No delivery charges configured for this branch. Please contact support.',
+        deliverable: false,
+        addressSource
+      });
+    }
+    
+    // Get the maximum delivery distance
+    const maxDeliveryDistance = Math.max(...allCharges.map(charge => charge.maxDistance || 0));
+    const maxDeliveryDistanceMeters = maxDeliveryDistance * 1609.34;
+    
+    if (distanceInMeters > maxDeliveryDistanceMeters) {
+      return res.status(400).json({
+        success: false,
+        message: `We do not deliver to this location. Your address is ${distanceInMiles.toFixed(1)} miles away, but we only deliver within ${maxDeliveryDistance} miles. Please choose a closer address or select pickup instead.`,
+        deliverable: false,
+        distance: distanceInMiles.toFixed(2),
+        maxDistance: maxDeliveryDistance,
+        addressSource
+      });
+    }
+    
+    // Find applicable distance-based charge (expects meters)
+    const charge = await DeliveryCharge.findApplicableCharge(branchId, distanceInMeters, orderTotal);
+    if (!charge) {
+      // Check if it's a minimum spend issue
+      const minSpendRequired = Math.min(...allCharges.map(charge => charge.minSpend || 0));
+      if (orderTotal < minSpendRequired) {
+        return res.status(400).json({
+          success: false,
+          message: `Minimum order value for delivery is £${minSpendRequired.toFixed(2)}. Please add more items to your order or choose pickup instead.`,
+          deliverable: false,
+          distance: distanceInMiles.toFixed(2),
+          minSpendRequired: minSpendRequired,
+          addressSource
+        });
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Unable to calculate delivery charge for this location. Please contact support.',
+        deliverable: false,
+        distance: distanceInMiles.toFixed(2),
+        addressSource
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        charge: charge.charge,
+        type: 'distance_based',
+        distance: distanceInMiles.toFixed(2),
+        distanceText: `${distanceInMiles.toFixed(2)} mi`,
+        duration: null,
+        maxDistance: charge.maxDistance,
+        minSpend: charge.minSpend,
+        maxSpend: charge.maxSpend,
+        postcode: customerAddress.postcode,
+        addressSource
+      },
+      deliverable: true
+    });
+    
+  } catch (error) {
+    console.error('Error in validateDeliveryDistance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Unable to validate delivery. Please try again.',
+      error: process.env.NODE_ENV === 'production' ? null : error.message
+    });
+  }
+};
+
 const calculateDeliveryChargeForCheckout = async (req, res) => {
   try {
     const { branchId, orderTotal, userAddress, searchedAddress } = req.body;
@@ -1326,6 +1573,7 @@ module.exports = {
   calculateDeliveryCharge,
   calculateDeliveryChargeByCoordinates,
   calculateDeliveryChargeForCheckout,
+  validateDeliveryDistance,
   
   // Branch location for delivery charges
   getBranchLocationForCharges

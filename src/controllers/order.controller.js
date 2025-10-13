@@ -983,9 +983,7 @@ exports.createOrder = async (req, res, next) => {
     let deliveryFee = 0;
     if (req.body.deliveryMethod === 'delivery' && req.body.deliveryAddress) {
       try {
-        const deliveryChargeController = require('./delivery-charge.controller');
-        
-        // Prepare address for delivery calculation
+        // Prepare address for delivery validation
         const customerAddress = {
           postcode: req.body.deliveryAddress.postalCode || req.body.deliveryAddress.postcode,
           street: req.body.deliveryAddress.street,
@@ -993,7 +991,7 @@ exports.createOrder = async (req, res, next) => {
           country: req.body.deliveryAddress.country || 'GB'
         };
         
-        // Create a mock request/response for the delivery charge calculation
+        // Create a mock request/response for the delivery validation
         const mockReq = {
           body: {
             branchId: targetBranchId,
@@ -1002,25 +1000,40 @@ exports.createOrder = async (req, res, next) => {
           }
         };
         
+        let validationResult = null;
         const mockRes = {
           status: (code) => ({
             json: (data) => {
-              if (code === 200 && data.success) {
-                deliveryFee = data.data.charge;
-              }
+              validationResult = { statusCode: code, data };
               return { statusCode: code, data };
             }
           })
         };
         
-        // Call the delivery charge calculation function
-        const { calculateDeliveryChargeForCheckout } = require('./delivery-charge.controller');
-        await calculateDeliveryChargeForCheckout(mockReq, mockRes);
+        // Call the delivery validation function
+        const { validateDeliveryDistance } = require('./delivery-charge.controller');
+        await validateDeliveryDistance(mockReq, mockRes);
+        
+        // Check if delivery is valid
+        if (validationResult && validationResult.statusCode === 200 && validationResult.data.success && validationResult.data.deliverable) {
+          deliveryFee = validationResult.data.data.charge;
+        } else {
+          // Delivery is not valid, return error
+          const errorMessage = validationResult?.data?.message || "Delivery not available to this location";
+          return res.status(400).json({
+            success: false,
+            message: errorMessage,
+            deliverable: false
+          });
+        }
         
       } catch (error) {
-        console.error('Error calculating delivery fee for order:', error);
-        // Continue with order creation even if delivery fee calculation fails
-        deliveryFee = 0;
+        console.error('Error validating delivery for order:', error);
+        return res.status(400).json({
+          success: false,
+          message: "Unable to validate delivery. Please try again.",
+          deliverable: false
+        });
       }
     }
 

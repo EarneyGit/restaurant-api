@@ -17,6 +17,7 @@ const {
   calculateDeliveryCharge,
   calculateDeliveryChargeByCoordinates,
   calculateDeliveryChargeForCheckout,
+  validateDeliveryDistance,
   getBranchLocationForCharges
 } = require('../../controllers/delivery-charge.controller');
 
@@ -39,6 +40,10 @@ router.route('/calculate-by-coordinates')
 // Calculate delivery charge for checkout (with user address handling)
 router.route('/calculate-checkout')
   .post(calculateDeliveryChargeForCheckout);
+
+// Validate delivery distance with meaningful error messages
+router.route('/validate-delivery')
+  .post(validateDeliveryDistance);
 
 // Get branch location for delivery charges (protected)
 router.route('/branch-location')
