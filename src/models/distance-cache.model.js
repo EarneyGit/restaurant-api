@@ -42,12 +42,11 @@ distanceCacheSchema.statics.findCachedDistance = async function(fromLat, fromLng
 
 // Static: upsert (create or update) a cache entry for a pair
 // ttlHours: how long the cache should remain valid
-distanceCacheSchema.statics.upsertDistance = async function(fromLat, fromLng, toLat, toLng, distanceMeters, source = 'google', ttlHours = 168) {
+distanceCacheSchema.statics.upsertDistance = async function(fromLat, fromLng, toLat, toLng, distanceMeters, source = 'google', ttlHours = 4032) { //  4 week in hours
   const fromKey = toKey(fromLat, fromLng);
   const toKeyStr = toKey(toLat, toLng);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000);
-
+  const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000); //  4 week in hours
   const update = {
     $set: {
       fromLat,

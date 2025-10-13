@@ -119,7 +119,7 @@ addressCacheSchema.statics.findValidCache = async function(postcode) {
 addressCacheSchema.statics.upsertCache = async function(postcode, addresses) {
   const normalizedPostcode = postcode.trim().toUpperCase().replace(/\s+/g, '');
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + (48 * 60 * 60 * 1000)); // 48 hours from now
+  const expiresAt = new Date(now.getTime() + (4032 * 60 * 60 * 1000)); // 4 week in hours
   
   const cache = await this.findOneAndUpdate(
     { normalizedPostcode },

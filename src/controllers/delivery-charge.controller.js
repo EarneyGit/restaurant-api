@@ -1076,8 +1076,10 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
         });
       }
       distanceInMeters = distanceResult.data.distance.value;
-      // Upsert cache
-      await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
+      // Upsert cache if not already cached
+      if (!cached) {
+        await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
+      }
     }
     
     // Derive miles for display only
@@ -1271,8 +1273,10 @@ const validateDeliveryDistance = async (req, res) => {
         });
       }
       distanceInMeters = distanceResult.data.distance.value;
-      // Upsert cache
-      await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
+      // Upsert cache if not already cached
+      if (!cached) {
+        await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
+      }
     }
     
     const distanceInMiles = distanceInMeters / 1609.34;
