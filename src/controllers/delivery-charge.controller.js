@@ -1,6 +1,7 @@
 const { DeliveryCharge, PriceOverride, PostcodeExclusion } = require('../models/delivery-charge.model');
 const mongoose = require('mongoose');
 const { MANAGEMENT_ROLES } = require('../constants/roles');
+const DistanceCache = require('../models/distance-cache.model');
 
 // @desc    Get branch location for delivery charges (coords)
 // @route   GET /api/settings/delivery-charges/branch-location
@@ -1052,25 +1053,34 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
       }
     }
     
-    // Calculate distance using Google Maps API
-    const googleMapsService = require('../utils/googleMaps');
-    const distanceResult = await googleMapsService.calculateDistance(
-      { lat: branchLat, lng: branchLng },
-      { lat: customerLat, lng: customerLng },
-      'imperial', // Use miles
-      'driving'
-    );
-    
-    if (!distanceResult.success) {
-      return res.status(400).json({
-        success: false,
-        message: distanceResult.error || 'Failed to calculate distance',
-        deliverable: false
-      });
+    // Prefer cached distance first
+    let distanceInMeters;
+    const cached = await DistanceCache.findCachedDistance(branchLat, branchLng, customerLat, customerLng);
+    if (cached) {
+      distanceInMeters = cached.distanceMeters;
+    } else {
+      // Calculate distance using Google Maps API
+      const googleMapsService = require('../utils/googleMaps');
+      const distanceResult = await googleMapsService.calculateDistance(
+        { lat: branchLat, lng: branchLng },
+        { lat: customerLat, lng: customerLng },
+        'imperial', // Use miles
+        'driving'
+      );
+      
+      if (!distanceResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: distanceResult.error || 'Failed to calculate distance',
+          deliverable: false
+        });
+      }
+      distanceInMeters = distanceResult.data.distance.value;
+      // Upsert cache
+      await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
     }
     
-    // Extract distance in meters (from Google) and derive miles for display only
-    const distanceInMeters = distanceResult.data.distance.value;
+    // Derive miles for display only
     const distanceInMiles = distanceInMeters / 1609.34;
     
     // Find applicable distance-based charge (expects meters)
@@ -1090,8 +1100,8 @@ const calculateDeliveryChargeByCoordinates = async (req, res) => {
         charge: charge.charge,
         type: 'distance_based',
         distance: distanceInMiles.toFixed(2),
-        distanceText: distanceResult.data.distance.text,
-        duration: distanceResult.data.duration.text,
+        distanceText: `${distanceInMiles.toFixed(2)} mi`,
+        duration: null,
         maxDistance: charge.maxDistance,
         minSpend: charge.minSpend,
         maxSpend: charge.maxSpend
@@ -1238,26 +1248,33 @@ const validateDeliveryDistance = async (req, res) => {
       customerLng = addressResult.data.longitude;
     }
     
-    // Calculate distance using Google Maps API
-    const googleMapsService = require('../utils/googleMaps');
-    const distanceResult = await googleMapsService.calculateDistance(
-      { lat: branchLat, lng: branchLng },
-      { lat: customerLat, lng: customerLng },
-      'imperial', // Use miles
-      'driving'
-    );
-    
-    if (!distanceResult.success) {
-      return res.status(400).json({
-        success: false,
-        message: 'Unable to calculate delivery distance. Please try again.',
-        deliverable: false,
-        addressSource
-      });
+    // Prefer cached distance first
+    let distanceInMeters;
+    const cached = await DistanceCache.findCachedDistance(branchLat, branchLng, customerLat, customerLng);
+    if (cached) {
+      distanceInMeters = cached.distanceMeters;
+    } else {
+      const googleMapsService = require('../utils/googleMaps');
+      const distanceResult = await googleMapsService.calculateDistance(
+        { lat: branchLat, lng: branchLng },
+        { lat: customerLat, lng: customerLng },
+        'imperial',
+        'driving'
+      );
+      
+      if (!distanceResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Unable to calculate delivery distance. Please try again.',
+          deliverable: false,
+          addressSource
+        });
+      }
+      distanceInMeters = distanceResult.data.distance.value;
+      // Upsert cache
+      await DistanceCache.upsertDistance(branchLat, branchLng, customerLat, customerLng, distanceInMeters, 'google');
     }
     
-    // Extract distance in meters (from Google) and derive miles for display only
-    const distanceInMeters = distanceResult.data.distance.value;
     const distanceInMiles = distanceInMeters / 1609.34;
     
     // Get all active delivery charges for this branch to check max distance
@@ -1279,7 +1296,6 @@ const validateDeliveryDistance = async (req, res) => {
     const maxDeliveryDistance = Math.max(...allCharges.map(charge => charge.maxDistance || 0));
     const maxDeliveryDistanceMeters = maxDeliveryDistance * 1609.34;
     
-    // Check if distance exceeds maximum delivery area
     if (distanceInMeters > maxDeliveryDistanceMeters) {
       return res.status(400).json({
         success: false,
@@ -1322,8 +1338,8 @@ const validateDeliveryDistance = async (req, res) => {
         charge: charge.charge,
         type: 'distance_based',
         distance: distanceInMiles.toFixed(2),
-        distanceText: distanceResult.data.distance.text,
-        duration: distanceResult.data.duration.text,
+        distanceText: `${distanceInMiles.toFixed(2)} mi`,
+        duration: null,
         maxDistance: charge.maxDistance,
         minSpend: charge.minSpend,
         maxSpend: charge.maxSpend,
