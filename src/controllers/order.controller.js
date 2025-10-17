@@ -1480,6 +1480,9 @@ exports.updateOrder = async (req, res, next) => {
       // Emit socket event for cancelled order
       getIO().emit("order", { event: "order_cancelled" });
 
+      // send cancel email
+      sendMailForCancelOrder(order.user.email, order, "Order cancelled by admin");
+
       res.status(200).json({
         success: true,
         data: order,
@@ -1499,6 +1502,11 @@ exports.updateOrder = async (req, res, next) => {
 
       // Emit socket event for order update
       getIO().emit("order", { event: "order_updated" });
+
+      if(req.body.estimatedTimeToComplete && req.body.estimatedTimeToComplete !== order.estimatedTimeToComplete) {
+        // send delay email
+        sendMailForAddDelay(order.user.email, order, order.estimatedTimeToComplete - req.body.estimatedTimeToComplete);
+      }
 
       res.status(200).json({
         success: true,
