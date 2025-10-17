@@ -18,6 +18,7 @@ const {
 } = require("../utils/stripe-config/stripe-config");
 const Cart = require("../models/cart.model");
 const ServiceCharge = require("../models/service-charge.model");
+const { sendMailForAddDelay, sendMailForCancelOrder } = require("../utils/emailSender");
 
 // Update the populate options in all relevant methods
 const populateOptions = {
