@@ -1491,6 +1491,11 @@ exports.updateOrder = async (req, res, next) => {
         refundResult: refundResult,
       });
     } else {
+      let delayMinutes = 0;
+      // if estimated time to complete is changed, send delay email
+      if (req.body.estimatedTimeToComplete) {
+        delayMinutes = req.body.estimatedTimeToComplete - order.estimatedTimeToComplete;
+      }
       // Update with full body (no stock changes)
       order = await Order.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
@@ -1505,8 +1510,8 @@ exports.updateOrder = async (req, res, next) => {
       getIO().emit("order", { event: "order_updated" });
 
       // send delay email
-      if(req.body.estimatedTimeToComplete) {
-        sendMailForAddDelay(order.user.email, order, order.estimatedTimeToComplete - req.body.estimatedTimeToComplete);
+      if (delayMinutes > 0) {
+        sendMailForAddDelay(order.user.email, order, delayMinutes);
       }
 
       res.status(200).json({
