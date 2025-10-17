@@ -1504,8 +1504,8 @@ exports.updateOrder = async (req, res, next) => {
       // Emit socket event for order update
       getIO().emit("order", { event: "order_updated" });
 
-      if(req.body.estimatedTimeToComplete && req.body.estimatedTimeToComplete !== order.estimatedTimeToComplete) {
-        // send delay email
+      // send delay email
+      if(req.body.estimatedTimeToComplete) {
         sendMailForAddDelay(order.user.email, order, order.estimatedTimeToComplete - req.body.estimatedTimeToComplete);
       }
 
