@@ -2,8 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const http = require("http");
+const compression = require("compression");
 const connectDB = require("./config/db");
 const { initSocket } = require("./utils/socket");
+
 
 // Load environment variables if dotenv is available
 try {
@@ -77,15 +79,16 @@ app.use(
     credentials: false,
   })
 );
+app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")), {
-  maxAge: "1d", // Cache for 1 day
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads"), {
+  maxAge: "1h", // Cache for 1 hour
   etag: true,
   lastModified: true,
-});
+}));
 
 // Add BACKEND_URL to res.locals for use in responses
 app.use((req, res, next) => {
