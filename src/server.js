@@ -81,7 +81,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")), {
+  maxAge: "1d", // Cache for 1 day
+  etag: true,
+  lastModified: true,
+});
 
 // Add BACKEND_URL to res.locals for use in responses
 app.use((req, res, next) => {
