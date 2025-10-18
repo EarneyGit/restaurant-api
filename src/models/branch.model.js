@@ -138,7 +138,7 @@ const branchSchema = new mongoose.Schema(
       collection: {
         displayFormat: {
           type: String,
-          enum: ['TimeOnly', 'DateAndTime'],
+          enum: ['TimeOnly', 'TimeSpan'],
           default: 'TimeOnly'
         },
         timeslotLength: {
@@ -151,7 +151,7 @@ const branchSchema = new mongoose.Schema(
       delivery: {
         displayFormat: {
           type: String,
-          enum: ['TimeOnly', 'DateAndTime'],
+          enum: ['TimeOnly', 'TimeSpan'],
           default: 'TimeOnly'
         },
         timeslotLength: {
