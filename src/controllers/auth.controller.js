@@ -511,6 +511,7 @@ exports.getMe = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         address: user.address,
+        deliveryAddresses: user.deliveryAddresses,
         role: user.roleId ? user.roleId.slug : 'user',
         permissions: user.roleId ? user.roleId.permissions : [],
         emailVerified: user.emailVerified,

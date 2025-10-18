@@ -112,6 +112,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    deliveryAddresses: {
+      type: [Object],
+      default: []
+    },
     // Audit Log Fields
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
