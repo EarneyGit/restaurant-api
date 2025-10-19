@@ -7,9 +7,7 @@ const ServiceCharge = require('../models/service-charge.model');
 const mapOrderTypeForServiceCharge = (orderType) => {
   const orderTypeMap = {
     'delivery': 'delivery',
-    'pickup': 'pickup', 
-    'collect': 'pickup',
-    'collection': 'pickup',
+    'collection': 'collection', 
     'dine-in': 'dine-in',
     'dine_in': 'dine-in'
   };
@@ -21,12 +19,7 @@ const mapOrderTypeForServiceCharge = (orderType) => {
 const normalizeOrderTypeForCart = (orderType) => {
   const orderTypeMap = {
     'delivery': 'delivery',
-    'deliver': 'delivery', // Handle common typo
-    'pickup': 'pickup',
-    'collect': 'collect',
     'collection': 'collection',
-    'dine-in': 'dine-in',
-    'dine_in': 'dine-in'
   };
   
   return orderTypeMap[orderType.toLowerCase()] || 'delivery';
@@ -634,11 +627,11 @@ exports.updateCartDelivery = async (req, res, next) => {
         message: 'User authentication or session ID required'
       });
     }
-    
-    if (orderType && !['delivery', 'pickup', 'dine-in'].includes(orderType)) {
+    // TODO: Add dine-in to the list of valid order types
+    if (orderType && !['delivery', 'collection', 'dine-in'].includes(orderType)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid order type. Must be delivery, pickup, or dine-in'
+        message: 'Invalid order type. Must be delivery, collection, or dine-in'
       });
     }
     

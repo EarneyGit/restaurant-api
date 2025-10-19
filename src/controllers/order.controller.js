@@ -1045,31 +1045,16 @@ exports.createOrder = async (req, res, next) => {
     // Helper function to map frontend order types to service charge order types
     const mapOrderTypeForServiceCharge = (orderType) => {
       const orderTypeMap = {
-        'delivery': 'delivery',
-        'pickup': 'pickup', 
-        'collect': 'pickup',
-        'collection': 'pickup',
-        'dine-in': 'dine-in',
-        'dine_in': 'dine-in'
+        delivery: "delivery",
+        pickup: "pickup",
+        collection: "collection",
+        "dine-in": "dine-in",
+        dine_in: "dine-in",
       };
       
       return orderTypeMap[orderType.toLowerCase()] || 'delivery';
     };
 
-    // Helper function to normalize order types for cart model
-    const normalizeOrderTypeForCart = (orderType) => {
-      const orderTypeMap = {
-        'delivery': 'delivery',
-        'deliver': 'delivery', // Handle common typo
-        'pickup': 'pickup',
-        'collect': 'collect',
-        'collection': 'collection',
-        'dine-in': 'dine-in',
-        'dine_in': 'dine-in'
-      };
-      
-      return orderTypeMap[orderType.toLowerCase()] || 'delivery';
-    };
 
     // Calculate service charges
     let serviceCharges = {

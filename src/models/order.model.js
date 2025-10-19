@@ -166,19 +166,18 @@ const orderSchema = new mongoose.Schema(
     },
     deliveryMethod: {
       type: String,
-      enum: ['pickup', 'delivery', 'dine_in'],
-      default: 'pickup'
+      enum: ['collection', 'delivery'],
+      default: 'collection'
     },
     // Order type (same as deliveryMethod but using frontend naming)
     orderType: {
       type: String,
-      enum: ['collection', 'delivery', 'dine-in'],
+      enum: ['collection', 'delivery'],
       default: function() {
         // Map deliveryMethod to orderType
         const methodToType = {
-          'pickup': 'collection',
+          'collection': 'collection',
           'delivery': 'delivery',
-          'dine_in': 'dine-in'
         };
         return methodToType[this.deliveryMethod] || 'collection';
       }
@@ -275,7 +274,9 @@ const orderSchema = new mongoose.Schema(
       postalCode: String,
       zipCode: String, // Alias for postalCode
       country: String,
-      notes: String
+      notes: String,
+      latitude: Number,
+      longitude: Number
     },
     // Customer ID reference (in addition to user field)
     customerId: {

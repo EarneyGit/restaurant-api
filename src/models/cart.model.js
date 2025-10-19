@@ -161,7 +161,9 @@ const cartSchema = new mongoose.Schema({
     state: String,
     postcode: String,
     country: String,
-    fullAddress: String
+    fullAddress: String,
+    latitude: Number,
+    longitude: Number
   },
   
   // Cart metadata
@@ -179,7 +181,7 @@ const cartSchema = new mongoose.Schema({
   // For delivery/order context
   orderType: {
     type: String,
-    enum: ['delivery', 'pickup', 'dine-in', 'collect', 'collection'],
+    enum: ['delivery', 'collection'],
     default: 'delivery'
   },
   branchId: {
@@ -419,8 +421,7 @@ cartSchema.methods.applyDiscount = async function(discount) {
   // Create mock order for validation
   const mockOrder = {
     totalAmount: this.total,
-    deliveryMethod: this.orderType === 'pickup' ? 'pickup' : 
-                   this.orderType === 'dine-in' ? 'dine_in' : 'delivery'
+    deliveryMethod: this.orderType
   };
   
   // Validate discount
