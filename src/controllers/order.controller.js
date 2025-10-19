@@ -519,7 +519,7 @@ exports.getOrder = async (req, res, next) => {
 
     // Now populate the necessary fields based on the access type
     const populatedOrder = await Order.findById(order._id)
-      .populate("branchId", "name address")
+      .populate("branchId", "name address location")
       .populate(populateOptions)
       .populate("user", "firstName lastName email phone")
       .populate("assignedTo", "firstName lastName email");
