@@ -532,13 +532,13 @@ const sendMailForCancelOrder = async (
  * @param {number} delayMinutes - Delay in minutes
  * @returns {Promise<boolean>} Success status
  */
-const sendMailForAddDelay = async (email, order, delayMinutes) => {
+const sendMailForAddDelay = async (email, order, delayMinutes, newEstimation) => {
   const subject = `Order Update - #${order.orderNumber}`;
   const text = `Dear ${
     order.user.firstName + " " + order.user.lastName || "Customer"
   },\n\nWe apologize for the delay in preparing your order #${
     order.orderNumber
-  }.\n\nYour order is now estimated to be ready in approximately ${delayMinutes} minutes earlier than the previous estimate.\n\nWe appreciate your patience and understanding.\n\nRegards,\nRestaurant Team`;
+  }.\n\nYour order is now estimated to be ready in approximately ${delayMinutes} minutes more than the previous estimate.\n\nWe appreciate your patience and understanding.\n\nRegards,\nRestaurant Team`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -547,7 +547,7 @@ const sendMailForAddDelay = async (email, order, delayMinutes) => {
         <p>Dear ${
           order.user.firstName + " " + order.user.lastName || "Customer"
         },</p>
-        <p>We apologize for the delay in preparing your order. Your order is now estimated to be ready in approximately ${delayMinutes} minutes earlier than the previous estimate.</p>
+        <p>We apologize for the delay in preparing your order. Your order is now estimated to be ready in approximately ${delayMinutes} minutes more than the previous estimate.</p>
       </div>
       
       <div style="background-color: #ffffff; padding: 20px; margin: 20px 0; border: 1px solid #dee2e6; border-radius: 8px;">
@@ -567,7 +567,7 @@ const sendMailForAddDelay = async (email, order, delayMinutes) => {
           </tr>
           <tr>
             <td style="padding: 8px 0; font-weight: bold;">New Estimated Time:</td>
-            <td style="padding: 8px 0;">${delayMinutes} minutes</td>
+            <td style="padding: 8px 0;">${newEstimation} minutes</td>
           </tr>
         </table>
       </div>

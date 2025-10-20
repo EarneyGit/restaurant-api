@@ -1625,7 +1625,12 @@ exports.updateOrder = async (req, res, next) => {
 
       // send delay email
       if (delayMinutes > 0) {
-        sendMailForAddDelay(order.user.email, order, delayMinutes);
+        sendMailForAddDelay(
+          order.user.email,
+          order,
+          delayMinutes,
+          req.body.estimatedTimeToComplet
+        );
       }
 
       res.status(200).json({
@@ -2070,7 +2075,10 @@ exports.checkPaymentStatus = async (req, res, next) => {
         .populate("assignedTo", "firstName lastName email");
 
       // Emit socket event for order update
-      getIO().emit("order", { event: "order_payment_updated" });
+      getIO().emit("order", {
+        event: "order_payment_updated",
+        paymentStatus: updateData.paymentStatus,
+      });
 
       res.status(200).json({
         success: true,
