@@ -293,6 +293,7 @@ const orderSchema = new mongoose.Schema(
       min: [0, 'Estimated time to complete cannot be negative']
     },
     actualDeliveryTime: Date,
+    selectedTimeSlot: String,
     customerNotes: String,
     internalNotes: String,
     // Audit Log Fields
