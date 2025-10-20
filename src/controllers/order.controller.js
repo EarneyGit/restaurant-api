@@ -1629,7 +1629,7 @@ exports.updateOrder = async (req, res, next) => {
           order.user.email,
           order,
           delayMinutes,
-          req.body.estimatedTimeToComplet
+          req.body.estimatedTimeToComplete
         );
       }
 
