@@ -20,8 +20,10 @@ exports.getBranches = async (req, res, next) => {
     }
 
     const branches = await Branch.find()
-      .select('name code address contact location isActive isDefault')
-      .sort('name');
+      .select(
+        "name code address contact location isActive isDefault orderingOptions preOrdering"
+      )
+      .sort("name");
 
     // Get ordering times for all branches
     const branchIds = branches.map(branch => branch._id);
