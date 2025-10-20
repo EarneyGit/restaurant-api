@@ -113,6 +113,341 @@ const sendPasswordResetOTP = async (email, otp, name = "User") => {
 };
 
 /**
+ * Send order created email
+ * @param {string} email - Customer's email
+ * @param {string} branchId - Branch ID
+ * @param {Object} order - Order details
+ * @returns {Promise<boolean>} Success status
+ */
+const sendMailForOrderCreated = async (email, branchId, order) => {
+  const statusURL = `${process.env.FRONTEND_URL}/order-status/${order._id}?branchId=${branchId}`;
+  const subject = `Order Confirmation - #${order.orderNumber}`;
+
+  // Get customer name
+  const customerName = order.user
+    ? `${order.user.firstName || ""} ${order.user.lastName || ""}`.trim() ||
+      "Customer"
+    : "Customer";
+
+  // Format currency
+  const formatCurrency = (amount) => `£${(amount || 0).toFixed(2)}`;
+
+  // Generate items HTML
+  const generateItemsHTML = () => {
+    if (!order.products || order.products.length === 0) {
+      return "<p>No items found in this order.</p>";
+    }
+
+    return order.products
+      .map((item) => {
+        const productName = item.product?.name || "Unknown Product";
+        const quantity = item.quantity || 1;
+        const price = item.price || 0;
+        const itemTotal = price * quantity;
+
+        // Generate attributes HTML
+        const attributesHTML =
+          item.selectedAttributes && item.selectedAttributes.length > 0
+            ? item.selectedAttributes
+                .map((attr) => {
+                  const selectedItemsHTML =
+                    attr.selectedItems && attr.selectedItems.length > 0
+                      ? attr.selectedItems
+                          .map(
+                            (selectedItem) =>
+                              `<span style="display: block; margin-left: 20px; color: #666; font-size: 14px;">
+                • ${selectedItem.itemName} ${
+                                selectedItem.quantity > 1
+                                  ? `(x${selectedItem.quantity})`
+                                  : ""
+                              } 
+                ${
+                  selectedItem.itemPrice > 0
+                    ? `+${formatCurrency(selectedItem.itemPrice)}`
+                    : ""
+                }
+              </span>`
+                          )
+                          .join("")
+                      : "";
+
+                  return `
+            <div style="margin-left: 20px; color: #666; font-size: 14px;">
+              <strong>${attr.attributeName}:</strong>
+              ${selectedItemsHTML}
+            </div>
+          `;
+                })
+                .join("")
+            : "";
+
+        return `
+        <div style="border-bottom: 1px solid #eee; padding: 15px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <h4 style="margin: 0 0 5px 0; color: #333; font-size: 16px;">${productName}</h4>
+              ${
+                item.notes
+                  ? `<p style="margin: 5px 0; color: #666; font-style: italic;">Note: ${item.notes}</p>`
+                  : ""
+              }
+              ${attributesHTML}
+            </div>
+            <div style="text-align: right; min-width: 100px;">
+              <div style="color: #666; font-size: 14px;">Qty: ${quantity}</div>
+              <div style="font-weight: bold; color: #333; font-size: 16px;">${formatCurrency(
+                itemTotal
+              )}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      })
+      .join("");
+  };
+
+  // Generate totals HTML
+  const generateTotalsHTML = () => {
+    const subtotal = order.subtotal || 0;
+    const tax = order.tax || 0;
+    const deliveryFee = order.deliveryFee || 0;
+    const tips = order.tips || 0;
+    const serviceCharge = order.serviceCharge || 0;
+    const discountAmount =
+      order.discount?.discountAmount ||
+      order.discountApplied?.discountAmount ||
+      0;
+    const finalTotal =
+      order.finalTotal || order.total || order.totalAmount || 0;
+
+    return `
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin: 0 0 15px 0; color: #333;">Order Summary</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Subtotal:</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(
+              subtotal
+            )}</td>
+          </tr>
+          ${
+            tax > 0
+              ? `
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Tax:</td>
+            <td style="padding: 8px 0; text-align: right;">${formatCurrency(
+              tax
+            )}</td>
+          </tr>
+          `
+              : ""
+          }
+          ${
+            deliveryFee > 0
+              ? `
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Delivery Fee:</td>
+            <td style="padding: 8px 0; text-align: right;">${formatCurrency(
+              deliveryFee
+            )}</td>
+          </tr>
+          `
+              : ""
+          }
+          ${
+            serviceCharge > 0
+              ? `
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Service Charge:</td>
+            <td style="padding: 8px 0; text-align: right;">${formatCurrency(
+              serviceCharge
+            )}</td>
+          </tr>
+          `
+              : ""
+          }
+          ${
+            tips > 0
+              ? `
+          <tr>
+            <td style="padding: 8px 0; color: #666;">Tips:</td>
+            <td style="padding: 8px 0; text-align: right;">${formatCurrency(
+              tips
+            )}</td>
+          </tr>
+          `
+              : ""
+          }
+          ${
+            discountAmount > 0
+              ? `
+          <tr style="color: #28a745;">
+            <td style="padding: 8px 0;">Discount ${
+              order.discount?.code || order.discountApplied?.code
+                ? `(${order.discount?.code || order.discountApplied?.code})`
+                : ""
+            }:</td>
+            <td style="padding: 8px 0; text-align: right;">-${formatCurrency(
+              discountAmount
+            )}</td>
+          </tr>
+          `
+              : ""
+          }
+          <tr style="border-top: 2px solid #333; font-size: 18px; font-weight: bold;">
+            <td style="padding: 12px 0 8px 0; color: #333;">Total:</td>
+            <td style="padding: 12px 0 8px 0; text-align: right; color: #333;">${formatCurrency(
+              finalTotal
+            )}</td>
+          </tr>
+        </table>
+      </div>
+    `;
+  };
+
+  // Generate order details HTML
+  const generateOrderDetailsHTML = () => {
+    const orderType = order.orderType || order.deliveryMethod || "Collection";
+    const paymentMethod = order.paymentMethod || "Cash";
+    const estimatedTime = order.estimatedTimeToComplete || 45;
+
+    return `
+      <div style="background-color: #ffffff; padding: 20px; margin: 20px 0; border: 1px solid #dee2e6; border-radius: 8px;">
+        <h3 style="color: #495057; margin-top: 0;">Order Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #666;">Order Number:</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333;">#${
+              order.orderNumber
+            }</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #666;">Order Type:</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333; text-transform: capitalize;">${orderType}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #666;">Payment Method:</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333; text-transform: capitalize;">${paymentMethod}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #666;">Estimated Time:</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333;">${estimatedTime} minutes</td>
+          </tr>
+          ${
+            order.deliveryAddress && orderType === "delivery"
+              ? `
+          <tr>
+            <td style="padding: 8px 0; font-weight: bold; color: #666;">Delivery Address:</td>
+            <td style="padding: 8px 0; color: #333;">
+              ${order.deliveryAddress.street || ""}<br>
+              ${order.deliveryAddress.city || ""} ${
+                  order.deliveryAddress.state || ""
+                }<br>
+              ${
+                order.deliveryAddress.postalCode ||
+                order.deliveryAddress.zipCode ||
+                ""
+              } ${order.deliveryAddress.country || ""}
+              ${
+                order.deliveryAddress.notes
+                  ? `<br><em>Note: ${order.deliveryAddress.notes}</em>`
+                  : ""
+              }
+            </td>
+          </tr>
+          `
+              : ""
+          }
+          ${
+            order.customerNotes
+              ? `
+          <tr>
+            <td style="padding: 8px 0; font-weight: bold; color: #666;">Special Instructions:</td>
+            <td style="padding: 8px 0; color: #333;">${order.customerNotes}</td>
+          </tr>
+          `
+              : ""
+          }
+        </table>
+      </div>
+    `;
+  };
+
+  const text = `Dear ${customerName},
+
+Thank you for your order! Your order #${
+    order.orderNumber
+  } has been confirmed and is being prepared.
+
+Order Details:
+- Order Number: #${order.orderNumber}
+- Order Type: ${order.orderType || order.deliveryMethod || "Collection"}
+- Payment Method: ${order.paymentMethod || "Cash"}
+- Estimated Time: ${order.estimatedTimeToComplete || 45} minutes
+- Total Amount: ${formatCurrency(
+    order.finalTotal || order.total || order.totalAmount
+  )}
+
+You can track your order status at: ${statusURL}
+
+Thank you for choosing us!
+
+Best regards,
+Restaurant Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <!-- Header -->
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Order Confirmation</h1>
+        <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Thank you for your order!</p>
+      </div>
+      
+      <!-- Main Content -->
+      <div style="padding: 30px 20px;">
+        <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin-bottom: 25px;">
+          <h2 style="color: #28a745; margin: 0 0 10px 0; font-size: 20px;">Order Confirmed!</h2>
+          <p style="margin: 0; color: #155724;">Dear ${customerName}, your order has been confirmed and is being prepared by our kitchen team.</p>
+        </div>
+        
+        <!-- Order Details -->
+        ${generateOrderDetailsHTML()}
+        
+        <!-- Items -->
+        <div style="background-color: #ffffff; padding: 20px; margin: 20px 0; border: 1px solid #dee2e6; border-radius: 8px;">
+          <h3 style="color: #495057; margin-top: 0;">Order Items</h3>
+          ${generateItemsHTML()}
+        </div>
+        
+        <!-- Totals -->
+        ${generateTotalsHTML()}
+        
+        <!-- Track Order Button -->
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${statusURL}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; font-size: 16px; display: inline-block;">
+            Track Your Order
+          </a>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin-top: 30px;">
+          <p style="margin: 0 0 10px 0; color: #6c757d;">
+            <strong>Questions about your order?</strong><br>
+            Contact us and we'll be happy to help!
+          </p>
+          <p style="margin: 0; color: #6c757d;">
+            Thank you for choosing us!<br>
+            <strong>Restaurant Team</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return await sendEmail({ to: email, subject, text, html });
+};
+
+/**
  * Send order cancellation email
  * @param {string} email - Customer's email
  * @param {Object} order - Order details
@@ -139,7 +474,9 @@ const sendMailForCancelOrder = async (
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545;">
         <h2 style="color: #dc3545; margin-top: 0;">Order Cancelled</h2>
-        <p>Dear ${order.user.firstName + " " + order.user.lastName || "Customer"},</p>
+        <p>Dear ${
+          order.user.firstName + " " + order.user.lastName || "Customer"
+        },</p>
         <p>We regret to inform you that your order has been cancelled.</p>
       </div>
       
@@ -207,7 +544,9 @@ const sendMailForAddDelay = async (email, order, delayMinutes) => {
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
         <h2 style="color: #856404; margin-top: 0;">Order Update</h2>
-        <p>Dear ${order.user.firstName + " " + order.user.lastName || "Customer"},</p>
+        <p>Dear ${
+          order.user.firstName + " " + order.user.lastName || "Customer"
+        },</p>
         <p>We apologize for the delay in preparing your order. Your order is now estimated to be ready in approximately ${delayMinutes} minutes earlier than the previous estimate.</p>
       </div>
       
@@ -255,6 +594,7 @@ module.exports = {
   sendEmail,
   sendVerificationOTP,
   sendPasswordResetOTP,
+  sendMailForOrderCreated,
   sendMailForCancelOrder,
   sendMailForAddDelay,
 };

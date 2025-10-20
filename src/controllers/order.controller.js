@@ -19,6 +19,7 @@ const {
 const Cart = require("../models/cart.model");
 const ServiceCharge = require("../models/service-charge.model");
 const {
+  sendMailForOrderCreated,
   sendMailForAddDelay,
   sendMailForCancelOrder,
 } = require("../utils/emailSender");
@@ -1423,7 +1424,14 @@ exports.createOrder = async (req, res, next) => {
         }
       );
     }
-
+    // send order created email
+    sendMailForOrderCreated(
+      populatedOrder.user.email,
+      populatedOrder.branchId._id,
+      populatedOrder
+    ).catch((error) => {
+      console.error("Error sending order created email:", error);
+    });
     res.status(201).json(responseData);
   } catch (error) {
     next(error);
