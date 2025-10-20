@@ -2074,6 +2074,10 @@ exports.checkPaymentStatus = async (req, res, next) => {
         .populate(populateOptions)
         .populate("assignedTo", "firstName lastName email");
 
+      if (updateData.paymentStatus === "paid") {
+        getIO().emit("order", { event: "order_created", orderId: orderId });
+      }
+
       // Emit socket event for order update
       getIO().emit("order", {
         event: "order_payment_updated",
