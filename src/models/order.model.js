@@ -292,6 +292,19 @@ const orderSchema = new mongoose.Schema(
       default: 45,
       min: [0, 'Estimated time to complete cannot be negative']
     },
+    isGuestOrder: {
+      type: Boolean,
+      default: false
+    },
+    orderCustomerDetails: {
+      firstName: String,
+      lastName: String,
+      phone: String,
+      email: String,
+      address: String,
+      latitude: Number,
+      longitude: Number
+    },
     actualDeliveryTime: Date,
     selectedTimeSlot: String,
     customerNotes: String,

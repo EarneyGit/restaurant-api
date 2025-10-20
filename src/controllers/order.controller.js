@@ -548,6 +548,8 @@ exports.getOrder = async (req, res, next) => {
       const publicOrderData = {
         _id: populatedOrder._id,
         user: populatedOrder.user,
+        isGuestOrder: populatedOrder.isGuestOrder,
+        orderCustomerDetails: populatedOrder.orderCustomerDetails,
         orderNumber: populatedOrder.orderNumber,
         status: populatedOrder.status,
         estimatedTimeToComplete: populatedOrder.estimatedTimeToComplete,
