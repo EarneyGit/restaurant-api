@@ -1426,9 +1426,13 @@ exports.createOrder = async (req, res, next) => {
         }
       );
     }
+    const userDetails = getOrderCustomerDetails(populatedOrder);
+    populatedOrder.customerName = (userDetails.firstName + ' ' + userDetails.lastName).trim() || userDetails.email || 'Customer';
+    populatedOrder.customerEmail = userDetails.email;
+    populatedOrder.customerPhone = userDetails.phone;
     // send order created email
     sendMailForOrderCreated(
-      populatedOrder.user.email,
+      populatedOrder.customerEmail,
       populatedOrder.branchId._id,
       populatedOrder
     ).catch((error) => {
@@ -1591,10 +1595,13 @@ exports.updateOrder = async (req, res, next) => {
 
       // Emit socket event for cancelled order
       getIO().emit("order", { event: "order_cancelled" });
-
+      const userDetails = getOrderCustomerDetails(order);
+      order.customerName = (userDetails.firstName + ' ' + userDetails.lastName).trim() || userDetails.email || 'Customer';
+      order.customerEmail = userDetails.email;
+      order.customerPhone = userDetails.phone;
       // send cancel email
       sendMailForCancelOrder(
-        order.user.email,
+        order.customerEmail,
         order,
         "Order cancelled by admin"
       );
@@ -1627,8 +1634,12 @@ exports.updateOrder = async (req, res, next) => {
 
       // send delay email
       if (delayMinutes > 0) {
+        const userDetails = getOrderCustomerDetails(order);
+        order.customerName = (userDetails.firstName + ' ' + userDetails.lastName).trim() || userDetails.email || 'Customer';
+        order.customerEmail = userDetails.email;
+        order.customerPhone = userDetails.phone;
         sendMailForAddDelay(
-          order.user.email,
+          order.customerEmail,
           order,
           delayMinutes,
           req.body.estimatedTimeToComplete

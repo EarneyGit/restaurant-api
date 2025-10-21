@@ -124,10 +124,7 @@ const sendMailForOrderCreated = async (email, branchId, order) => {
   const subject = `Order Confirmation - #${order.orderNumber}`;
 
   // Get customer name
-  const customerName = order.user
-    ? `${order.user.firstName || ""} ${order.user.lastName || ""}`.trim() ||
-      "Customer"
-    : "Customer";
+  const customerName = order.customerName || "Customer";
 
   // Format currency
   const formatCurrency = (amount) => `£${(amount || 0).toFixed(2)}`;
@@ -333,6 +330,10 @@ const sendMailForOrderCreated = async (email, branchId, order) => {
             <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #666;">Estimated Time:</td>
             <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333;">${estimatedTime} minutes</td>
           </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #666;">Time Slot:</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333;">${order.selectedTimeSlot || "Not specified"}</td>
+          </tr>
           ${
             order.deliveryAddress && orderType === "delivery"
               ? `
@@ -384,16 +385,12 @@ Order Details:
 - Order Type: ${order.orderType || order.deliveryMethod || "Collection"}
 - Payment Method: ${order.paymentMethod || "Cash"}
 - Estimated Time: ${order.estimatedTimeToComplete || 45} minutes
-- Total Amount: ${formatCurrency(
-    order.finalTotal || order.total || order.totalAmount
-  )}
-
+- Time Slot: ${order.selectedTimeSlot || "Not specified"}
+  <br>
+- Total Amount: ${formatCurrency(order.finalTotal || order.total || order.totalAmount)}
+  <br>
 You can track your order status at: ${statusURL}
-
-Thank you for choosing us!
-
-Best regards,
-Restaurant Team`;
+`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
@@ -460,9 +457,7 @@ const sendMailForCancelOrder = async (
   reason = "Order cancelled by customer"
 ) => {
   const subject = `Order Cancelled - #${order.orderNumber}`;
-  const text = `Dear ${
-    order.user.firstName + " " + order.user.lastName || "Customer"
-  },\n\nWe regret to inform you that your order #${
+  const text = `Dear ${order.customerName || "Customer"},\n\nWe regret to inform you that your order #${
     order.orderNumber
   } has been cancelled.\n\nOrder Details:\n- Order Number: #${
     order.orderNumber
@@ -474,9 +469,7 @@ const sendMailForCancelOrder = async (
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545;">
         <h2 style="color: #dc3545; margin-top: 0;">Order Cancelled</h2>
-        <p>Dear ${
-          order.user.firstName + " " + order.user.lastName || "Customer"
-        },</p>
+        <p>Dear ${order.customerName || "Customer"},</p>
         <p>We regret to inform you that your order has been cancelled.</p>
       </div>
       
@@ -535,7 +528,7 @@ const sendMailForCancelOrder = async (
 const sendMailForAddDelay = async (email, order, delayMinutes, newEstimation) => {
   const subject = `Order Update - #${order.orderNumber}`;
   const text = `Dear ${
-    order.user.firstName + " " + order.user.lastName || "Customer"
+    order.customerName || "Customer"
   },\n\nWe apologize for the delay in preparing your order #${
     order.orderNumber
   }.\n\nYour order is now estimated to be ready in approximately ${delayMinutes} minutes more than the previous estimate.\n\nWe appreciate your patience and understanding.\n\nRegards,\nRestaurant Team`;
@@ -544,9 +537,7 @@ const sendMailForAddDelay = async (email, order, delayMinutes, newEstimation) =>
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
         <h2 style="color: #856404; margin-top: 0;">Order Update</h2>
-        <p>Dear ${
-          order.user.firstName + " " + order.user.lastName || "Customer"
-        },</p>
+        <p>Dear ${order.customerName || "Customer"},</p>
         <p>We apologize for the delay in preparing your order. Your order is now estimated to be ready in approximately ${delayMinutes} minutes more than the previous estimate.</p>
       </div>
       
