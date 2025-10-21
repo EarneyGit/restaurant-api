@@ -11,9 +11,9 @@ const logger = require("./logger");
  * the res and then calls the original res.send after restoring it
  */
 const resDotSendInterceptor = (res, send) => (content) => {
-    res.contentBody = content;
-    res.send = send;
-    res.send(content);
+  res.contentBody = content;
+  res.send = send;
+  res.send(content);
 };
 
 /**
@@ -22,13 +22,13 @@ const resDotSendInterceptor = (res, send) => (content) => {
  *
  * @return Middleware to perform the logging
  */
-const requestLoggerMiddleware = () => ( async(req, res, next) => {
-    logger.info(`Request <<< : ${req.method} ${req.url} : ${req.hostname}`);
-    res.send = resDotSendInterceptor(res, res.send);
-    res.on("finish", () => {
-        logger.info(`Response >>> : ${res.contentBody}\n`);
-    });
-    next();
-});
+const requestLoggerMiddleware = () => async (req, res, next) => {
+  logger.info(`Request <<< : ${req.method} ${req.url} : ${req.hostname}`);
+  res.send = resDotSendInterceptor(res, res.send);
+  res.on("finish", () => {
+    logger.info(`Response >>> : ${res.contentBody}\n`);
+  });
+  next();
+};
 
 module.exports = { requestLoggerMiddleware };
