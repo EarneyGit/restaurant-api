@@ -1169,7 +1169,7 @@ const validateDeliveryDistance = async (req, res) => {
     }
     
     if (!customerAddress || !customerAddress.postcode) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: 'Please provide a valid delivery address with postcode.',
         deliverable: false,
@@ -1180,7 +1180,7 @@ const validateDeliveryDistance = async (req, res) => {
     // Check if postcode is excluded
     const isExcluded = await PostcodeExclusion.isPostcodeExcluded(branchId, customerAddress.postcode);
     if (isExcluded) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: 'We do not deliver to this postcode area. Please choose a different address or select pickup instead.',
         deliverable: false,
@@ -1239,7 +1239,7 @@ const validateDeliveryDistance = async (req, res) => {
       const googleMapsService = require('../utils/googleMaps');
       const addressResult = await googleMapsService.postcodeToAddress(customerAddress.postcode);
       if (!addressResult.success) {
-        return res.status(400).json({
+        return res.status(200).json({
           success: false,
           message: 'Unable to verify this address. Please check your postcode and try again.',
           deliverable: false,
@@ -1265,7 +1265,7 @@ const validateDeliveryDistance = async (req, res) => {
       );
       
       if (!distanceResult.success) {
-        return res.status(400).json({
+        return res.status(200).json({
           success: false,
           message: 'Unable to calculate delivery distance. Please try again.',
           deliverable: false,
@@ -1288,7 +1288,7 @@ const validateDeliveryDistance = async (req, res) => {
     }).sort({ maxDistance: 1 });
     
     if (allCharges.length === 0) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: 'No delivery charges configured for this branch. Please contact support.',
         deliverable: false,
@@ -1301,7 +1301,7 @@ const validateDeliveryDistance = async (req, res) => {
     const maxDeliveryDistanceMeters = maxDeliveryDistance * 1609.34;
     
     if (distanceInMeters > maxDeliveryDistanceMeters) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: `We do not deliver to this location. Your address is ${distanceInMiles.toFixed(1)} miles away, but we only deliver within ${maxDeliveryDistance} miles. Please choose a closer address or select pickup instead.`,
         deliverable: false,
@@ -1317,7 +1317,7 @@ const validateDeliveryDistance = async (req, res) => {
       // Check if it's a minimum spend issue
       const minSpendRequired = Math.min(...allCharges.map(charge => charge.minSpend || 0));
       if (orderTotal < minSpendRequired) {
-        return res.status(400).json({
+        return res.status(200).json({
           success: false,
           message: `Minimum order value for delivery is £${minSpendRequired.toFixed(2)}. Please add more items to your order or choose pickup instead.`,
           deliverable: false,
