@@ -8,7 +8,14 @@ const { format } = require("winston");
 
 const logDir = path.join(__dirname, "../../logs");
 const logLevel = process.env.LOG_LEVEL || "info";
-const logFileName = new Date().toISOString().split("T")[0];
+const amPM = new Date().getHours() < 12 ? "AM" : "PM";
+const time =
+  new Date().toISOString().split("T")[0] +
+  "_" +
+  new Date().getHours().toString().padStart(2, "0") +
+  "-" +
+  amPM;
+const logFileName = time + ".log";
 console.log({ logDir });
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir);
