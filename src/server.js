@@ -84,11 +84,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads"), {
-  maxAge: "1h", // Cache for 1 hour
-  etag: true,
-  lastModified: true,
-}));
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "..", "uploads"), {
+    maxAge: "1h", // Cache for 1 hour
+    etag: true,
+    lastModified: true,
+  })
+);
 
 // Add BACKEND_URL to res.locals for use in responses
 app.use((req, res, next) => {
@@ -130,6 +133,18 @@ app.use("/api/settings/table-ordering", tableOrderingRoutes);
 // Call initRoles to create default roles if they don't exist
 const initRoles = require("./utils/initRoles");
 initRoles();
+
+// call cron jobs
+const checkPaymentStatusJob = require("./jobs/check-payment-status");
+if (process.env.CHECK_PAYMENT_STATUS_CRON) {
+  checkPaymentStatusJob(process.env.CHECK_PAYMENT_STATUS_CRON).catch(
+    (error) => {
+      console.error("Error checking payment status:", error);
+    }
+  );
+} else {
+  console.log("Cron job checkPaymentStatusJob is not enabled");
+}
 
 // Root route
 app.get("/", (req, res) => {
