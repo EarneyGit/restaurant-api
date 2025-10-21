@@ -44,6 +44,17 @@ async function createPaymentIntent(amount, currency, description) {
   }
 }
 
+// Function to update description of a payment intent
+async function updatePaymentIntentDescription(paymentIntentId, description) {
+  try {
+    const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, { description });
+    return paymentIntent;
+  } catch (error) {
+    console.error("Error updating payment intent description:", error.message);
+    throw new Error(`Failed to update payment intent description: ${error.message}`);
+  }
+}
+
 // Function to check the payment status based on the payment intent
 function checkPaymentStatus(paymentIntent) {
   try {
@@ -128,4 +139,4 @@ async function refundPayment(paymentIntentId) {
 //   .then((status) => console.log('Payment Status:', status))
 //   .catch((error) => console.error('Error during test call:', error.message));
 
-module.exports = { createPaymentIntent, getPaymentIntentStatus, refundPayment };
+module.exports = { createPaymentIntent, getPaymentIntentStatus, refundPayment, updatePaymentIntentDescription };

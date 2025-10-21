@@ -15,6 +15,7 @@ const {
   createPaymentIntent,
   getPaymentIntentStatus,
   refundPayment,
+  updatePaymentIntentDescription,
 } = require("../utils/stripe-config/stripe-config");
 const Cart = require("../models/cart.model");
 const ServiceCharge = require("../models/service-charge.model");
@@ -1442,6 +1443,22 @@ exports.createOrder = async (req, res, next) => {
     ).catch((error) => {
       console.error("Error sending order created email:", error);
     });
+
+    // update payment intent description
+    if (req.body.paymentMethod === "card" && req.body.stripePaymentIntentId) {
+      updatePaymentIntentDescription(
+        req.body.stripePaymentIntentId,
+        `Order payment for ${
+          populatedOrder.orderNumber +
+          " - " +
+          populatedOrder.customerName +
+          " - " +
+          populatedOrder.customerEmail
+        }`
+      ).catch((error) => {
+        console.error("Error updating payment intent description:", error);
+      });
+    }
     res.status(201).json(responseData);
   } catch (error) {
     next(error);
