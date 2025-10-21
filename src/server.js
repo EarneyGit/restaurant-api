@@ -5,6 +5,7 @@ const http = require("http");
 const compression = require("compression");
 const connectDB = require("./config/db");
 const { initSocket } = require("./utils/socket");
+const { requestLoggerMiddleware } = require("./utils/logMiddelware");
 
 // Load environment variables if dotenv is available
 try {
@@ -61,13 +62,19 @@ const allowedOrigins = JSON.parse(process.env.ALLOWED_ORIGINS || '["*"]');
 // Initialize Socket.IO
 const io = initSocket(server);
 
+// override console methods to use logger
+require("./utils/logger-override");
+
 // Connect to MongoDB
 connectDB();
+
+// logger
+app.use(requestLoggerMiddleware());
 
 // Middleware
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
