@@ -102,7 +102,21 @@ async function checkPaymentStatusJob(cronExpression) {
       console.error("Error checking payment status:", error);
     }
   };
-  const job = new cronJob(cronExpression, checkStatus);
+
+  const job = new cronJob(
+    cronExpression,
+    async () => {
+      console.log("Cron job running at", new Date());
+      // your async or sync task
+      try {
+        await checkStatus();
+      } catch (error) {
+        console.error("Error checking payment status:", error);
+      }
+    },
+    null,
+    true // start job immediately
+  );
   job.start();
 }
 module.exports = checkPaymentStatusJob;
