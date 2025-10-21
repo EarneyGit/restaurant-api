@@ -6,7 +6,6 @@ const compression = require("compression");
 const connectDB = require("./config/db");
 const { initSocket } = require("./utils/socket");
 
-
 // Load environment variables if dotenv is available
 try {
   const result = require("dotenv").config({
@@ -57,7 +56,7 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:5000";
 
-const allowedOrigins = JSON.parse(process.env.ALLOWED_ORIGINS || '["*"]')
+const allowedOrigins = JSON.parse(process.env.ALLOWED_ORIGINS || '["*"]');
 
 // Initialize Socket.IO
 const io = initSocket(server);
@@ -137,6 +136,9 @@ initRoles();
 // call cron jobs
 const checkPaymentStatusJob = require("./jobs/check-payment-status");
 if (process.env.CHECK_PAYMENT_STATUS_CRON) {
+  console.log(
+    `Cron job checkPaymentStatusJob is enabled, cron expression: ${process.env.CHECK_PAYMENT_STATUS_CRON}`
+  );
   checkPaymentStatusJob(process.env.CHECK_PAYMENT_STATUS_CRON).catch(
     (error) => {
       console.error("Error checking payment status:", error);

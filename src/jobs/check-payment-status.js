@@ -10,14 +10,16 @@
  * If the payment is refunded, it will update the order status to refunded
  * If the payment is voided, it will update the order status to voided
  */
-const cron = require("node-cron");
+
+const cronJob = require("cron").CronJob;
+
 const Order = require("../models/order.model");
 const {
   getPaymentIntentStatus,
 } = require("../utils/stripe-config/stripe-config");
 // every 1 minutes
 async function checkPaymentStatusJob(cronExpression) {
-  cron.schedule(cronExpression, async () => {
+  const checkStatus = async () => {
     try {
       console.log("Checking payment status...", new Date()); // log the time
       const fromDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
@@ -99,6 +101,8 @@ async function checkPaymentStatusJob(cronExpression) {
     } catch (error) {
       console.error("Error checking payment status:", error);
     }
-  });
+  };
+  const job = new cronJob(cronExpression, checkStatus);
+  job.start();
 }
 module.exports = checkPaymentStatusJob;
