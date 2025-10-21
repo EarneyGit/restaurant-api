@@ -325,6 +325,7 @@ exports.getSalesHistory = async (req, res, next) => {
       
       return {
         ...order,
+        user: order.customerId,
         id: order._id.toString(),
         branchId: order.branchId._id.toString(),
         branchName: order.branchId.name,
