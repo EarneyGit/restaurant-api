@@ -23,6 +23,7 @@ const {
   sendMailForAddDelay,
   sendMailForCancelOrder,
 } = require("../utils/emailSender");
+const { getOrderCustomerDetails } = require("../utils/functions");
 
 // Update the populate options in all relevant methods
 const populateOptions = {
@@ -1427,7 +1428,10 @@ exports.createOrder = async (req, res, next) => {
       );
     }
     const userDetails = getOrderCustomerDetails(populatedOrder);
-    populatedOrder.customerName = (userDetails.firstName + ' ' + userDetails.lastName).trim() || userDetails.email || 'Customer';
+    populatedOrder.customerName =
+      (userDetails.firstName + " " + userDetails.lastName).trim() ||
+      userDetails.email ||
+      "Customer";
     populatedOrder.customerEmail = userDetails.email;
     populatedOrder.customerPhone = userDetails.phone;
     // send order created email
@@ -1596,7 +1600,10 @@ exports.updateOrder = async (req, res, next) => {
       // Emit socket event for cancelled order
       getIO().emit("order", { event: "order_cancelled" });
       const userDetails = getOrderCustomerDetails(order);
-      order.customerName = (userDetails.firstName + ' ' + userDetails.lastName).trim() || userDetails.email || 'Customer';
+      order.customerName =
+        (userDetails.firstName + " " + userDetails.lastName).trim() ||
+        userDetails.email ||
+        "Customer";
       order.customerEmail = userDetails.email;
       order.customerPhone = userDetails.phone;
       // send cancel email
@@ -1635,7 +1642,10 @@ exports.updateOrder = async (req, res, next) => {
       // send delay email
       if (delayMinutes > 0) {
         const userDetails = getOrderCustomerDetails(order);
-        order.customerName = (userDetails.firstName + ' ' + userDetails.lastName).trim() || userDetails.email || 'Customer';
+        order.customerName =
+          (userDetails.firstName + " " + userDetails.lastName).trim() ||
+          userDetails.email ||
+          "Customer";
         order.customerEmail = userDetails.email;
         order.customerPhone = userDetails.phone;
         sendMailForAddDelay(
