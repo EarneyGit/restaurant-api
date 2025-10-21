@@ -323,15 +323,15 @@ exports.getSalesHistory = async (req, res, next) => {
       const year = date.getFullYear();
       const formattedDate = `${day}/${month}/${year}`;
       
-      const userDetails = getOrderCustomerDetails(order);
       return {
+        ...order,
         id: order._id.toString(),
         branchId: order.branchId._id.toString(),
-        isGuestOrder: order.isGuestOrder,
         branchName: order.branchId.name,
-        customer: userDetails.firstName + " " + userDetails.lastName || userDetails.email || "Guest",
-        email: userDetails.email || "N/A",
-        phone: userDetails.phone || "N/A",
+        customer:
+          order.customerId?.firstName + " " + order.customerId?.lastName ||
+          "Guest",
+        email: order.customerId?.email || "N/A",
         orderNumber: order.orderNumber || "N/A",
         status: order.status,
         total: order.total || 0,
