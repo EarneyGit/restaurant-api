@@ -17,3 +17,6 @@ export const toFixed = (value, decimalPlaces = 2) => {
   }
   return Number(value).toFixed(decimalPlaces);
 };
+
+// Format currency
+export const formatCurrency = (amount) => `£${toFixed(amount, 2)}`;

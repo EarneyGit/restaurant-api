@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-const { toFixed } = require("./functions");
+const { formatCurrency } = require("./functions");
 
 /**
  * Create a nodemailer transporter
@@ -127,9 +127,6 @@ const sendMailForOrderCreated = async (email, branchId, order) => {
 
   // Get customer name
   const customerName = order.customerName || "Customer";
-
-  // Format currency
-  const formatCurrency = (amount) => `£${toFixed(amount, 2)}`;
 
   // Generate items HTML
   const generateItemsHTML = () => {
