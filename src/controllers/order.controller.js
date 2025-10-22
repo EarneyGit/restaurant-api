@@ -234,10 +234,10 @@ exports.getOrders = async (req, res, next) => {
       }
 
       // Filter out card payment orders that are not paid yet
-      query.$or = [
-        { paymentMethod: { $ne: "card" } },
-        { paymentMethod: "card", paymentStatus: "paid" },
-      ];
+      // query.$or = [
+      //   { paymentMethod: { $ne: "card" } },
+      //   { paymentMethod: "card", paymentStatus: "paid" },
+      // ];
 
       // Handle specific search parameters
       if (req.query.orderNumber) {

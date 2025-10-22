@@ -320,7 +320,7 @@ exports.getSalesHistory = async (req, res, next) => {
       orderStateFilter = {
         $or: [
           { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: 'cancelled' } ] },
-          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'refunded' } ] }
+          { $and: [ { paymentMethod: { $in: ['card'] } }, { status: 'cancelled' }, { paymentStatus: { $ne: 'paid' } } ] }
         ]
       };
     } else if (orderState === 'completed') {
@@ -328,6 +328,12 @@ exports.getSalesHistory = async (req, res, next) => {
         $or: [
           { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: { $ne: 'cancelled' } } ] },
           { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'paid' } ] }
+        ]
+      };
+    } else if (orderState === 'pending') {
+      orderStateFilter = {
+        $or: [
+          { $and: [ { paymentMethod: { $in: ['card'] } }, { status: { $ne: 'cancelled' } }, { paymentStatus: { $ne: 'paid' } } ] }
         ]
       };
     }
