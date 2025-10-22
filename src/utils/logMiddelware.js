@@ -26,7 +26,13 @@ const requestLoggerMiddleware = () => async (req, res, next) => {
   logger.info(`Request <<< : ${req.method} ${req.url} : ${req.hostname}`);
   res.send = resDotSendInterceptor(res, res.send);
   res.on("finish", () => {
-    logger.info(`Response >>> : ${res.contentBody}\n`);
+    if (process.env.LOG_LEVEL === "info") {
+      logger.info(`Response >>> : ${res.contentBody}\n`);
+    } else {
+      logger.info(
+        `Response >>> : ${JSON.stringify(res.contentBody).slice(0, 10)}...\n`
+      );
+    }
   });
   next();
 };
