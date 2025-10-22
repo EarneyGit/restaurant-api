@@ -23,6 +23,7 @@ const {
   sendMailForOrderCreated,
   sendMailForAddDelay,
   sendMailForCancelOrder,
+  sendMailForRefundOrder,
 } = require("../utils/emailSender");
 const { getOrderCustomerDetails } = require("../utils/functions");
 
@@ -1435,14 +1436,20 @@ exports.createOrder = async (req, res, next) => {
       "Customer";
     populatedOrder.customerEmail = userDetails.email;
     populatedOrder.customerPhone = userDetails.phone;
-    // send order created email
-    sendMailForOrderCreated(
-      populatedOrder.customerEmail,
-      populatedOrder.branchId._id,
-      populatedOrder
-    ).catch((error) => {
-      console.error("Error sending order created email:", error);
-    });
+    // if payment method is cash , then send order created email or payment is paid, then send order paid email
+    if (
+      populatedOrder.paymentMethod === "cash" ||
+      populatedOrder.paymentStatus === "paid"
+    ) {
+      // send order created email
+      sendMailForOrderCreated(
+        populatedOrder.customerEmail,
+        populatedOrder.branchId._id,
+        populatedOrder
+      ).catch((error) => {
+        console.error("Error sending order created email:", error);
+      });
+    }
 
     // update payment intent description
     if (req.body.paymentMethod === "card" && req.body.stripePaymentIntentId) {
@@ -1629,6 +1636,15 @@ exports.updateOrder = async (req, res, next) => {
         order,
         "Order cancelled by admin"
       );
+      // send if payment method is card, then send order refunded email
+      if (
+        order.paymentMethod === "card" &&
+        order.paymentStatus === "refunded"
+      ) {
+        sendMailForRefundOrder(order.customerEmail, order).catch((error) => {
+          console.error("Error sending order refunded email:", error);
+        });
+      }
 
       res.status(200).json({
         success: true,
@@ -2116,6 +2132,23 @@ exports.checkPaymentStatus = async (req, res, next) => {
 
       if (updateData.paymentStatus === "paid") {
         getIO().emit("order", { event: "order_created", orderId: orderId });
+        // if payment status is paid, then send order paid email
+        sendMailForOrderCreated(
+          updatedOrder.orderCustomerDetails.email,
+          updatedOrder.branchId._id,
+          updatedOrder
+        ).catch((error) => {
+          console.error("Error sending order created email:", error);
+        });
+      } else if (updateData.paymentStatus === "failed") {
+        // if payment status is failed, then send order cancelled email
+        sendMailForCancelOrder(
+          updatedOrder.orderCustomerDetails.email,
+          updatedOrder,
+          "Payment failed"
+        ).catch((error) => {
+          console.error("Error sending order cancelled email:", error);
+        });
       }
 
       // Emit socket event for order update

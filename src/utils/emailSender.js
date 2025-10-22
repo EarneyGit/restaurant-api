@@ -46,6 +46,7 @@ const sendEmail = async (options) => {
       subject: options.subject,
       text: options.text,
       html: options.html || options.text,
+      cc: options.cc || undefined,
       bcc: process.env.EMAIL_BCC || undefined,
     };
 
@@ -332,7 +333,9 @@ const sendMailForOrderCreated = async (email, branchId, order) => {
           </tr>
           <tr>
             <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #666;">Time Slot:</td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333;">${order.selectedTimeSlot || "Not specified"}</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; color: #333;">${
+              order.selectedTimeSlot || "Not specified"
+            }</td>
           </tr>
           ${
             order.deliveryAddress && orderType === "delivery"
@@ -387,7 +390,9 @@ Order Details:
 - Estimated Time: ${order.estimatedTimeToComplete || 45} minutes
 - Time Slot: ${order.selectedTimeSlot || "Not specified"}
   <br>
-- Total Amount: ${formatCurrency(order.finalTotal || order.total || order.totalAmount)}
+- Total Amount: ${formatCurrency(
+    order.finalTotal || order.total || order.totalAmount
+  )}
   <br>
 You can track your order status at: ${statusURL}
 `;
@@ -457,7 +462,9 @@ const sendMailForCancelOrder = async (
   reason = "Order cancelled by customer"
 ) => {
   const subject = `Order Cancelled - #${order.orderNumber}`;
-  const text = `Dear ${order.customerName || "Customer"},\n\nWe regret to inform you that your order #${
+  const text = `Dear ${
+    order.customerName || "Customer"
+  },\n\nWe regret to inform you that your order #${
     order.orderNumber
   } has been cancelled.\n\nOrder Details:\n- Order Number: #${
     order.orderNumber
@@ -525,7 +532,12 @@ const sendMailForCancelOrder = async (
  * @param {number} delayMinutes - Delay in minutes
  * @returns {Promise<boolean>} Success status
  */
-const sendMailForAddDelay = async (email, order, delayMinutes, newEstimation) => {
+const sendMailForAddDelay = async (
+  email,
+  order,
+  delayMinutes,
+  newEstimation
+) => {
   const subject = `Order Update - #${order.orderNumber}`;
   const text = `Dear ${
     order.customerName || "Customer"
@@ -580,6 +592,67 @@ const sendMailForAddDelay = async (email, order, delayMinutes, newEstimation) =>
   return await sendEmail({ to: email, subject, text, html });
 };
 
+/**
+ * Send order refunded email
+ * @param {string} email - Customer's email
+ * @param {Object} order - Order details
+ * @returns {Promise<boolean>} Success status
+ */
+const sendMailForRefundOrder = async (email, order) => {
+  const subject = `Order Refunded - #${order.orderNumber}`;
+  const text = `Dear ${
+    order.customerName || "Customer"
+  },\n\nWe are pleased to inform you that your order #${
+    order.orderNumber
+  } has been refunded.\n\nOrder Details:\n- Order Number: #${
+    order.orderNumber
+  }\n- Total Amount: £${order.total}\n- Order Type: ${
+    order.orderType || "Collection"
+  }\n\nRegards,\nRestaurant Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff;">
+        <h2 style="color: #007bff; margin-top: 0;">Order Refunded</h2>
+        <p>Dear ${order.customerName || "Customer"},</p>
+        <p>We are pleased to inform you that your order has been refunded.</p>
+      </div>
+
+      <div style="background-color: #ffffff; padding: 20px; margin: 20px 0; border: 1px solid #dee2e6; border-radius: 8px;">
+        <h3 style="color: #495057; margin-top: 0;">Order Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Order Number:</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">#${
+              order.orderNumber
+            }</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Total Amount:</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">£${
+              order.total
+            }</td>
+          </tr>
+        </table>
+      </div>
+      <div style="text-align: center; margin-top: 30px;">
+        <p style="color: #6c757d;">If you have any questions or concerns, please contact us.</p>
+        <p style="color: #6c757d;">Thank you for choosing us!<br>
+          <strong>Restaurant Team</strong>
+        </p>
+      </div>
+    </div>
+  `;
+
+  return await sendEmail({
+    to: email,
+    cc: process.env.EMAIL_CC,
+    subject,
+    text,
+    html,
+  });
+};
+
 module.exports = {
   generateOTP,
   sendEmail,
@@ -588,4 +661,5 @@ module.exports = {
   sendMailForOrderCreated,
   sendMailForCancelOrder,
   sendMailForAddDelay,
+  sendMailForRefundOrder,
 };

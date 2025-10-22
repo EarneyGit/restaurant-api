@@ -15,6 +15,11 @@ const cronJob = require("cron").CronJob;
 
 const Order = require("../models/order.model");
 const {
+  sendMailForOrderCreated,
+  sendMailForCancelOrder,
+  sendMailForRefundOrder,
+} = require("../utils/emailSender");
+const {
   getPaymentIntentStatus,
 } = require("../utils/stripe-config/stripe-config");
 // every 1 minutes
@@ -24,7 +29,7 @@ async function checkPaymentStatusJob(cronExpression) {
       console.log("Checking payment status...", new Date()); // log the time
       const fromDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
       const orders = await Order.find({
-        paymentStatus: "pending",
+        paymentStatus: { $in: ["pending", "processing"] },
         paymentMethod: "card",
         createdAt: { $gte: fromDate },
       }).lean();
@@ -88,6 +93,34 @@ async function checkPaymentStatusJob(cronExpression) {
               },
             }
           );
+
+          if (order.paymentStatus === "paid") {
+            // if payment status is paid, then send order paid email
+            sendMailForOrderCreated(
+              order.orderCustomerDetails.email,
+              order.branchId._id,
+              order
+            ).catch((error) => {
+              console.error("Error sending order created email:", error);
+            });
+          } else if (order.paymentStatus === "failed") {
+            // if payment status is failed, then send order cancelled email
+            sendMailForCancelOrder(
+              order.orderCustomerDetails.email,
+              order,
+              "Payment failed"
+            ).catch((error) => {
+              console.error("Error sending order cancelled email:", error);
+            });
+          } else if (order.paymentStatus === "refunded") {
+            // if payment status is refunded, then send order refunded email
+            sendMailForRefundOrder(
+              order.orderCustomerDetails.email,
+              order
+            ).catch((error) => {
+              console.error("Error sending order refunded email:", error);
+            });
+          }
           console.log(
             `Updated order ${order._id} with payment status ${order.paymentStatus} and status ${order.status}`
           );
