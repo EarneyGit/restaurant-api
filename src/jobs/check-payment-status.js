@@ -101,11 +101,17 @@ async function checkPaymentStatusJob(cronExpression) {
               },
             }
           );
+          const customerDetails = getOrderCustomerDetails(order);
+          order.customerName =
+            customerDetails.firstName + " " + customerDetails.lastName;
+          order.customerEmail = customerDetails.email;
+          order.customerPhone = customerDetails.phone;
+          order.customerAddress = customerDetails.address;
 
           if (order.paymentStatus === "paid") {
             // if payment status is paid, then send order paid email
             sendMailForOrderCreated(
-              order.orderCustomerDetails.email,
+              order.customerEmail,
               order.branchId._id,
               order
             ).catch((error) => {
@@ -117,7 +123,7 @@ async function checkPaymentStatusJob(cronExpression) {
           } else if (order.paymentStatus === "failed") {
             // if payment status is failed, then send order cancelled email
             sendMailForCancelOrder(
-              order.orderCustomerDetails.email,
+              order.customerEmail,
               order,
               "Payment failed"
             ).catch((error) => {
@@ -128,15 +134,14 @@ async function checkPaymentStatusJob(cronExpression) {
             });
           } else if (order.paymentStatus === "refunded") {
             // if payment status is refunded, then send order refunded email
-            sendMailForRefundOrder(
-              order.orderCustomerDetails.email,
-              order
-            ).catch((error) => {
-              console.error(
-                "\nCHECK_PAYMENT_STATUS_CRON::::Error sending order refunded email:" +
-                  error
-              );
-            });
+            sendMailForRefundOrder(order.customerEmail, order).catch(
+              (error) => {
+                console.error(
+                  "\nCHECK_PAYMENT_STATUS_CRON::::Error sending order refunded email:" +
+                    error
+                );
+              }
+            );
           }
           console.log(
             `\nCHECK_PAYMENT_STATUS_CRON::::Updated order ${order._id} with payment status ${order.paymentStatus} and status ${order.status}`

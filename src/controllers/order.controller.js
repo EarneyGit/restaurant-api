@@ -1436,6 +1436,7 @@ exports.createOrder = async (req, res, next) => {
       "Customer";
     populatedOrder.customerEmail = userDetails.email;
     populatedOrder.customerPhone = userDetails.phone;
+    populatedOrder.customerAddress = userDetails.address;
     // if payment method is cash , then send order created email or payment is paid, then send order paid email
     if (
       ["cash", "cash_on_delivery"].includes(populatedOrder.paymentMethod) ||
@@ -2131,11 +2132,17 @@ exports.checkPaymentStatus = async (req, res, next) => {
         .populate(populateOptions)
         .populate("assignedTo", "firstName lastName email");
 
+      const customerDetails = getOrderCustomerDetails(updatedOrder);
+      updatedOrder.customerName =
+        customerDetails.firstName + " " + customerDetails.lastName;
+      updatedOrder.customerEmail = customerDetails.email;
+      updatedOrder.customerPhone = customerDetails.phone;
+      updatedOrder.customerAddress = customerDetails.address;
       if (updateData.paymentStatus === "paid") {
         getIO().emit("order", { event: "order_created", orderId: orderId });
         // if payment status is paid, then send order paid email
         sendMailForOrderCreated(
-          updatedOrder.orderCustomerDetails.email,
+          updatedOrder.customerEmail,
           updatedOrder.branchId._id,
           updatedOrder
         ).catch((error) => {

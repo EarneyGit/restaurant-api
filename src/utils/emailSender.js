@@ -339,22 +339,14 @@ const sendMailForOrderCreated = async (email, branchId, order) => {
             }</td>
           </tr>
           ${
-            order.deliveryAddress && orderType === "delivery"
+            order.customerAddress && orderType === "delivery"
               ? `
           <tr>
             <td style="padding: 8px 0; font-weight: bold; color: #666;">Delivery Address:</td>
             <td style="padding: 8px 0; color: #333;">
-              ${order.deliveryAddress.street || ""}<br>
-              ${order.deliveryAddress.city || ""} ${
-                  order.deliveryAddress.state || ""
-                }<br>
+              ${order.customerAddress || ""}<br>
               ${
-                order.deliveryAddress.postalCode ||
-                order.deliveryAddress.zipCode ||
-                ""
-              } ${order.deliveryAddress.country || ""}
-              ${
-                order.deliveryAddress.notes
+                order?.deliveryAddress?.notes
                   ? `<br><em>Note: ${order.deliveryAddress.notes}</em>`
                   : ""
               }
