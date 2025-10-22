@@ -1438,8 +1438,9 @@ exports.createOrder = async (req, res, next) => {
     populatedOrder.customerPhone = userDetails.phone;
     // if payment method is cash , then send order created email or payment is paid, then send order paid email
     if (
-      populatedOrder.paymentMethod === "cash" ||
-      populatedOrder.paymentStatus === "paid"
+      ["cash", "cash_on_delivery"].includes(populatedOrder.paymentMethod) ||
+      (populatedOrder.paymentMethod === "card" &&
+        populatedOrder.paymentStatus === "paid")
     ) {
       // send order created email
       sendMailForOrderCreated(
