@@ -1637,7 +1637,9 @@ exports.updateOrder = async (req, res, next) => {
         order.customerEmail,
         order,
         "Order cancelled by admin"
-      );
+      ).catch((error) => {
+        console.error("Error sending cancel email:", error);
+      });
       // send if payment method is card, then send order refunded email
       if (
         order.paymentMethod === "card" &&
