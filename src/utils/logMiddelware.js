@@ -28,10 +28,6 @@ const requestLoggerMiddleware = () => async (req, res, next) => {
   res.on("finish", () => {
     if (process.env.LOG_LEVEL === "info") {
       logger.info(`Response >>> : ${res.contentBody}\n`);
-    } else {
-      logger.info(
-        `Response >>> : ${JSON.stringify(res.contentBody).slice(0, 10)}...\n`
-      );
     }
   });
   next();
