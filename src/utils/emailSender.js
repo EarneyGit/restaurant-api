@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const { toFixed } = require("./functions");
 
 /**
  * Create a nodemailer transporter
@@ -128,7 +129,7 @@ const sendMailForOrderCreated = async (email, branchId, order) => {
   const customerName = order.customerName || "Customer";
 
   // Format currency
-  const formatCurrency = (amount) => `£${(amount || 0).toFixed(2)}`;
+  const formatCurrency = (amount) => `£${toFixed(amount, 2)}`;
 
   // Generate items HTML
   const generateItemsHTML = () => {
@@ -491,9 +492,9 @@ const sendMailForCancelOrder = async (
           </tr>
           <tr>
             <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Total Amount:</td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">£${
-              order.total
-            }</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formatCurrency(
+              order.total || 0
+            )}</td>
           </tr>
           <tr>
             <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Order Type:</td>
@@ -564,9 +565,9 @@ const sendMailForAddDelay = async (
           </tr>
           <tr>
             <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Total Amount:</td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">£${
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formatCurrency(
               order.total
-            }</td>
+            )}</td>
           </tr>
           <tr>
             <td style="padding: 8px 0; font-weight: bold;">New Estimated Time:</td>
@@ -629,9 +630,9 @@ const sendMailForRefundOrder = async (email, order) => {
           </tr>
           <tr>
             <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; font-weight: bold;">Total Amount:</td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">£${
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formatCurrency(
               order.total
-            }</td>
+            )}</td>
           </tr>
         </table>
       </div>

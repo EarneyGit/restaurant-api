@@ -12,3 +12,11 @@ export const getOrderCustomerDetails = (order) => {
   }
   return order.user;
 };
+
+// to fixed  decimal places
+export const toFixed = (value, decimalPlaces = 2) => {
+  if (isNaN(value)) {
+    return "0.00";
+  }
+  return Number(value).toFixed(decimalPlaces);
+};
