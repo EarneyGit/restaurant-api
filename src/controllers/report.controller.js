@@ -51,7 +51,7 @@ const getDateRange = (period, customStart, customEnd) => {
 // @access  Private/Staff or higher
 exports.getEndOfNightReport = async (req, res, next) => {
   try {
-    const { date, branchId } = req.query;
+    const { date, branchId, orderState } = req.query;
     const reportDate = date ? new Date(date) : new Date();
     
     // Set date range for the specific day
@@ -59,10 +59,24 @@ exports.getEndOfNightReport = async (req, res, next) => {
     const endDate = new Date(reportDate.setHours(23, 59, 59, 999));
     
     // Build filter
-    const filter = {
-      createdAt: { $gte: startDate, $lte: endDate },
-      status: { $in: ['completed', 'delivered'] }
-    };
+    const baseFilter = { createdAt: { $gte: startDate, $lte: endDate } };
+    let orderStateFilter = {};
+    if (orderState === 'cancelled') {
+      orderStateFilter = {
+        $or: [
+          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: 'cancelled' } ] },
+          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'refunded' } ] }
+        ]
+      };
+    } else {
+      orderStateFilter = {
+        $or: [
+          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: { $ne: 'cancelled' } } ] },
+          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'paid' } ] }
+        ]
+      };
+    }
+    const filter = { ...baseFilter, ...orderStateFilter };
     
     // Handle branch filtering based on user role
     let effectiveBranchId = branchId;
@@ -155,7 +169,7 @@ exports.getEndOfNightReport = async (req, res, next) => {
 // @access  Private/Staff or higher
 exports.getEndOfMonthReport = async (req, res, next) => {
   try {
-    const { month, year, branchId } = req.query;
+    const { month, year, branchId, orderState } = req.query;
     const reportYear = year ? parseInt(year) : new Date().getFullYear();
     const reportMonth = month ? parseInt(month) - 1 : new Date().getMonth(); // Month is 0-indexed
     
@@ -163,10 +177,24 @@ exports.getEndOfMonthReport = async (req, res, next) => {
     const endDate = new Date(reportYear, reportMonth + 1, 0, 23, 59, 59, 999);
     
     // Build filter
-    const filter = {
-      createdAt: { $gte: startDate, $lte: endDate },
-      status: { $in: ['completed', 'delivered'] }
-    };
+    const baseFilter = { createdAt: { $gte: startDate, $lte: endDate } };
+    let orderStateFilter = {};
+    if (orderState === 'cancelled') {
+      orderStateFilter = {
+        $or: [
+          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: 'cancelled' } ] },
+          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'refunded' } ] }
+        ]
+      };
+    } else {
+      orderStateFilter = {
+        $or: [
+          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: { $ne: 'cancelled' } } ] },
+          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'paid' } ] }
+        ]
+      };
+    }
+    const filter = { ...baseFilter, ...orderStateFilter };
     
     // Handle branch filtering based on user role
     let effectiveBranchId = branchId;
@@ -280,15 +308,30 @@ exports.getEndOfMonthReport = async (req, res, next) => {
 // @access  Private/Staff or higher
 exports.getSalesHistory = async (req, res, next) => {
   try {
-    const { startDate: start, endDate: end, branchId, page = 1, limit = 50 } = req.query;
+    const { startDate: start, endDate: end, branchId, orderState, page = 1, limit = 50 } = req.query;
     
     // Date range
     const { startDate, endDate } = getDateRange('custom', start, end);
     
     // Build filter
-    const filter = {
-      createdAt: { $gte: startDate, $lte: endDate }
-    };
+    const baseFilter = { createdAt: { $gte: startDate, $lte: endDate } };
+    let orderStateFilter = {};
+    if (orderState === 'cancelled') {
+      orderStateFilter = {
+        $or: [
+          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: 'cancelled' } ] },
+          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'refunded' } ] }
+        ]
+      };
+    } else if (orderState === 'completed') {
+      orderStateFilter = {
+        $or: [
+          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: { $ne: 'cancelled' } } ] },
+          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'paid' } ] }
+        ]
+      };
+    }
+    const filter = { ...baseFilter, ...orderStateFilter };
     
     // Handle branch filtering based on user role
     let effectiveBranchId = branchId;
