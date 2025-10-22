@@ -74,7 +74,7 @@ app.use(requestLoggerMiddleware());
 // Middleware
 app.use(
   cors({
-    origin: "*",
+    origin: allowedOrigins.includes("*") ? "*" : allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
