@@ -19,6 +19,7 @@ const {
   sendMailForCancelOrder,
   sendMailForRefundOrder,
 } = require("../utils/emailSender");
+const logger = require("../utils/logger");
 const {
   getPaymentIntentStatus,
 } = require("../utils/stripe-config/stripe-config");
@@ -26,17 +27,18 @@ const {
 async function checkPaymentStatusJob(cronExpression) {
   const checkStatus = async () => {
     try {
-      console.log("Checking payment status...", new Date()); // log the time
+      logger.info("\nCHECK_PAYMENT_STATUS_CRON::::Checking payment status...", new Date()); // log the time
       const fromDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
       const orders = await Order.find({
         paymentStatus: { $in: ["pending", "processing"] },
         paymentMethod: "card",
         createdAt: { $gte: fromDate },
       }).lean();
-      console.log(`Found ${orders.length} orders to check`);
+      logger.info(`\nCHECK_PAYMENT_STATUS_CRON::::Found ${orders.length} orders to check`);
       for (const order of orders) {
         try {
-          console.log(
+          logger.info(
+            `\nCHECK_PAYMENT_STATUS_CRON::::`
             `\n\n\nChecking payment status for order ${
               order._id
             }, payment intent id: ${
@@ -51,7 +53,7 @@ async function checkPaymentStatusJob(cronExpression) {
             order.stripePaymentIntentId
           );
 
-          console.log(`Payment status: ${paymentStatus.message}`);
+          logger.info(`\nCHECK_PAYMENT_STATUS_CRON::::Payment status: ${paymentStatus.message}`);
 
           if (
             paymentStatus.success &&
@@ -101,7 +103,7 @@ async function checkPaymentStatusJob(cronExpression) {
               order.branchId._id,
               order
             ).catch((error) => {
-              console.error("Error sending order created email:", error);
+              logger.error("\nCHECK_PAYMENT_STATUS_CRON::::Error sending order created email:", error);
             });
           } else if (order.paymentStatus === "failed") {
             // if payment status is failed, then send order cancelled email
@@ -110,7 +112,7 @@ async function checkPaymentStatusJob(cronExpression) {
               order,
               "Payment failed"
             ).catch((error) => {
-              console.error("Error sending order cancelled email:", error);
+              logger.error("\nCHECK_PAYMENT_STATUS_CRON::::Error sending order cancelled email:", error);
             });
           } else if (order.paymentStatus === "refunded") {
             // if payment status is refunded, then send order refunded email
@@ -118,33 +120,33 @@ async function checkPaymentStatusJob(cronExpression) {
               order.orderCustomerDetails.email,
               order
             ).catch((error) => {
-              console.error("Error sending order refunded email:", error);
+              logger.error("\nCHECK_PAYMENT_STATUS_CRON::::Error sending order refunded email:", error);
             });
           }
-          console.log(
-            `Updated order ${order._id} with payment status ${order.paymentStatus} and status ${order.status}`
+          logger.info(
+            `\nCHECK_PAYMENT_STATUS_CRON::::Updated order ${order._id} with payment status ${order.paymentStatus} and status ${order.status}`
           );
         } catch (error) {
-          console.error(
-            `Error checking payment status for order ${order._id}:`,
+          logger.error(
+            `\nCHECK_PAYMENT_STATUS_CRON::::Error checking payment status for order ${order._id}:`,
             error
           );
         }
       }
     } catch (error) {
-      console.error("Error checking payment status:", error);
+      logger.error("\nCHECK_PAYMENT_STATUS_CRON::::Error checking payment status:", error);
     }
   };
 
   const job = new cronJob(
     cronExpression,
     async () => {
-      console.log("Cron job running at", new Date());
+      logger.info("\nCHECK_PAYMENT_STATUS_CRON::::checkPaymentStatusJobCron job running at", new Date());
       // your async or sync task
       try {
         await checkStatus();
       } catch (error) {
-        console.error("Error checking payment status:", error);
+        logger.error("\nCHECK_PAYMENT_STATUS_CRON::::Error checking payment status:", error);
       }
     },
     null,
