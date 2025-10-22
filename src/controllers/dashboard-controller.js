@@ -1,10 +1,11 @@
 const Order = require('../models/order.model');
 const User = require('../models/user.model');
+const { roundOff } = require('../utils/common-utils'); // ✅ Import roundOff
 
 const getStats = async (req, res) => {
   try {
     const { startDate, endDate } = req.body;
-    
+
     if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
@@ -12,14 +13,10 @@ const getStats = async (req, res) => {
       });
     }
 
-    // Create date objects from the input strings
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
-    // Set end date to the end of the day
     end.setHours(23, 59, 59, 999);
 
-    // Query conditions for the date range
     const dateFilter = {
       createdAt: {
         $gte: start,
@@ -27,32 +24,32 @@ const getStats = async (req, res) => {
       }
     };
 
-    // Get total orders count
     const totalOrders = await Order.countDocuments(dateFilter);
 
-    // Get total revenue (sum of finalTotal field)
     const revenueResult = await Order.aggregate([
       { $match: dateFilter },
-      { $group: {
+      {
+        $group: {
           _id: null,
           totalRevenue: { $sum: "$finalTotal" }
         }
       }
     ]);
-    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+    const totalRevenueRaw = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+    const totalRevenue = roundOff(totalRevenueRaw);
 
-    // Get total discount amount
     const discountResult = await Order.aggregate([
       { $match: dateFilter },
-      { $group: {
+      {
+        $group: {
           _id: null,
           totalDiscount: { $sum: { $ifNull: ["$discount.discountAmount", 0] } }
         }
       }
     ]);
-    const totalDiscount = discountResult.length > 0 ? discountResult[0].totalDiscount : 0;
+    const totalDiscountRaw = discountResult.length > 0 ? discountResult[0].totalDiscount : 0;
+    const totalDiscount = roundOff(totalDiscountRaw);
 
-    // Get distinct customers who placed orders in the date range
     const distinctCustomers = await Order.distinct('user', dateFilter);
     const totalCustomers = distinctCustomers.filter(id => id !== null).length;
 
@@ -77,4 +74,4 @@ const getStats = async (req, res) => {
 
 module.exports = {
   getStats
-}
+};
