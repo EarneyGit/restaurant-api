@@ -30,7 +30,7 @@ async function checkPaymentStatusJob(cronExpression) {
   const checkStatus = async () => {
     try {
       console.log(
-        "\nCHECK_PAYMENT_STATUS_CRON::::Checking payment status...",
+        "CHECK_PAYMENT_STATUS_CRON::::Checking payment status...",
         new Date()
       ); // log the time
       const fromDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
@@ -45,13 +45,13 @@ async function checkPaymentStatusJob(cronExpression) {
         createdAt: { $gte: fromDate },
       }).lean();
       console.log(
-        `\nCHECK_PAYMENT_STATUS_CRON::::Found ${orders.length} orders to check`
+        `CHECK_PAYMENT_STATUS_CRON::::Found ${orders.length} orders to check`
       );
       for (const order of orders) {
         try {
           console.log(
-            `\nCHECK_PAYMENT_STATUS_CRON::::
-            \n\n\nChecking payment status for order ${
+            `CHECK_PAYMENT_STATUS_CRON::::
+            \n\nChecking payment status for order ${
               order._id
             }, payment intent id: ${
               order.stripePaymentIntentId
@@ -66,7 +66,7 @@ async function checkPaymentStatusJob(cronExpression) {
           );
 
           console.log(
-            `\nCHECK_PAYMENT_STATUS_CRON::::Payment status: ${paymentStatus.message}`
+            `CHECK_PAYMENT_STATUS_CRON::::Payment status: ${paymentStatus.message}`
           );
 
           if (
@@ -139,7 +139,7 @@ async function checkPaymentStatusJob(cronExpression) {
               order
             ).catch((error) => {
               console.error(
-                "\nCHECK_PAYMENT_STATUS_CRON::::Error sending order created email:",
+                "CHECK_PAYMENT_STATUS_CRON::::Error sending order created email:",
                 error
               );
             });
@@ -154,7 +154,7 @@ async function checkPaymentStatusJob(cronExpression) {
               "Payment failed"
             ).catch((error) => {
               console.error(
-                "\nCHECK_PAYMENT_STATUS_CRON::::Error sending order cancelled email:",
+                "CHECK_PAYMENT_STATUS_CRON::::Error sending order cancelled email:",
                 error
               );
             });
@@ -163,25 +163,25 @@ async function checkPaymentStatusJob(cronExpression) {
             sendMailForRefundOrder(order.customerEmail, order).catch(
               (error) => {
                 console.error(
-                  "\nCHECK_PAYMENT_STATUS_CRON::::Error sending order refunded email:" +
+                  "CHECK_PAYMENT_STATUS_CRON::::Error sending order refunded email:" +
                     error
                 );
               }
             );
           }
           console.log(
-            `\nCHECK_PAYMENT_STATUS_CRON::::Updated order ${order._id} with payment status ${order.paymentStatus} and status ${order.status}`
+            `CHECK_PAYMENT_STATUS_CRON::::Updated order ${order._id} with payment status ${order.paymentStatus} and status ${order.status}`
           );
         } catch (error) {
           console.error(
-            `\nCHECK_PAYMENT_STATUS_CRON::::Error checking payment status for order ${order._id}:`,
+            `CHECK_PAYMENT_STATUS_CRON::::Error checking payment status for order ${order._id}:`,
             error
           );
         }
       }
     } catch (error) {
       console.error(
-        "\nCHECK_PAYMENT_STATUS_CRON::::Error checking payment status:",
+        "CHECK_PAYMENT_STATUS_CRON::::Error checking payment status:",
         error
       );
     }
@@ -191,7 +191,7 @@ async function checkPaymentStatusJob(cronExpression) {
     cronExpression,
     async () => {
       console.log(
-        "\nCHECK_PAYMENT_STATUS_CRON::::checkPaymentStatusJobCron job running at",
+        "CHECK_PAYMENT_STATUS_CRON::::checkPaymentStatusJobCron job running at",
         new Date()
       );
       // your async or sync task
@@ -199,7 +199,7 @@ async function checkPaymentStatusJob(cronExpression) {
         await checkStatus();
       } catch (error) {
         console.error(
-          "\nCHECK_PAYMENT_STATUS_CRON::::Error checking payment status:",
+          "CHECK_PAYMENT_STATUS_CRON::::Error checking payment status:",
           error
         );
       }
