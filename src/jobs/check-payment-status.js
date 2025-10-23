@@ -25,19 +25,6 @@ const {
   refundPayment,
 } = require("../utils/stripe-config/stripe-config");
 
-const intiateRefund = async (order) => {
-  try {
-    const refund = await refundPayment(order.stripePaymentIntentId);
-    return refund;
-  } catch (error) {
-    const alreadyRefunded = (
-      (typeof error === "string" && error) ||
-      (typeof error === "object" && error.message)
-    ).includes("already refunded");
-    return alreadyRefunded;
-  }
-};
-
 // every 1 minutes
 async function checkPaymentStatusJob(cronExpression) {
   const checkStatus = async () => {
@@ -107,9 +94,23 @@ async function checkPaymentStatusJob(cronExpression) {
           }
 
           if (order.status === "cancelled" && order.paymentStatus === "paid") {
-            const refund = await intiateRefund(order);
-            if (refund) {
+            try {
+              const refund = await refundPayment(order.stripePaymentIntentId);
               order.paymentStatus = "refunded";
+            } catch (error) {
+              console.error("Error initiating refund:", error);
+              const alreadyRefunded = (
+                (typeof error === "string" && error) ||
+                (typeof error === "object" && error.message)
+              ).includes("already refunded");
+              if (!alreadyRefunded) {
+                console.error("Error initiating refund:", error);
+              } else {
+                order.paymentStatus = "refunded";
+                console.log(
+                  `Refunded order ${order.orderNumber} already refunded`
+                );
+              }
             }
           }
 
