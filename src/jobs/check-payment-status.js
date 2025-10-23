@@ -127,9 +127,10 @@ async function checkPaymentStatusJob(cronExpression) {
             if (refund) {
               order.paymentStatus = "refunded";
             }
-          }
-
-          if (order.paymentStatus === "paid" && order.status !== "cancelled") {
+          } else if (
+            order.paymentStatus === "paid" &&
+            order.status !== "cancelled"
+          ) {
             // if payment status is paid, then send order paid email
             sendMailForOrderCreated(
               order.customerEmail,
