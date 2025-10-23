@@ -19,6 +19,7 @@ const {
   sendMailForCancelOrder,
   sendMailForRefundOrder,
 } = require("../utils/emailSender");
+const { getOrderCustomerDetails } = require("../utils/functions");
 const {
   getPaymentIntentStatus,
 } = require("../utils/stripe-config/stripe-config");
