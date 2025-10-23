@@ -37,7 +37,7 @@ const getStats = async (req, res) => {
     const customerOrdersMap = new Map();
 
     for (const order of orders) {
-      const isCashOrCOD = ['cash', 'cash_on_delivery'].includes(order.paymentMethod);
+      const isCashOrCOD = ['cash'].includes(order.paymentMethod);
       const isOtherPayment = !isCashOrCOD; // Any other payment method
 
       // For cash or COD, only check order status

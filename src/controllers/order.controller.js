@@ -1355,7 +1355,7 @@ exports.createOrder = async (req, res, next) => {
           message: "Failed to create payment intent. Please try again.",
         });
       }
-    } else if (req.body.paymentMethod === "cash_on_delivery") {
+    } else if (req.body.paymentMethod === "cash") {
       // For cash on delivery, set payment status to pending
       req.body.paymentStatus = "pending";
     }
@@ -1439,7 +1439,7 @@ exports.createOrder = async (req, res, next) => {
     populatedOrder.customerAddress = userDetails.address;
     // if payment method is cash , then send order created email or payment is paid, then send order paid email
     if (
-      ["cash", "cash_on_delivery"].includes(populatedOrder.paymentMethod) ||
+      ["cash"].includes(populatedOrder.paymentMethod) ||
       (populatedOrder.paymentMethod === "card" &&
         populatedOrder.paymentStatus === "paid")
     ) {

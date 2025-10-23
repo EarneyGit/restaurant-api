@@ -64,15 +64,15 @@ exports.getEndOfNightReport = async (req, res, next) => {
     if (orderState === 'cancelled') {
       orderStateFilter = {
         $or: [
-          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: 'cancelled' } ] },
-          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'refunded' } ] }
+          { $and: [ { paymentMethod: 'cash' }, { status: 'cancelled' } ] },
+          { $and: [ { paymentMethod: 'card' }, { paymentStatus: 'refunded' } ] }
         ]
       };
     } else {
       orderStateFilter = {
         $or: [
-          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: { $ne: 'cancelled' } } ] },
-          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'paid' } ] }
+          { $and: [ { paymentMethod: 'cash' }, { status: { $ne: 'cancelled' } } ] },
+          { $and: [ { paymentMethod: 'card' }, { paymentStatus: 'paid' } ] }
         ]
       };
     }
@@ -182,15 +182,15 @@ exports.getEndOfMonthReport = async (req, res, next) => {
     if (orderState === 'cancelled') {
       orderStateFilter = {
         $or: [
-          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: 'cancelled' } ] },
-          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'refunded' } ] }
+          { $and: [ { paymentMethod: 'cash' }, { status: 'cancelled' } ] },
+          { $and: [ { paymentMethod: 'card' }, { paymentStatus: 'refunded' } ] }
         ]
       };
     } else {
       orderStateFilter = {
         $or: [
-          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: { $ne: 'cancelled' } } ] },
-          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'paid' } ] }
+          { $and: [ { paymentMethod: 'cash' }, { status: { $ne: 'cancelled' } } ] },
+          { $and: [ { paymentMethod: 'card' }, { paymentStatus: 'paid' } ] }
         ]
       };
     }
@@ -319,21 +319,21 @@ exports.getSalesHistory = async (req, res, next) => {
     if (orderState === 'cancelled') {
       orderStateFilter = {
         $or: [
-          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: 'cancelled' } ] },
-          { $and: [ { paymentMethod: { $in: ['card'] } }, { status: 'cancelled' }, { paymentStatus: { $ne: 'paid' } } ] }
+          { $and: [ { paymentMethod: 'cash' }, { status: 'cancelled' } ] },
+          { $and: [ { paymentMethod: 'card' }, { status: 'cancelled' }, { paymentStatus: { $ne: 'paid' } } ] }
         ]
       };
     } else if (orderState === 'completed') {
       orderStateFilter = {
         $or: [
-          { $and: [ { paymentMethod: { $in: ['cash', 'cash_on_delivery'] } }, { status: { $ne: 'cancelled' } } ] },
-          { $and: [ { paymentMethod: { $nin: ['cash', 'cash_on_delivery'] } }, { paymentStatus: 'paid' } ] }
+          { $and: [ { paymentMethod: 'cash' }, { status: { $ne: 'cancelled' } } ] },
+          { $and: [ { paymentMethod: 'card' }, { paymentStatus: 'paid' } ] }
         ]
       };
     } else if (orderState === 'pending') {
       orderStateFilter = {
         $or: [
-          { $and: [ { paymentMethod: { $in: ['card'] } }, { status: { $ne: 'cancelled' } }, { paymentStatus: { $ne: 'paid' } } ] }
+          { $and: [ { paymentMethod: 'card' }, { status: { $ne: 'cancelled' } }, { paymentStatus: { $ne: 'paid' } } ] }
         ]
       };
     }
