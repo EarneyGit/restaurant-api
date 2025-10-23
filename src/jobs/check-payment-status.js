@@ -32,8 +32,10 @@ async function checkPaymentStatusJob(cronExpression) {
       ); // log the time
       const fromDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
       const orders = await Order.find({
-        paymentStatus: { $in: ["pending", "processing"] },
-        paymentMethod: "card",
+        $or: [
+          { paymentMethod: "card", paymentStatus: { $in: ["pending", "processing"] } },
+          { paymentMethod: "card", status: 'cancelled', paymentStatus: "paid" },
+        ],
         createdAt: { $gte: fromDate },
       }).lean();
       console.log(
