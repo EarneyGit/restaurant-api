@@ -15,17 +15,9 @@ const {
   createPaymentIntent,
   getPaymentIntentStatus,
   refundPayment,
-  updatePaymentIntentDescription,
 } = require("../utils/stripe-config/stripe-config");
 const Cart = require("../models/cart.model");
 const ServiceCharge = require("../models/service-charge.model");
-const {
-  sendMailForOrderCreated,
-  sendMailForAddDelay,
-  sendMailForCancelOrder,
-  sendMailForRefundOrder,
-} = require("../utils/emailSender");
-const { getOrderCustomerDetails } = require("../utils/functions");
 
 // Update the populate options in all relevant methods
 const populateOptions = {
@@ -67,32 +59,29 @@ const isCategoryAvailable = (category) => {
   if (!category?.availability) return true; // If no availability data, assume available
 
   const now = new Date();
-  const currentDay = now.toLocaleDateString("en-US", { weekday: "long" }); // Get full day name (Monday, Tuesday, etc.)
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }); // Get full day name (Monday, Tuesday, etc.)
   const currentTime = now.toTimeString().substring(0, 5); // Get time in HH:MM format
 
   const dayAvailability = category.availability[currentDay];
   if (!dayAvailability) return true;
 
   // If not available for this day
-  if (dayAvailability.type === "Not Available") {
+  if (dayAvailability.type === 'Not Available') {
     return false;
   }
 
   // If available all day
-  if (dayAvailability.type === "All Day") {
+  if (dayAvailability.type === 'All Day') {
     return true;
   }
 
   // If specific times, check if current time falls within the time slot
-  if (dayAvailability.type === "Specific Times") {
+  if (dayAvailability.type === 'Specific Times') {
     if (!dayAvailability.startTime || !dayAvailability.endTime) {
       return false;
     }
 
-    return (
-      currentTime >= dayAvailability.startTime &&
-      currentTime <= dayAvailability.endTime
-    );
+    return currentTime >= dayAvailability.startTime && currentTime <= dayAvailability.endTime;
   }
 
   return true;
@@ -101,11 +90,7 @@ const isCategoryAvailable = (category) => {
 // Helper function to check if product is available at current time
 const isProductAvailable = (product) => {
   // First check if the category is available - if not, product is not available
-  if (
-    product.category &&
-    typeof product.category === "object" &&
-    product.category.availability
-  ) {
+  if (product.category && typeof product.category === 'object' && product.category.availability) {
     if (!isCategoryAvailable(product.category)) {
       return false;
     }
@@ -114,20 +99,18 @@ const isProductAvailable = (product) => {
   if (!product.availability) return true; // If no availability data, assume available
 
   const now = new Date();
-  const currentDay = now
-    .toLocaleDateString("en-US", { weekday: "short" })
-    .toLowerCase(); // Get day name (mon, tue, etc.)
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase(); // Get day name (mon, tue, etc.)
   const currentTime = now.toTimeString().substring(0, 5); // Get time in HH:MM format
 
   // Map day names to availability keys
   const dayMap = {
-    mon: "monday",
-    tue: "tuesday",
-    wed: "wednesday",
-    thu: "thursday",
-    fri: "friday",
-    sat: "saturday",
-    sun: "sunday",
+    'mon': 'monday',
+    'tue': 'tuesday', 
+    'wed': 'wednesday',
+    'thu': 'thursday',
+    'fri': 'friday',
+    'sat': 'saturday',
+    'sun': 'sunday'
   };
 
   const dayKey = dayMap[currentDay];
@@ -136,27 +119,23 @@ const isProductAvailable = (product) => {
   const dayAvailability = product.availability[dayKey];
 
   // If not available for this day - type takes priority over isAvailable
-  if (dayAvailability.type === "Not Available") {
+  if (dayAvailability.type === 'Not Available') {
     return false;
   }
 
   // If available all day
-  if (dayAvailability.type === "All Day") {
+  if (dayAvailability.type === 'All Day') {
     return dayAvailability.isAvailable;
   }
 
   // If specific times, check if current time falls within any time slot
-  if (dayAvailability.type === "Specific Times") {
+  if (dayAvailability.type === 'Specific Times') {
     // For specific times, we need both isAvailable to be true AND have valid time slots
-    if (
-      !dayAvailability.isAvailable ||
-      !dayAvailability.times ||
-      dayAvailability.times.length === 0
-    ) {
+    if (!dayAvailability.isAvailable || !dayAvailability.times || dayAvailability.times.length === 0) {
       return false;
     }
 
-    return dayAvailability.times.some((timeSlot) => {
+    return dayAvailability.times.some(timeSlot => {
       return currentTime >= timeSlot.start && currentTime <= timeSlot.end;
     });
   }
@@ -232,12 +211,6 @@ exports.getOrders = async (req, res, next) => {
           $lte: endOfDay,
         };
       }
-
-      // Filter out card payment orders that are not paid yet
-      // query.$or = [
-      //   { paymentMethod: { $ne: "card" } },
-      //   { paymentMethod: "card", paymentStatus: "paid" },
-      // ];
 
       // Handle specific search parameters
       if (req.query.orderNumber) {
@@ -437,10 +410,330 @@ exports.getOrders = async (req, res, next) => {
 // @desc    Get single order
 // @route   GET /api/orders/:id
 // @access  Public/Private (Branch-based)
+// exports.getOrder = async (req, res, next) => {
+//   try {
+//     // First validate the branch ID
+//     const requestedBranchId = req.query.branchId;
+//     if (!requestedBranchId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Branch ID is required. Please select a branch.",
+//       });
+//     }
+
+//     // Find the order without populating user details first
+//     const order = await Order.findById(req.params.id).lean();
+
+//     if (!order) {
+//       return res.status(404).json({
+//         success: false,
+//         message: `Order not found with id of ${req.params.id}`,
+//       });
+//     }
+
+//     // Check if order belongs to the requested branch
+//     if (order.branchId.toString() !== requestedBranchId) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Order not found in the selected branch",
+//       });
+//     }
+
+//     // Check if this is a guest order (no user associated) or if we have a session ID for guest tracking
+//     const isGuestOrder = !order.user;
+//     const hasSessionId = req.headers['x-session-id'];
+//     const isGuestSession = !req.user && hasSessionId;
+    
+//     // For debugging
+//     console.log('Order access check:', { 
+//       orderId: order._id,
+//       isGuestOrder, 
+//       hasSessionId, 
+//       isGuestSession,
+//       sessionId: hasSessionId,
+//       customerId: order.customerId ? order.customerId.toString() : 'none',
+//       orderUser: order.user ? order.user.toString() : 'none'
+//     });
+    
+//     // Check if customerId matches the session ID for guest orders
+//     const sessionMatchesOrder = isGuestSession && order.customerId && 
+//                                order.customerId.toString() === req.headers['x-session-id'];
+
+//     // For guest users, we'll be more permissive - allow access if they have the order ID and branch ID
+//     // This is because guest users might not have their customerId properly set in the order
+//     const isGuestUser = !req.user && hasSessionId;
+    
+//     // If it's a user's order (not guest) or guest trying to access non-matching order, require authentication
+//     if (!isGuestOrder && !sessionMatchesOrder && !isGuestUser) {
+//       // Check if user is authenticated
+//       if (!req.user) {
+//         // Allow access for guest users with session ID
+//         if (hasSessionId) {
+//           console.log("Guest user with session ID accessing order");
+//           // Continue without authentication - we'll return limited data
+//         } else {
+//           return res.status(401).json({
+//             success: false,
+//             message: "Please login to view this order",
+//             requiresAuth: true,
+//           });
+//         }
+//       } else {
+//         // User is authenticated, check permissions
+//         // Determine user role
+//         const userRole = req.user.role;
+//         const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
+
+//         // Admin users: Check if order belongs to their branch
+//         if (isAdmin) {
+//           if (!req.user.branchId) {
+//             return res.status(403).json({
+//               success: false,
+//               message: `${userRole} must be assigned to a branch`,
+//             });
+//           }
+
+//           if (order.branchId.toString() !== req.user.branchId.toString()) {
+//             return res.status(403).json({
+//               success: false,
+//               message: "You do not have permission to view this order",
+//             });
+//           }
+//         }
+//         // Regular users: Can only view their own orders
+//         else if (order.user.toString() !== req.user.id.toString()) {
+//           return res.status(403).json({
+//             success: false,
+//             message: "You do not have permission to view this order",
+//           });
+//         }
+//       }
+//     }
+
+//     // Now populate the necessary fields based on the access type
+//     const populatedOrder = await Order.findById(order._id)
+//       .populate("branchId", "name address")
+//       .populate(populateOptions)
+//       .populate("user", "firstName lastName email phone")
+//       .populate("assignedTo", "firstName lastName email");
+
+//     // For guest orders or unauthorized access: Return public tracking info
+//     if (isGuestOrder || !req.user) {
+//       const publicOrderData = {
+//         _id: populatedOrder._id,
+//         user: populatedOrder.user,
+//         orderNumber: populatedOrder.orderNumber,
+//         status: populatedOrder.status,
+//         estimatedTimeToComplete: populatedOrder.estimatedTimeToComplete,
+//         createdAt: populatedOrder.createdAt,
+//         products: populatedOrder.products.map((p) => {
+//           // Calculate attribute total for this product
+//           const attributeTotal = (p.selectedAttributes || []).reduce(
+//             (total, attr) =>
+//               total +
+//               attr.selectedItems.reduce(
+//                 (sum, item) => sum + item.itemPrice * item.quantity,
+//                 0
+//               ),
+//             0
+//           );
+
+//           // Calculate item total with proper breakdown
+//           const baseTotal = p.price * p.quantity;
+//           const attributesTotalForQuantity = attributeTotal * p.quantity;
+//           const itemTotal = baseTotal + attributesTotalForQuantity;
+
+//           return {
+//             id: p._id,
+//             quantity: p.quantity,
+//             price: {
+//               base: p.price,
+//               currentEffectivePrice: p.price,
+//               attributes: attributeTotal,
+//               total: itemTotal,
+//             },
+//             product: {
+//               _id: p.product._id,
+//               name: p.product.name,
+//               description: p.product.description,
+//               images: p.product.images,
+//               price: p.product.price,
+//             },
+//             selectedAttributes: p.selectedAttributes
+//               ? p.selectedAttributes.map((attr) => ({
+//                   attributeId: attr.attributeId,
+//                   attributeName: attr.attributeName,
+//                   attributeType: attr.attributeType,
+//                   selectedItems: attr.selectedItems.map((item) => ({
+//                     itemId: item.itemId,
+//                     itemName: item.itemName,
+//                     itemPrice: item.itemPrice,
+//                     quantity: item.quantity,
+//                   })),
+//                 }))
+//               : [],
+//             itemTotal: itemTotal,
+//             notes: p.notes || "",
+//           };
+//         }),
+//         branchId: {
+//           _id: populatedOrder.branchId._id,
+//           name: populatedOrder.branchId.name,
+//         },
+//         deliveryAddress: populatedOrder.deliveryAddress
+//           ? {
+//               street: populatedOrder.deliveryAddress.street,
+//               city: populatedOrder.deliveryAddress.city,
+//               postalCode: populatedOrder.deliveryAddress.postalCode,
+//             }
+//           : null,
+//         // Calculate proper totals
+//         subtotal: populatedOrder.products.reduce((total, p) => {
+//           return total + p.price * p.quantity;
+//         }, 0),
+//         deliveryFee: populatedOrder.deliveryFee || 0,
+//         totalAmount: populatedOrder.totalAmount,
+//         finalTotal: populatedOrder.finalTotal || populatedOrder.totalAmount,
+//         // Enhanced discount information
+//         discount: populatedOrder.discount
+//           ? {
+//               discountId: populatedOrder.discount.discountId,
+//               code: populatedOrder.discount.code,
+//               name: populatedOrder.discount.name,
+//               discountType: populatedOrder.discount.discountType,
+//               discountValue: populatedOrder.discount.discountValue,
+//               discountAmount: populatedOrder.discount.discountAmount,
+//               originalTotal: populatedOrder.discount.originalTotal,
+//             }
+//           : null,
+//         discountApplied: populatedOrder.discountApplied
+//           ? {
+//               discountId: populatedOrder.discountApplied.discountId,
+//               code: populatedOrder.discountApplied.code,
+//               name: populatedOrder.discountApplied.name,
+//               discountType: populatedOrder.discountApplied.discountType,
+//               discountValue: populatedOrder.discountApplied.discountValue,
+//               discountAmount: populatedOrder.discountApplied.discountAmount,
+//               originalTotal: populatedOrder.discountApplied.originalTotal,
+//               appliedAt: populatedOrder.discountApplied.appliedAt,
+//             }
+//           : null,
+//         stripePaymentIntentId: populatedOrder.stripePaymentIntentId || null,
+//         customerNotes: populatedOrder.customerNotes || null,
+//         serviceCharge: populatedOrder.serviceCharge || null,
+//       };
+
+//       return res.status(200).json({
+//         success: true,
+//         data: publicOrderData,
+//         isGuestOrder,
+//       });
+//     }
+
+//     // Transform the response for authenticated users
+//     const orderObj = populatedOrder.toObject();
+//     orderObj.products = orderObj.products.map((item) => {
+//       // Calculate attribute total for this product
+//       const attributeTotal = (item.selectedAttributes || []).reduce(
+//         (total, attr) =>
+//           total +
+//           attr.selectedItems.reduce(
+//             (sum, attrItem) => sum + attrItem.itemPrice * attrItem.quantity,
+//             0
+//           ),
+//         0
+//       );
+
+//       // Calculate item total with proper breakdown
+//       const baseTotal = item.price * item.quantity;
+//       const attributesTotalForQuantity = attributeTotal * item.quantity;
+//       const itemTotal = baseTotal + attributesTotalForQuantity;
+
+//       return {
+//         id: item._id,
+//         product: item.product,
+//         quantity: item.quantity,
+//         price: {
+//           base: item.price,
+//           currentEffectivePrice: item.price,
+//           attributes: attributeTotal,
+//           total: itemTotal,
+//         },
+//         notes: item.notes,
+//         selectedAttributes: item.selectedAttributes
+//           ? item.selectedAttributes.map((attr) => ({
+//               attributeId: attr.attributeId,
+//               attributeName: attr.attributeName,
+//               attributeType: attr.attributeType,
+//               selectedItems: attr.selectedItems.map((attrItem) => ({
+//                 itemId: attrItem.itemId,
+//                 itemName: attrItem.itemName,
+//                 itemPrice: attrItem.itemPrice,
+//                 quantity: attrItem.quantity,
+//               })),
+//             }))
+//           : [],
+//         itemTotal: itemTotal,
+//       };
+//     });
+
+//     // Calculate proper totals for authenticated response
+//     orderObj.subtotal = orderObj.products.reduce((total, p) => {
+//       return total + p.price.base * p.quantity;
+//     }, 0);
+
+//     orderObj.deliveryFee = orderObj.deliveryFee || 0;
+//     orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
+
+//     // Enhanced discount information
+//     if (orderObj.discount) {
+//       orderObj.discount = {
+//         discountId: orderObj.discount.discountId,
+//         code: orderObj.discount.code,
+//         name: orderObj.discount.name,
+//         discountType: orderObj.discount.discountType,
+//         discountValue: orderObj.discount.discountValue,
+//         discountAmount: orderObj.discount.discountAmount,
+//         originalTotal: orderObj.discount.originalTotal,
+//       };
+//     }
+
+//     if (orderObj.discountApplied) {
+//       orderObj.discountApplied = {
+//         discountId: orderObj.discountApplied.discountId,
+//         code: orderObj.discountApplied.code,
+//         name: orderObj.discountApplied.name,
+//         discountType: orderObj.discountApplied.discountType,
+//         discountValue: orderObj.discountApplied.discountValue,
+//         discountAmount: orderObj.discountApplied.discountAmount,
+//         originalTotal: orderObj.discountApplied.originalTotal,
+//         appliedAt: orderObj.discountApplied.appliedAt,
+//       };
+//     }
+//     orderObj.stripePaymentIntentId =
+//       populatedOrder.stripePaymentIntentId || null;
+//     orderObj.customerNotes = populatedOrder.customerNotes || null;
+//     orderObj.serviceCharge = populatedOrder.serviceCharge || null;
+
+//     return res.status(200).json({
+//       success: true,
+//       data: orderObj,
+//       isGuestOrder,
+//     });
+//   } catch (error) {
+//     console.error("Order retrieval error:", error);
+//     next(error);
+//   }
+// };
+
+// @desc    Get single order (Public)
+// @route   GET /api/orders/:id?branchId=xxxx
+// @access  Public
 exports.getOrder = async (req, res, next) => {
   try {
-    // First validate the branch ID
     const requestedBranchId = req.query.branchId;
+    const sessionId = req.headers["x-session-id"];
+
     if (!requestedBranchId) {
       return res.status(400).json({
         success: false,
@@ -448,8 +741,12 @@ exports.getOrder = async (req, res, next) => {
       });
     }
 
-    // Find the order without populating user details first
-    const order = await Order.findById(req.params.id).lean();
+    // Fetch order
+    const order = await Order.findById(req.params.id)
+      .populate("branchId", "name address location")
+      .populate(populateOptions)
+      .populate("user", "firstName lastName email phone")
+      .populate("assignedTo", "firstName lastName email");
 
     if (!order) {
       return res.status(404).json({
@@ -458,107 +755,34 @@ exports.getOrder = async (req, res, next) => {
       });
     }
 
-    // Check if order belongs to the requested branch
-    if (order.branchId.toString() !== requestedBranchId) {
+    // Branch check
+    if (order.branchId._id.toString() !== requestedBranchId) {
       return res.status(403).json({
         success: false,
         message: "Order not found in the selected branch",
       });
     }
 
-    // Check if this is a guest order (no user associated) or if we have a session ID for guest tracking
     const isGuestOrder = !order.user;
-    const hasSessionId = req.headers["x-session-id"];
-    const isGuestSession = !req.user && hasSessionId;
-
-    // For debugging
-    console.log("Order access check:", {
-      orderId: order._id,
-      isGuestOrder,
-      hasSessionId,
-      isGuestSession,
-      sessionId: hasSessionId,
-      customerId: order.customerId ? order.customerId.toString() : "none",
-      orderUser: order.user ? order.user.toString() : "none",
-    });
-
-    // Check if customerId matches the session ID for guest orders
     const sessionMatchesOrder =
-      isGuestSession &&
-      order.customerId &&
-      order.customerId.toString() === req.headers["x-session-id"];
+      sessionId && order.customerId?.toString() === sessionId;
 
-    // For guest users, we'll be more permissive - allow access if they have the order ID and branch ID
-    // This is because guest users might not have their customerId properly set in the order
-    const isGuestUser = !req.user && hasSessionId;
+    // Build response — show full for admins (if req.user exists), else public-safe
+    let responseData;
 
-    // If it's a user's order (not guest) or guest trying to access non-matching order, require authentication
-    if (!isGuestOrder && !sessionMatchesOrder && !isGuestUser) {
-      // Check if user is authenticated
-      if (!req.user) {
-        // Allow access for guest users with session ID
-        if (hasSessionId) {
-          console.log("Guest user with session ID accessing order");
-          // Continue without authentication - we'll return limited data
-        } else {
-          return res.status(401).json({
-            success: false,
-            message: "Please login to view this order",
-            requiresAuth: true,
-          });
-        }
-      } else {
-        // User is authenticated, check permissions
-        // Determine user role
-        const userRole = req.user.role;
-        const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-
-        // Admin users: Check if order belongs to their branch
-        if (isAdmin) {
-          if (!req.user.branchId) {
-            return res.status(403).json({
-              success: false,
-              message: `${userRole} must be assigned to a branch`,
-            });
-          }
-
-          if (order.branchId.toString() !== req.user.branchId.toString()) {
-            return res.status(403).json({
-              success: false,
-              message: "You do not have permission to view this order",
-            });
-          }
-        }
-        // Regular users: Can only view their own orders
-        else if (order.user.toString() !== req.user.id.toString()) {
-          return res.status(403).json({
-            success: false,
-            message: "You do not have permission to view this order",
-          });
-        }
-      }
-    }
-
-    // Now populate the necessary fields based on the access type
-    const populatedOrder = await Order.findById(order._id)
-      .populate("branchId", "name address location")
-      .populate(populateOptions)
-      .populate("user", "firstName lastName email phone")
-      .populate("assignedTo", "firstName lastName email");
-
-    // For guest orders or unauthorized access: Return public tracking info
     if (isGuestOrder || !req.user) {
-      const publicOrderData = {
-        _id: populatedOrder._id,
-        user: populatedOrder.user,
-        isGuestOrder: populatedOrder.isGuestOrder,
-        orderCustomerDetails: populatedOrder.orderCustomerDetails,
-        orderNumber: populatedOrder.orderNumber,
-        status: populatedOrder.status,
-        estimatedTimeToComplete: populatedOrder.estimatedTimeToComplete,
-        createdAt: populatedOrder.createdAt,
-        products: populatedOrder.products.map((p) => {
-          // Calculate attribute total for this product
+      responseData = {
+        _id: order._id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        createdAt: order.createdAt,
+        isGuestOrder,
+        orderCustomerDetails: order.orderCustomerDetails,
+        branchId: {
+          _id: order.branchId._id,
+          name: order.branchId.name,
+        },
+        products: order.products.map((p) => {
           const attributeTotal = (p.selectedAttributes || []).reduce(
             (total, attr) =>
               total +
@@ -568,8 +792,6 @@ exports.getOrder = async (req, res, next) => {
               ),
             0
           );
-
-          // Calculate item total with proper breakdown
           const baseTotal = p.price * p.quantity;
           const attributesTotalForQuantity = attributeTotal * p.quantity;
           const itemTotal = baseTotal + attributesTotalForQuantity;
@@ -579,8 +801,6 @@ exports.getOrder = async (req, res, next) => {
             quantity: p.quantity,
             price: {
               base: p.price,
-              currentEffectivePrice: p.price,
-              attributes: attributeTotal,
               total: itemTotal,
             },
             product: {
@@ -588,167 +808,35 @@ exports.getOrder = async (req, res, next) => {
               name: p.product.name,
               description: p.product.description,
               images: p.product.images,
-              price: p.product.price,
             },
-            selectedAttributes: p.selectedAttributes
-              ? p.selectedAttributes.map((attr) => ({
-                  attributeId: attr.attributeId,
-                  attributeName: attr.attributeName,
-                  attributeType: attr.attributeType,
-                  selectedItems: attr.selectedItems.map((item) => ({
-                    itemId: item.itemId,
-                    itemName: item.itemName,
-                    itemPrice: item.itemPrice,
-                    quantity: item.quantity,
-                  })),
-                }))
-              : [],
-            itemTotal: itemTotal,
-            notes: p.notes || "",
+            selectedAttributes: p.selectedAttributes?.map((attr) => ({
+              attributeName: attr.attributeName,
+              selectedItems: attr.selectedItems.map((item) => ({
+                itemName: item.itemName,
+                itemPrice: item.itemPrice,
+              })),
+            })),
+            itemTotal,
           };
         }),
-        branchId: {
-          _id: populatedOrder.branchId._id,
-          name: populatedOrder.branchId.name,
-        },
-        deliveryAddress: populatedOrder.deliveryAddress
-          ? {
-              street: populatedOrder.deliveryAddress.street,
-              city: populatedOrder.deliveryAddress.city,
-              postalCode: populatedOrder.deliveryAddress.postalCode,
-            }
-          : null,
-        // Calculate proper totals
-        subtotal: populatedOrder.products.reduce((total, p) => {
-          return total + p.price * p.quantity;
-        }, 0),
-        deliveryFee: populatedOrder.deliveryFee || 0,
-        totalAmount: populatedOrder.totalAmount,
-        finalTotal: populatedOrder.finalTotal || populatedOrder.totalAmount,
-        // Enhanced discount information
-        discount: populatedOrder.discount
-          ? {
-              discountId: populatedOrder.discount.discountId,
-              code: populatedOrder.discount.code,
-              name: populatedOrder.discount.name,
-              discountType: populatedOrder.discount.discountType,
-              discountValue: populatedOrder.discount.discountValue,
-              discountAmount: populatedOrder.discount.discountAmount,
-              originalTotal: populatedOrder.discount.originalTotal,
-            }
-          : null,
-        discountApplied: populatedOrder.discountApplied
-          ? {
-              discountId: populatedOrder.discountApplied.discountId,
-              code: populatedOrder.discountApplied.code,
-              name: populatedOrder.discountApplied.name,
-              discountType: populatedOrder.discountApplied.discountType,
-              discountValue: populatedOrder.discountApplied.discountValue,
-              discountAmount: populatedOrder.discountApplied.discountAmount,
-              originalTotal: populatedOrder.discountApplied.originalTotal,
-              appliedAt: populatedOrder.discountApplied.appliedAt,
-            }
-          : null,
-        stripePaymentIntentId: populatedOrder.stripePaymentIntentId || null,
-        customerNotes: populatedOrder.customerNotes || null,
-        serviceCharge: populatedOrder.serviceCharge || null,
+        subtotal: order.products.reduce(
+          (total, p) => total + p.price * p.quantity,
+          0
+        ),
+        deliveryFee: order.deliveryFee || 0,
+        totalAmount: order.totalAmount,
+        finalTotal: order.finalTotal || order.totalAmount,
+        stripePaymentIntentId: order.stripePaymentIntentId || null,
+        customerNotes: order.customerNotes || null,
       };
-
-      return res.status(200).json({
-        success: true,
-        data: publicOrderData,
-        isGuestOrder,
-      });
+    } else {
+      // For authenticated users — full info
+      responseData = order.toObject();
     }
-
-    // Transform the response for authenticated users
-    const orderObj = populatedOrder.toObject();
-    orderObj.products = orderObj.products.map((item) => {
-      // Calculate attribute total for this product
-      const attributeTotal = (item.selectedAttributes || []).reduce(
-        (total, attr) =>
-          total +
-          attr.selectedItems.reduce(
-            (sum, attrItem) => sum + attrItem.itemPrice * attrItem.quantity,
-            0
-          ),
-        0
-      );
-
-      // Calculate item total with proper breakdown
-      const baseTotal = item.price * item.quantity;
-      const attributesTotalForQuantity = attributeTotal * item.quantity;
-      const itemTotal = baseTotal + attributesTotalForQuantity;
-
-      return {
-        id: item._id,
-        product: item.product,
-        quantity: item.quantity,
-        price: {
-          base: item.price,
-          currentEffectivePrice: item.price,
-          attributes: attributeTotal,
-          total: itemTotal,
-        },
-        notes: item.notes,
-        selectedAttributes: item.selectedAttributes
-          ? item.selectedAttributes.map((attr) => ({
-              attributeId: attr.attributeId,
-              attributeName: attr.attributeName,
-              attributeType: attr.attributeType,
-              selectedItems: attr.selectedItems.map((attrItem) => ({
-                itemId: attrItem.itemId,
-                itemName: attrItem.itemName,
-                itemPrice: attrItem.itemPrice,
-                quantity: attrItem.quantity,
-              })),
-            }))
-          : [],
-        itemTotal: itemTotal,
-      };
-    });
-
-    // Calculate proper totals for authenticated response
-    orderObj.subtotal = orderObj.products.reduce((total, p) => {
-      return total + p.price.base * p.quantity;
-    }, 0);
-
-    orderObj.deliveryFee = orderObj.deliveryFee || 0;
-    orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
-
-    // Enhanced discount information
-    if (orderObj.discount) {
-      orderObj.discount = {
-        discountId: orderObj.discount.discountId,
-        code: orderObj.discount.code,
-        name: orderObj.discount.name,
-        discountType: orderObj.discount.discountType,
-        discountValue: orderObj.discount.discountValue,
-        discountAmount: orderObj.discount.discountAmount,
-        originalTotal: orderObj.discount.originalTotal,
-      };
-    }
-
-    if (orderObj.discountApplied) {
-      orderObj.discountApplied = {
-        discountId: orderObj.discountApplied.discountId,
-        code: orderObj.discountApplied.code,
-        name: orderObj.discountApplied.name,
-        discountType: orderObj.discountApplied.discountType,
-        discountValue: orderObj.discountApplied.discountValue,
-        discountAmount: orderObj.discountApplied.discountAmount,
-        originalTotal: orderObj.discountApplied.originalTotal,
-        appliedAt: orderObj.discountApplied.appliedAt,
-      };
-    }
-    orderObj.stripePaymentIntentId =
-      populatedOrder.stripePaymentIntentId || null;
-    orderObj.customerNotes = populatedOrder.customerNotes || null;
-    orderObj.serviceCharge = populatedOrder.serviceCharge || null;
 
     return res.status(200).json({
       success: true,
-      data: orderObj,
+      data: responseData,
       isGuestOrder,
     });
   } catch (error) {
@@ -756,6 +844,7 @@ exports.getOrder = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -795,12 +884,11 @@ exports.createOrder = async (req, res, next) => {
     // Handle guest user account creation
     if (!isAuthenticated && req.body.isGuest && req.body.guestUserInfo) {
       try {
-        const { email, firstName, lastName, phone, address } =
-          req.body.guestUserInfo;
-
+        const { email, firstName, lastName, phone, address } = req.body.guestUserInfo;
+        
         // Check if user with this email already exists
         let existingUser = await User.findOne({ email: email.toLowerCase() });
-
+        
         if (!existingUser) {
           // Create a new user account with null password
           const newUser = new User({
@@ -813,19 +901,19 @@ exports.createOrder = async (req, res, next) => {
             emailVerified: false,
             isGuest: true,
           });
-
+          
           // Save the user without password validation
           existingUser = await newUser.save({ validateBeforeSave: false });
           console.log(`Created new guest user account for: ${email}`);
         } else {
           console.log(`Using existing account for guest user: ${email}`);
         }
-
+        
         // Associate the order with this user
         req.body.user = existingUser._id;
         req.body.customerId = existingUser._id;
       } catch (userError) {
-        console.error("Error creating guest user account:", userError);
+        console.error('Error creating guest user account:', userError);
         // Continue with order creation even if user account creation fails
       }
     } else if (isAuthenticated) {
@@ -833,7 +921,7 @@ exports.createOrder = async (req, res, next) => {
       req.body.user = req.user.id;
     } else {
       // For guest users, set customerId from session ID
-      const sessionId = req.headers["x-session-id"];
+      const sessionId = req.headers['x-session-id'];
       if (sessionId) {
         req.body.customerId = sessionId;
         console.log(`Setting customerId for guest order: ${sessionId}`);
@@ -892,14 +980,13 @@ exports.createOrder = async (req, res, next) => {
 
       // Check product and category availability
       if (!isProductAvailable(product)) {
-        const categoryName = product.category?.name || "Unknown Category";
-        const categoryUnavailable =
-          product.category && !isCategoryAvailable(product.category);
-
+        const categoryName = product.category?.name || 'Unknown Category';
+        const categoryUnavailable = product.category && !isCategoryAvailable(product.category);
+      
         const message = categoryUnavailable
           ? `Product "${product.name}" and its category "${categoryName}" are not available at this time.`
           : `Product "${product.name}" is not available at this time.`;
-
+      
         return res.status(400).json({
           success: false,
           message,
@@ -910,24 +997,24 @@ exports.createOrder = async (req, res, next) => {
       const deliveryMethod = req.body.deliveryMethod;
       if (deliveryMethod) {
         let isDeliveryMethodSupported = true;
-        let deliveryMethodMessage = "";
+        let deliveryMethodMessage = '';
 
         switch (deliveryMethod.toLowerCase()) {
-          case "delivery":
+          case 'delivery':
             if (product.delivery === false) {
               isDeliveryMethodSupported = false;
               deliveryMethodMessage = `Product "${product.name}" is not available for delivery`;
             }
             break;
-          case "pickup":
-          case "collection":
+          case 'pickup':
+          case 'collection':
             if (product.collection === false) {
               isDeliveryMethodSupported = false;
               deliveryMethodMessage = `Product "${product.name}" is not available for collection/pickup`;
             }
             break;
-          case "dine_in":
-          case "table_ordering":
+          case 'dine_in':
+          case 'table_ordering':
             if (product.dineIn === false) {
               isDeliveryMethodSupported = false;
               deliveryMethodMessage = `Product "${product.name}" is not available for dine-in`;
@@ -942,6 +1029,7 @@ exports.createOrder = async (req, res, next) => {
           });
         }
       }
+      
 
       // Calculate effective price considering active price changes
       const effectivePrice = calculateEffectivePrice(
@@ -1005,92 +1093,35 @@ exports.createOrder = async (req, res, next) => {
       return total + itemTotal;
     }, 0);
 
-    // Calculate delivery fee based on delivery address and order total
-    let deliveryFee = 0;
-    if (req.body.deliveryMethod === "delivery" && req.body.deliveryAddress) {
-      try {
-        // Prepare address for delivery validation
-        const customerAddress = {
-          postcode:
-            req.body.deliveryAddress.postalCode ||
-            req.body.deliveryAddress.postcode,
-          street: req.body.deliveryAddress.street,
-          city: req.body.deliveryAddress.city,
-          country: req.body.deliveryAddress.country || "GB",
-          fullAddress: req.body.deliveryAddress.fullAddress,
-          longitude: req.body.deliveryAddress.longitude,
-          latitude: req.body.deliveryAddress.latitude,
-        };
-
-        // Create a mock request/response for the delivery validation
-        const mockReq = {
-          body: {
-            branchId: targetBranchId,
-            orderTotal: totalAmount,
-            searchedAddress: customerAddress,
-          },
-        };
-
-        let validationResult = null;
-        const mockRes = {
-          status: (code) => ({
-            json: (data) => {
-              validationResult = { statusCode: code, data };
-              return { statusCode: code, data };
-            },
-          }),
-        };
-
-        // Call the delivery validation function
-        const {
-          validateDeliveryDistance,
-        } = require("./delivery-charge.controller");
-        await validateDeliveryDistance(mockReq, mockRes);
-
-        // Check if delivery is valid
-        if (
-          validationResult &&
-          validationResult.statusCode === 200 &&
-          validationResult.data.success &&
-          validationResult.data.deliverable
-        ) {
-          deliveryFee = validationResult.data.data.charge;
-        } else {
-          // Delivery is not valid, return error
-          const errorMessage =
-            validationResult?.data?.message ||
-            "Delivery not available to this location";
-          return res.status(400).json({
-            success: false,
-            message: errorMessage,
-            deliverable: false,
-          });
-        }
-      } catch (error) {
-        console.error("Error validating delivery for order:", error);
-        return res.status(400).json({
-          success: false,
-          message: "Unable to validate delivery. Please try again.",
-          deliverable: false,
-        });
-      }
-    }
-
-    // Add delivery fee to request body
-    req.body.deliveryFee = deliveryFee;
     req.body.totalAmount = totalAmount;
 
     // Helper function to map frontend order types to service charge order types
     const mapOrderTypeForServiceCharge = (orderType) => {
       const orderTypeMap = {
-        delivery: "delivery",
-        pickup: "pickup",
-        collection: "collection",
-        "dine-in": "dine-in",
-        dine_in: "dine-in",
+        'delivery': 'delivery',
+        'pickup': 'pickup', 
+        'collect': 'pickup',
+        'collection': 'pickup',
+        'dine-in': 'dine-in',
+        'dine_in': 'dine-in'
       };
+      
+      return orderTypeMap[orderType.toLowerCase()] || 'delivery';
+    };
 
-      return orderTypeMap[orderType.toLowerCase()] || "delivery";
+    // Helper function to normalize order types for cart model
+    const normalizeOrderTypeForCart = (orderType) => {
+      const orderTypeMap = {
+        'delivery': 'delivery',
+        'deliver': 'delivery', // Handle common typo
+        'pickup': 'pickup',
+        'collect': 'collect',
+        'collection': 'collection',
+        'dine-in': 'dine-in',
+        'dine_in': 'dine-in'
+      };
+      
+      return orderTypeMap[orderType.toLowerCase()] || 'delivery';
     };
 
     // Calculate service charges
@@ -1098,55 +1129,52 @@ exports.createOrder = async (req, res, next) => {
       totalMandatory: 0,
       totalOptional: 0,
       totalAll: 0,
-      breakdown: [],
+      breakdown: []
     };
 
     try {
       // Map the order type for service charge calculation
-      const mappedOrderType = mapOrderTypeForServiceCharge(
-        req.body.deliveryMethod || "delivery"
-      );
-
+      const mappedOrderType = mapOrderTypeForServiceCharge(req.body.deliveryMethod || 'delivery');
+      
       // Get accepted optional service charges from request
-      const acceptedOptionalCharges =
-        req.body.acceptedOptionalServiceCharges || [];
-
+      const acceptedOptionalCharges = req.body.acceptedOptionalServiceCharges || [];
+      
       const calculatedCharges = await ServiceCharge.calculateTotalCharges(
-        targetBranchId,
-        mappedOrderType,
-        totalAmount + deliveryFee, // Include delivery fee in service charge calculation
+        targetBranchId, 
+        mappedOrderType, 
+        totalAmount, 
         true // include optional charges
       );
-
+      
       // Filter optional charges based on acceptance
       if (acceptedOptionalCharges && acceptedOptionalCharges.length > 0) {
-        const filteredBreakdown = calculatedCharges.breakdown.map((charge) => {
+        const filteredBreakdown = calculatedCharges.breakdown.map(charge => {
           if (charge.optional) {
             return {
               ...charge,
-              accepted: acceptedOptionalCharges.includes(charge.id),
+              accepted: acceptedOptionalCharges.includes(charge.id)
             };
           }
           return charge;
         });
-
+        
         const acceptedOptionalTotal = filteredBreakdown
-          .filter((charge) => charge.optional && charge.accepted)
+          .filter(charge => charge.optional && charge.accepted)
           .reduce((total, charge) => total + charge.amount, 0);
-
+        
         serviceCharges = {
           totalMandatory: calculatedCharges.totalMandatory || 0,
           totalOptional: acceptedOptionalTotal,
           totalAll: calculatedCharges.totalMandatory + acceptedOptionalTotal,
-          breakdown: filteredBreakdown.map((item) => ({
-            id: item.id ? item.id.toString() : "",
-            name: item.name || "",
-            type: item.type || "",
+          breakdown: filteredBreakdown.map(item => ({
+            id: item.id ? item.id.toString() : '',
+            name: item.name || '',
+            type: item.type || '',
             value: item.value || 0,
             amount: item.amount || 0,
             optional: item.optional || false,
-            accepted: item.accepted || false,
-          })),
+            accepted: item.accepted || false
+          }))
         };
       } else {
         // No optional charges accepted
@@ -1154,32 +1182,31 @@ exports.createOrder = async (req, res, next) => {
           totalMandatory: calculatedCharges.totalMandatory || 0,
           totalOptional: 0,
           totalAll: calculatedCharges.totalMandatory || 0,
-          breakdown: calculatedCharges.breakdown.map((item) => ({
-            id: item.id ? item.id.toString() : "",
-            name: item.name || "",
-            type: item.type || "",
+          breakdown: calculatedCharges.breakdown.map(item => ({
+            id: item.id ? item.id.toString() : '',
+            name: item.name || '',
+            type: item.type || '',
             value: item.value || 0,
             amount: item.amount || 0,
             optional: item.optional || false,
-            accepted: false,
-          })),
+            accepted: false
+          }))
         };
       }
     } catch (error) {
-      console.error("Error calculating service charges:", error);
+      console.error('Error calculating service charges:', error);
       // Continue with order creation even if service charge calculation fails
     }
 
-    // Add service charges and delivery fee to total amount
-    const totalWithDeliveryAndServiceCharges =
-      totalAmount + deliveryFee + serviceCharges.totalMandatory;
-    req.body.totalAmount = totalWithDeliveryAndServiceCharges;
+    // Add service charges to total amount
+    const totalWithServiceCharges = totalAmount + serviceCharges.totalMandatory;
+    req.body.totalAmount = totalWithServiceCharges;
     req.body.serviceCharges = serviceCharges;
     req.body.serviceCharge = serviceCharges.totalMandatory; // Legacy field for backward compatibility
 
     // Coupon validation and discount calculation
     let discountData = null;
-    let finalTotal = totalWithDeliveryAndServiceCharges;
+    let finalTotal = totalWithServiceCharges;
 
     if (req.body.couponCode) {
       try {
@@ -1198,7 +1225,7 @@ exports.createOrder = async (req, res, next) => {
 
         // Create order object for validation
         const orderForValidation = {
-          totalAmount: totalWithDeliveryAndServiceCharges,
+          totalAmount: totalWithServiceCharges,
           deliveryMethod: req.body.deliveryMethod,
           orderType: req.body.orderType,
         };
@@ -1226,13 +1253,8 @@ exports.createOrder = async (req, res, next) => {
         console.log(`Coupon validation passed for ${req.body.couponCode}`);
 
         // Calculate discount amount
-        const discountAmount = discount.calculateDiscount(
-          totalWithDeliveryAndServiceCharges
-        );
-        finalTotal = Math.max(
-          0,
-          totalWithDeliveryAndServiceCharges - discountAmount
-        );
+        const discountAmount = discount.calculateDiscount(totalWithServiceCharges);
+        finalTotal = Math.max(0, totalWithServiceCharges - discountAmount);
 
         // Prepare discount data for order
         discountData = {
@@ -1242,7 +1264,7 @@ exports.createOrder = async (req, res, next) => {
           discountType: discount.discountType,
           discountValue: discount.discountValue,
           discountAmount: discountAmount,
-          originalTotal: totalWithDeliveryAndServiceCharges,
+          originalTotal: totalWithServiceCharges,
         };
 
         // Set discount information in the order data
@@ -1264,8 +1286,8 @@ exports.createOrder = async (req, res, next) => {
         });
       }
     } else {
-      // No coupon applied, final total equals total with delivery and service charges
-      req.body.finalTotal = totalWithDeliveryAndServiceCharges;
+      // No coupon applied, final total equals total with service charges
+      req.body.finalTotal = totalWithServiceCharges;
     }
 
     // Get estimated time to complete based on ordering times configuration
@@ -1355,7 +1377,7 @@ exports.createOrder = async (req, res, next) => {
           message: "Failed to create payment intent. Please try again.",
         });
       }
-    } else if (req.body.paymentMethod === "cash") {
+    } else if (req.body.paymentMethod === "cash_on_delivery") {
       // For cash on delivery, set payment status to pending
       req.body.paymentStatus = "pending";
     }
@@ -1373,18 +1395,8 @@ exports.createOrder = async (req, res, next) => {
       .populate(populateOptions)
       .populate("assignedTo", "firstName lastName email");
 
-    // Only emit socket event for non-card payments or paid card payments
-    if (
-      req.body.paymentMethod !== "card" ||
-      req.body.paymentStatus === "paid"
-    ) {
-      getIO().emit("order", { event: "order_created" });
-    } else {
-      console.log(
-        "Not emitting order_created event for unpaid card payment order:",
-        order._id
-      );
-    }
+    // Emit socket event to restaurant staff
+    getIO().emit("order", { event: "order_created" });
 
     // Prepare response data
     const responseData = {
@@ -1409,65 +1421,8 @@ exports.createOrder = async (req, res, next) => {
       };
     }
     // clear cart after order creation
-    clearCart(
-      responseData.data.customerId,
-      req.body.sessionId,
-      targetBranchId
-    ).catch((error) => {
-      console.error("Error clearing cart:", error);
-    });
+    clearCart(responseData.data.customerId, req.body.sessionId, targetBranchId);
 
-    // if user logged in, then save delivery address to user async
-    if (
-      isAuthenticated &&
-      req.body.deliveryMethod === "delivery" &&
-      req.body.deliveryAddress
-    ) {
-      saveDeliveryAddressToUser(req.user.id, req.body.deliveryAddress).catch(
-        (error) => {
-          console.error("Error saving delivery address to user:", error);
-        }
-      );
-    }
-    const userDetails = getOrderCustomerDetails(populatedOrder);
-    populatedOrder.customerName =
-      (userDetails.firstName + " " + userDetails.lastName).trim() ||
-      userDetails.email ||
-      "Customer";
-    populatedOrder.customerEmail = userDetails.email;
-    populatedOrder.customerPhone = userDetails.phone;
-    populatedOrder.customerAddress = userDetails.address;
-    // if payment method is cash , then send order created email or payment is paid, then send order paid email
-    if (
-      ["cash"].includes(populatedOrder.paymentMethod) ||
-      (populatedOrder.paymentMethod === "card" &&
-        populatedOrder.paymentStatus === "paid")
-    ) {
-      // send order created email
-      sendMailForOrderCreated(
-        populatedOrder.customerEmail,
-        populatedOrder.branchId._id,
-        populatedOrder
-      ).catch((error) => {
-        console.error("Error sending order created email:", error);
-      });
-    }
-
-    // update payment intent description
-    if (req.body.paymentMethod === "card" && req.body.stripePaymentIntentId) {
-      updatePaymentIntentDescription(
-        req.body.stripePaymentIntentId,
-        `Order payment for ${
-          populatedOrder.orderNumber +
-          " - " +
-          populatedOrder.customerName +
-          " - " +
-          populatedOrder.customerEmail
-        }`
-      ).catch((error) => {
-        console.error("Error updating payment intent description:", error);
-      });
-    }
     res.status(201).json(responseData);
   } catch (error) {
     next(error);
@@ -1476,20 +1431,10 @@ exports.createOrder = async (req, res, next) => {
 
 // clear cart
 async function clearCart(userId, sessionId, branchId) {
-  console.log(
-    "Clearing cart for user:",
-    userId,
-    "session:",
-    sessionId,
-    "branch:",
-    branchId
-  );
+  console.log("Clearing cart for user:", userId, "session:", sessionId, "branch:", branchId);
   try {
     if (userId) {
-      await Cart.findOneAndUpdate(
-        { userId: userId, branchId: branchId },
-        { $set: { items: [] } }
-      );
+      await Cart.findOneAndUpdate({ userId: userId, branchId: branchId }, { $set: { items: [] } });
     }
     if (sessionId) {
       await Cart.findOneAndUpdate(
@@ -1498,51 +1443,10 @@ async function clearCart(userId, sessionId, branchId) {
       );
     }
   } catch (error) {
-    console.error("Error saving delivery address to user:", error);
-    return false;
+    console.error("Error clearing cart:", error);
   }
 }
 
-// save delivery address to user
-async function saveDeliveryAddressToUser(userId, deliveryAddress) {
-  try {
-    const user = await User.findById(userId);
-    if (!user) {
-      return false;
-    }
-    deliveryAddress = {
-      fullAddress: deliveryAddress.fullAddress,
-      address: deliveryAddress.address,
-      city: deliveryAddress.city,
-      state: deliveryAddress.state,
-      postalCode: deliveryAddress.postalCode,
-      country: deliveryAddress.country,
-      latitude: deliveryAddress.latitude,
-      longitude: deliveryAddress.longitude,
-      default: true,
-    };
-    if (user.deliveryAddresses && user.deliveryAddresses.length > 0) {
-      user.deliveryAddresses = [...user.deliveryAddresses]
-        .filter(
-          (address) =>
-            JSON.stringify(address.fullAddress) !==
-            JSON.stringify(deliveryAddress.fullAddress)
-        )
-        .map((address) => ({
-          ...address,
-          default: false,
-        }))
-        .concat(deliveryAddress);
-    } else {
-      user.deliveryAddresses = [deliveryAddress];
-    }
-    await user.save();
-    return true;
-  } catch (error) {
-    console.error("Error saving delivery address to user:", error);
-    return false;
-  }
-}
 // @desc    Update order
 // @route   PUT /api/orders/:id
 // @access  Private (Admin/Manager/Staff only)
@@ -1625,30 +1529,6 @@ exports.updateOrder = async (req, res, next) => {
 
       // Emit socket event for cancelled order
       getIO().emit("order", { event: "order_cancelled" });
-      const userDetails = getOrderCustomerDetails(order);
-      order.customerName =
-        (userDetails.firstName + " " + userDetails.lastName).trim() ||
-        userDetails.email ||
-        "Customer";
-      order.customerEmail = userDetails.email;
-      order.customerPhone = userDetails.phone;
-      // send cancel email
-      sendMailForCancelOrder(
-        order.customerEmail,
-        order,
-        "Order cancelled by admin"
-      ).catch((error) => {
-        console.error("Error sending cancel email:", error);
-      });
-      // send if payment method is card, then send order refunded email
-      if (
-        order.paymentMethod === "card" &&
-        order.paymentStatus === "refunded"
-      ) {
-        sendMailForRefundOrder(order.customerEmail, order).catch((error) => {
-          console.error("Error sending order refunded email:", error);
-        });
-      }
 
       res.status(200).json({
         success: true,
@@ -1657,12 +1537,6 @@ exports.updateOrder = async (req, res, next) => {
         refundResult: refundResult,
       });
     } else {
-      let delayMinutes = 0;
-      // if estimated time to complete is changed, send delay email
-      if (req.body.estimatedTimeToComplete) {
-        delayMinutes =
-          req.body.estimatedTimeToComplete - order.estimatedTimeToComplete;
-      }
       // Update with full body (no stock changes)
       order = await Order.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
@@ -1675,23 +1549,6 @@ exports.updateOrder = async (req, res, next) => {
 
       // Emit socket event for order update
       getIO().emit("order", { event: "order_updated" });
-
-      // send delay email
-      if (delayMinutes > 0) {
-        const userDetails = getOrderCustomerDetails(order);
-        order.customerName =
-          (userDetails.firstName + " " + userDetails.lastName).trim() ||
-          userDetails.email ||
-          "Customer";
-        order.customerEmail = userDetails.email;
-        order.customerPhone = userDetails.phone;
-        sendMailForAddDelay(
-          order.customerEmail,
-          order,
-          delayMinutes,
-          req.body.estimatedTimeToComplete
-        );
-      }
 
       res.status(200).json({
         success: true,
@@ -1765,17 +1622,10 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
 
     console.log("Order payment succeeded:", order._id);
 
-    // Emit socket events for order update
+    // Emit socket event for order update
     getIO().emit("order", {
       event: "order_payment_succeeded",
       orderId: order._id,
-    });
-
-    // Also emit order_created event to make the order appear in live orders
-    getIO().emit("order", {
-      event: "order_created",
-      orderId: order._id,
-      orderNumber: order.orderNumber,
     });
   } catch (error) {
     console.error("Error handling payment intent succeeded:", error);
@@ -2134,38 +1984,8 @@ exports.checkPaymentStatus = async (req, res, next) => {
         .populate(populateOptions)
         .populate("assignedTo", "firstName lastName email");
 
-      const customerDetails = getOrderCustomerDetails(updatedOrder);
-      updatedOrder.customerName =
-        customerDetails.firstName + " " + customerDetails.lastName;
-      updatedOrder.customerEmail = customerDetails.email;
-      updatedOrder.customerPhone = customerDetails.phone;
-      updatedOrder.customerAddress = customerDetails.address;
-      if (updateData.paymentStatus === "paid") {
-        getIO().emit("order", { event: "order_created", orderId: orderId });
-        // if payment status is paid, then send order paid email
-        sendMailForOrderCreated(
-          updatedOrder.customerEmail,
-          updatedOrder.branchId._id,
-          updatedOrder
-        ).catch((error) => {
-          console.error("Error sending order created email:", error);
-        });
-      } else if (updateData.paymentStatus === "failed") {
-        // if payment status is failed, then send order cancelled email
-        sendMailForCancelOrder(
-          updatedOrder.orderCustomerDetails.email,
-          updatedOrder,
-          "Payment failed"
-        ).catch((error) => {
-          console.error("Error sending order cancelled email:", error);
-        });
-      }
-
       // Emit socket event for order update
-      getIO().emit("order", {
-        event: "order_payment_updated",
-        paymentStatus: updateData.paymentStatus,
-      });
+      getIO().emit("order", { event: "order_payment_updated" });
 
       res.status(200).json({
         success: true,
@@ -2223,45 +2043,48 @@ exports.getCustomerOrders = async (req, res, next) => {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-
+    
     // Only admin users can access customer orders
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
-        message: "Only admin users can access customer orders",
+        message: "Only admin users can access customer orders"
       });
     }
-
+    
     // Admin users: Check if they are assigned to a branch
     if (!req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: `${userRole} must be assigned to a branch`,
+        message: `${userRole} must be assigned to a branch`
       });
     }
-
+    
     const { customerId } = req.params;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
-
+    
     // Validate customerId
     if (!customerId) {
       return res.status(400).json({
         success: false,
-        message: "Customer ID is required",
+        message: "Customer ID is required"
       });
     }
-
+    
     // Find orders for this customer in admin's branch
     const query = {
-      $or: [{ user: customerId }, { customerId: customerId }],
-      branchId: req.user.branchId,
+      $or: [
+        { user: customerId },
+        { customerId: customerId }
+      ],
+      branchId: req.user.branchId
     };
-
+    
     // Get total count for pagination
     const total = await Order.countDocuments(query);
-
+    
     // Get orders with pagination
     const orders = await Order.find(query)
       .populate("branchId", "name address")
@@ -2269,31 +2092,28 @@ exports.getCustomerOrders = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-
+    
     // Transform orders for response
-    const transformedOrders = orders.map((order) => {
+    const transformedOrders = orders.map(order => {
       const orderObj = order.toObject();
-
+      
       // Calculate proper totals
       orderObj.subtotal = orderObj.products.reduce((total, p) => {
         return total + p.price * p.quantity;
       }, 0);
-
+      
       orderObj.deliveryFee = orderObj.deliveryFee || 0;
       orderObj.finalTotal = orderObj.finalTotal || orderObj.totalAmount;
-
+      
       // Format dates for easier display
-      orderObj.formattedDate = new Date(orderObj.createdAt).toLocaleDateString(
-        "en-GB",
-        {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }
-      );
-
+      orderObj.formattedDate = new Date(orderObj.createdAt).toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
       return {
         id: orderObj._id,
         orderNumber: orderObj.orderNumber,
@@ -2305,24 +2125,24 @@ exports.getCustomerOrders = async (req, res, next) => {
         finalTotal: orderObj.finalTotal,
         createdAt: orderObj.createdAt,
         formattedDate: orderObj.formattedDate,
-        products: orderObj.products.map((p) => ({
-          name: p.product ? p.product.name : "Unknown Product",
+        products: orderObj.products.map(p => ({
+          name: p.product ? p.product.name : 'Unknown Product',
           quantity: p.quantity,
-          price: p.price,
-        })),
+          price: p.price
+        }))
       };
     });
-
+    
     res.status(200).json({
       success: true,
       count: transformedOrders.length,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
       data: transformedOrders,
-      total: total,
+      total: total
     });
   } catch (error) {
-    console.error("Error fetching customer orders:", error);
+    console.error('Error fetching customer orders:', error);
     next(error);
   }
 };
