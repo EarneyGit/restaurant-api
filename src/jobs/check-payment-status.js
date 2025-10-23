@@ -105,6 +105,14 @@ async function checkPaymentStatusJob(cronExpression) {
             order.paymentStatus = "refunded";
             order.status = "cancelled";
           }
+
+          if (order.status === "cancelled" && order.paymentStatus === "paid") {
+            const refund = await intiateRefund(order);
+            if (refund) {
+              order.paymentStatus = "refunded";
+            }
+          }
+
           await Order.updateOne(
             { _id: order._id },
             {
@@ -122,15 +130,7 @@ async function checkPaymentStatusJob(cronExpression) {
           order.customerPhone = customerDetails.phone;
           order.customerAddress = customerDetails.address;
 
-          if (order.status === "cancelled" && order.paymentStatus === "paid") {
-            const refund = await intiateRefund(order);
-            if (refund) {
-              order.paymentStatus = "refunded";
-            }
-          } else if (
-            order.paymentStatus === "paid" &&
-            order.status !== "cancelled"
-          ) {
+          if (order.paymentStatus === "paid" && order.status !== "cancelled") {
             // if payment status is paid, then send order paid email
             sendMailForOrderCreated(
               order.customerEmail,
