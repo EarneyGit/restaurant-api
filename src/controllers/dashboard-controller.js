@@ -1,5 +1,5 @@
-const Order = require('../models/order.model');
-const { roundOff } = require('../utils/common-utils');
+const Order = require("../models/order.model");
+const { roundOff } = require("../utils/common-utils");
 
 const getStats = async (req, res) => {
   try {
@@ -8,7 +8,7 @@ const getStats = async (req, res) => {
     if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
-        message: "Please provide startDate and endDate"
+        message: "Please provide startDate and endDate",
       });
     }
 
@@ -19,8 +19,8 @@ const getStats = async (req, res) => {
     const dateFilter = {
       createdAt: {
         $gte: start,
-        $lte: end
-      }
+        $lte: end,
+      },
     };
 
     const orders = await Order.find(dateFilter).lean();
@@ -37,18 +37,22 @@ const getStats = async (req, res) => {
     const customerOrdersMap = new Map();
 
     for (const order of orders) {
-      const isCashOrCOD = ['cash'].includes(order.paymentMethod);
-      const isOtherPayment = !isCashOrCOD; // Any other payment method
+      const isCash = order.paymentMethod === "cash";
+      const isCard = order.paymentMethod === "card";
 
       // For cash or COD, only check order status
       // For other payment methods, check payment status
       const isCompleted =
-        (isCashOrCOD && order.status !== 'cancelled') ||
-        (isOtherPayment && order.paymentStatus === 'paid');
+        (isCash && order.status !== "cancelled") ||
+        (isCard &&
+          order.status !== "cancelled" &&
+          order.paymentStatus === "paid");
 
       const isCancelledOrRefunded =
-        (isCashOrCOD && order.status === 'cancelled') ||
-        (isOtherPayment && order.paymentStatus === 'refunded');
+        (isCash && order.status === "cancelled") ||
+        (isCard &&
+          order.status === "cancelled" &&
+          order.paymentStatus !== "paid");
 
       // Track orders by customer
       if (order.user) {
@@ -56,7 +60,7 @@ const getStats = async (req, res) => {
         if (!customerOrdersMap.has(userId)) {
           customerOrdersMap.set(userId, { completed: 0, cancelled: 0 });
         }
-        
+
         if (isCompleted) {
           customerOrdersMap.get(userId).completed += 1;
         } else if (isCancelledOrRefunded) {
@@ -73,7 +77,7 @@ const getStats = async (req, res) => {
         refundedAmount += order.finalTotal || 0;
       }
     }
-    
+
     // Only count customers who have at least one completed order
     for (const [userId, orderCounts] of customerOrdersMap.entries()) {
       if (orderCounts.completed > 0) {
@@ -89,20 +93,19 @@ const getStats = async (req, res) => {
         revenueAmount: roundOff(revenueAmount),
         refundedAmount: roundOff(refundedAmount),
         totalDiscount: roundOff(totalDiscount),
-        totalCustomers: customerSet.size
+        totalCustomers: customerSet.size,
       },
-      message: "Stats fetched successfully"
+      message: "Stats fetched successfully",
     });
-
   } catch (error) {
     console.error("Error in fetching stats:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
 
 module.exports = {
-  getStats
+  getStats,
 };
