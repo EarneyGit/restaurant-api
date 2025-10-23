@@ -580,10 +580,7 @@ exports.getOrder = async (req, res, next) => {
             notes: p.notes || "",
           };
         }),
-        branchId: {
-          _id: populatedOrder.branchId._id,
-          name: populatedOrder.branchId.name,
-        },
+        branchId: populatedOrder.branchId,
         deliveryAddress: populatedOrder.deliveryAddress
           ? {
               street: populatedOrder.deliveryAddress.street,
@@ -623,9 +620,12 @@ exports.getOrder = async (req, res, next) => {
               appliedAt: populatedOrder.discountApplied.appliedAt,
             }
           : null,
-        stripePaymentIntentId: populatedOrder.stripePaymentIntentId || null,
         customerNotes: populatedOrder.customerNotes || null,
         serviceCharge: populatedOrder.serviceCharge || null,
+        orderType: populatedOrder.orderType,
+        deliveryMethod: populatedOrder.deliveryMethod,
+        paymentMethod: populatedOrder.paymentMethod,
+        paymentStatus: populatedOrder.paymentStatus,
       };
 
       return res.status(200).json({
