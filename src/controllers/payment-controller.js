@@ -17,7 +17,7 @@ exports.getPayments = async (req, res) => {
     // Build match conditions
     const matchConditions = {
       paymentStatus: status,
-      paymentMethod: { $in: ["card", "online"] }, // Only card/online payments have Stripe data
+      paymentMethod: { $in: ["card"] }, // Only card payments have Stripe data
       stripePaymentIntentId: { $exists: true, $ne: null },
     };
 
@@ -128,7 +128,7 @@ exports.getPaymentStats = async (req, res) => {
     const stats = await Order.aggregate([
       {
         $match: {
-          paymentMethod: { $in: ["card", "online"] },
+          paymentMethod: { $in: ["card"] },
           stripePaymentIntentId: { $exists: true, $ne: null },
         },
       },

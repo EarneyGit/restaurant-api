@@ -67,7 +67,7 @@ const isCategoryAvailable = (category) => {
   if (!category?.availability) return true; // If no availability data, assume available
 
   const now = new Date();
-  const currentDay = now.toLocaleDateString("en-US", { weekday: "long" }); // Get full day name (Monday, Tuesday, etc.)
+  const currentDay = now.toLocaleDateString("en-GB", { weekday: "long" }); // Get full day name (Monday, Tuesday, etc.)
   const currentTime = now.toTimeString().substring(0, 5); // Get time in HH:MM format
 
   const dayAvailability = category.availability[currentDay];
@@ -115,7 +115,7 @@ const isProductAvailable = (product) => {
 
   const now = new Date();
   const currentDay = now
-    .toLocaleDateString("en-US", { weekday: "short" })
+    .toLocaleDateString("en-GB", { weekday: "short" })
     .toLowerCase(); // Get day name (mon, tue, etc.)
   const currentTime = now.toTimeString().substring(0, 5); // Get time in HH:MM format
 
@@ -1565,10 +1565,10 @@ exports.updateOrder = async (req, res, next) => {
     if (newStatus === "cancelled" && oldStatus !== "cancelled") {
       const stockRestoration = await restoreStock(order.products);
 
-      // Process refund if payment was made online or by card
+      // Process refund if payment was made by card
       let refundResult = null;
       if (
-        (order.paymentMethod === "card" || order.paymentMethod === "online") &&
+        order.paymentMethod === "card" &&
         order.stripePaymentIntentId &&
         order.paymentStatus === "paid"
       ) {
