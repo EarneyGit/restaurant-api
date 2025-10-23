@@ -22,7 +22,19 @@ const {
 const { getOrderCustomerDetails } = require("../utils/functions");
 const {
   getPaymentIntentStatus,
+  refundPayment,
 } = require("../utils/stripe-config/stripe-config");
+
+const intiateRefund = async (order) => {
+  try {
+    const refund = await refundPayment(order.stripePaymentIntentId);
+    return refund;
+  } catch (error) {
+    console.error("Error initiating refund:", error);
+    return null;
+  }
+};
+
 // every 1 minutes
 async function checkPaymentStatusJob(cronExpression) {
   const checkStatus = async () => {
@@ -34,8 +46,11 @@ async function checkPaymentStatusJob(cronExpression) {
       const fromDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
       const orders = await Order.find({
         $or: [
-          { paymentMethod: "card", paymentStatus: { $in: ["pending", "processing"] } },
-          { paymentMethod: "card", status: 'cancelled', paymentStatus: "paid" },
+          {
+            paymentMethod: "card",
+            paymentStatus: { $in: ["pending", "processing"] },
+          },
+          { paymentMethod: "card", status: "cancelled", paymentStatus: "paid" },
         ],
         createdAt: { $gte: fromDate },
       }).lean();
@@ -71,12 +86,6 @@ async function checkPaymentStatusJob(cronExpression) {
             // Payment succeeded - update order status
             order.paymentStatus = "paid";
             order.stripePaymentDate = new Date();
-
-            // If order was in pending payment status, move to processing
-            if (order.status === "pending") {
-              order.status = "processing";
-              orderStatus = "processing";
-            }
           } else if (paymentStatus.message === "Payment is still processing") {
             // Payment still processing
             order.paymentStatus = "processing";
@@ -88,11 +97,10 @@ async function checkPaymentStatusJob(cronExpression) {
             order.paymentStatus = "failed";
 
             // If order was in pending status, mark as cancelled
-            if (order.status === "pending") {
-              order.status = "cancelled";
-            }
+            order.status = "cancelled";
           } else if (paymentStatus.message.includes("refunded")) {
             order.paymentStatus = "refunded";
+            order.status = "cancelled";
           }
           await Order.updateOne(
             { _id: order._id },
@@ -111,7 +119,14 @@ async function checkPaymentStatusJob(cronExpression) {
           order.customerPhone = customerDetails.phone;
           order.customerAddress = customerDetails.address;
 
-          if (order.paymentStatus === "paid") {
+          if (order.status === "cancelled" && order.paymentStatus === "paid") {
+            const refund = await intiateRefund(order);
+            if (refund) {
+              order.paymentStatus = "refunded";
+            }
+          }
+
+          if (order.paymentStatus === "paid" && order.status !== "cancelled") {
             // if payment status is paid, then send order paid email
             sendMailForOrderCreated(
               order.customerEmail,
@@ -123,7 +138,7 @@ async function checkPaymentStatusJob(cronExpression) {
                 error
               );
             });
-          } else if (order.paymentStatus === "failed") {
+          } else if (order.paymentStatus === "failed" && order.status !== "cancelled") {
             // if payment status is failed, then send order cancelled email
             sendMailForCancelOrder(
               order.customerEmail,
