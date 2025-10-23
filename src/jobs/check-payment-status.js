@@ -30,8 +30,11 @@ const intiateRefund = async (order) => {
     const refund = await refundPayment(order.stripePaymentIntentId);
     return refund;
   } catch (error) {
-    console.error("Error initiating refund:", error);
-    return null;
+    const alreadyRefunded = (
+      (typeof error === "string" && error) ||
+      (typeof error === "object" && error.message)
+    ).includes("already refunded");
+    return alreadyRefunded;
   }
 };
 
@@ -138,7 +141,10 @@ async function checkPaymentStatusJob(cronExpression) {
                 error
               );
             });
-          } else if (order.paymentStatus === "failed" && order.status !== "cancelled") {
+          } else if (
+            order.paymentStatus === "failed" &&
+            order.status !== "cancelled"
+          ) {
             // if payment status is failed, then send order cancelled email
             sendMailForCancelOrder(
               order.customerEmail,
