@@ -123,7 +123,7 @@ const sendPasswordResetOTP = async (email, otp, name = "User") => {
  */
 const sendMailForOrderCreated = async (email, branchId, order) => {
   const statusURL = `${process.env.FRONTEND_URL}/order-status/${order._id}?branchId=${branchId}`;
-  const subject = `Order Confirmation - #${order.orderNumber}`;
+  const subject = `Order Placed - #${order.orderNumber}`;
 
   // Get customer name
   const customerName = order.customerName || "Customer";
@@ -371,7 +371,7 @@ const sendMailForOrderCreated = async (email, branchId, order) => {
 
 Thank you for your order! Your order #${
     order.orderNumber
-  } has been confirmed and is being prepared.
+  } has been placed and is being prepared.
 
 Order Details:
 - Order Number: #${order.orderNumber}
@@ -391,15 +391,15 @@ You can track your order status at: ${statusURL}
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
       <!-- Header -->
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Order Confirmation</h1>
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Order Placed</h1>
         <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Thank you for your order!</p>
       </div>
       
       <!-- Main Content -->
       <div style="padding: 30px 20px;">
         <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin-bottom: 25px;">
-          <h2 style="color: #28a745; margin: 0 0 10px 0; font-size: 20px;">Order Confirmed!</h2>
-          <p style="margin: 0; color: #155724;">Dear ${customerName}, your order has been confirmed and is being prepared by our kitchen team.</p>
+          <h2 style="color: #28a745; margin: 0 0 10px 0; font-size: 20px;">Order Placed!</h2>
+          <p style="margin: 0; color: #155724;">Dear ${customerName}, your order has been placed and is will be prepared by our kitchen team soon.</p>
         </div>
         
         <!-- Order Details -->
