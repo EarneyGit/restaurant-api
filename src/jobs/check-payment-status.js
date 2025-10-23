@@ -102,13 +102,13 @@ async function checkPaymentStatusJob(cronExpression) {
               const alreadyRefunded = (
                 (typeof error === "string" && error) ||
                 (typeof error === "object" && error.message)
-              ).includes("already refunded");
+              ).includes("already been refunded");
               if (!alreadyRefunded) {
                 console.error("Error initiating refund:", error);
               } else {
                 order.paymentStatus = "refunded";
                 console.log(
-                  `Refunded order ${order.orderNumber} already refunded`
+                  `Refunded order ${order.orderNumber} already been refunded`
                 );
               }
             }
