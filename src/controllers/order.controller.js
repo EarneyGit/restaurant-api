@@ -626,6 +626,7 @@ exports.getOrder = async (req, res, next) => {
         deliveryMethod: populatedOrder.deliveryMethod,
         paymentMethod: populatedOrder.paymentMethod,
         paymentStatus: populatedOrder.paymentStatus,
+        selectedTimeSlot: populatedOrder.selectedTimeSlot,
       };
 
       return res.status(200).json({
