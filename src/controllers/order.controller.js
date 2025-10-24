@@ -341,6 +341,7 @@ exports.getOrders = async (req, res, next) => {
     // Transform the response to include complete product details
     const transformedOrders = orders.map((order) => {
       const orderObj = order.toObject();
+      orderObj.id = orderObj._id?.toString() || orderObj._id;
       orderObj.products = orderObj.products.map((item) => {
         // Calculate attribute total for this product
         const attributeTotal = (item.selectedAttributes || []).reduce(
@@ -522,6 +523,7 @@ exports.getOrder = async (req, res, next) => {
     // For guest orders or unauthorized access: Return public tracking info
     if (isGuestOrder) {
       const publicOrderData = {
+        id: populatedOrder._id?.toString() || populatedOrder._id,
         _id: populatedOrder._id,
         user: populatedOrder.user,
         isGuestOrder: populatedOrder.isGuestOrder,
@@ -638,6 +640,7 @@ exports.getOrder = async (req, res, next) => {
 
     // Transform the response for authenticated users
     const orderObj = populatedOrder.toObject();
+    orderObj.id = orderObj._id?.toString() || orderObj._id; 
     orderObj.products = orderObj.products.map((item) => {
       // Calculate attribute total for this product
       const attributeTotal = (item.selectedAttributes || []).reduce(
