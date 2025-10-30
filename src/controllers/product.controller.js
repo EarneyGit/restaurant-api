@@ -38,7 +38,7 @@ exports.getProducts = async (req, res, next) => {
     }
 
     // Verify branch exists (optimized with lean and select)
-    const branch = await Branch.findById(targetBranchId).lean().select('_id');
+    const branch = await Branch.findById(targetBranchId).lean().select("_id");
     if (!branch) {
       return res.status(404).json({
         success: false,
@@ -73,31 +73,38 @@ exports.getProducts = async (req, res, next) => {
             startDate: { $lte: new Date() },
             endDate: { $gte: new Date() },
           },
-          options: { lean: true }
+          options: { lean: true },
         })
         .lean()
         .sort("name"),
-      
+
       // Get attributes for the branch
       Attribute.find({ branchId: targetBranchId }).lean(),
-      
+
       // Get product attribute items with optimized population
       ProductAttributeItem.find({
-        isActive: true
+        isActive: true,
       })
-      .populate("attributeId", "_id name type requiresSelection description", null, { lean: true })
-      .lean()
+        .populate(
+          "attributeId",
+          "_id name type requiresSelection description",
+          null,
+          { lean: true }
+        )
+        .lean(),
     ]);
 
     // Filter product attribute items by productIds after fetching
-    const productIds = new Set(products.map(product => product._id.toString()));
+    const productIds = new Set(
+      products.map((product) => product._id.toString())
+    );
     const filteredProductAttributeItems = productAttributeItems.filter(
-      item => item.productId && productIds.has(item.productId.toString())
+      (item) => item.productId && productIds.has(item.productId.toString())
     );
 
     // Optimized: Create attribute lookup map for faster access
     const attributeMap = new Map();
-    attributes.forEach(attr => {
+    attributes.forEach((attr) => {
       attributeMap.set(attr._id.toString(), attr);
     });
 
@@ -107,16 +114,16 @@ exports.getProducts = async (req, res, next) => {
       if (item.productId && item.attributeId) {
         const productIdStr = item.productId.toString();
         const attrIdStr = item.attributeId._id.toString();
-        
+
         if (!productAttributesMap.has(productIdStr)) {
           productAttributesMap.set(productIdStr, new Map());
         }
-        
+
         const productAttrs = productAttributesMap.get(productIdStr);
         if (!productAttrs.has(attrIdStr)) {
           productAttrs.set(attrIdStr, []);
         }
-        
+
         productAttrs.get(attrIdStr).push({
           id: item._id,
           name: item.name,
@@ -129,7 +136,7 @@ exports.getProducts = async (req, res, next) => {
     const transformedProducts = products.map((product) => {
       const productId = product._id.toString();
       const productAttrs = productAttributesMap.get(productId);
-      
+
       // Build attributes array more efficiently
       const productAttributes = [];
       if (productAttrs) {
@@ -155,7 +162,8 @@ exports.getProducts = async (req, res, next) => {
         attributes: productAttributes,
         hideItem: product.hideItem ?? false,
         delivery: product.delivery !== undefined ? product.delivery : true,
-        collection: product.collection !== undefined ? product.collection : true,
+        collection:
+          product.collection !== undefined ? product.collection : true,
         dineIn: product.dineIn !== undefined ? product.dineIn : true,
         description: product.description,
         displayOrder: product.displayOrder ?? 0,
@@ -558,7 +566,6 @@ exports.createProduct = async (req, res, next) => {
 exports.updateProduct = async (req, res, next) => {
   try {
     let product = await Product.findById(req.params.id);
-
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -566,14 +573,12 @@ exports.updateProduct = async (req, res, next) => {
       });
     }
 
-    // Get user role from roleId
-    const userRole = req.user ? req.user.role : null;
+    // Get user role
+    const userRole = req.user?.role;
 
-    // For manager/staff/admin, check if product belongs to their branch
+    // 🔒 Branch authorization checks
     if (
-      (userRole === "manager" ||
-        userRole === "staff" ||
-        userRole === "admin") &&
+      ["manager", "staff", "admin"].includes(userRole) &&
       product.branchId &&
       req.user.branchId &&
       product.branchId.toString() !== req.user.branchId.toString()
@@ -584,7 +589,7 @@ exports.updateProduct = async (req, res, next) => {
       });
     }
 
-    // Validate branch exists
+    // ✅ Validate branch if provided
     if (req.body.branchId) {
       const branch = await Branch.findById(req.body.branchId);
       if (!branch) {
@@ -594,11 +599,8 @@ exports.updateProduct = async (req, res, next) => {
         });
       }
 
-      // For manager/staff/admin, ensure they're not changing to other branch
       if (
-        (userRole === "manager" ||
-          userRole === "staff" ||
-          userRole === "admin") &&
+        ["manager", "staff", "admin"].includes(userRole) &&
         req.body.branchId.toString() !== req.user.branchId.toString()
       ) {
         return res.status(403).json({
@@ -608,7 +610,7 @@ exports.updateProduct = async (req, res, next) => {
       }
     }
 
-    // Validate category exists
+    // ✅ Validate category if provided
     if (req.body.category) {
       const category = await Category.findById(req.body.category);
       if (!category) {
@@ -619,10 +621,28 @@ exports.updateProduct = async (req, res, next) => {
       }
     }
 
-    // Handle image uploads if present
+    // 🧹 Normalize images (FormData sends strings)
+    if (req.body.images) {
+      try {
+        if (typeof req.body.images === "string") {
+          const parsed = JSON.parse(req.body.images);
+          req.body.images = Array.isArray(parsed) ? parsed : [];
+        } else if (
+          Array.isArray(req.body.images) &&
+          req.body.images.length === 1 &&
+          req.body.images[0] === "[]"
+        ) {
+          req.body.images = [];
+        }
+      } catch {
+        req.body.images = [];
+      }
+    }
+
+    // 🖼 Handle image uploads (if new files are added)
     if (req.files && req.files.length > 0) {
       // Delete old images
-      if (product.images && product.images.length > 0) {
+      if (product.images?.length > 0) {
         for (const imagePath of product.images) {
           await deleteFile(imagePath);
         }
@@ -630,30 +650,39 @@ exports.updateProduct = async (req, res, next) => {
 
       // Save new images
       const imagePaths = await saveMultipleFiles(req.files, "products");
-      // Store only the relative paths without BACKEND_URL
       req.body.images = imagePaths;
     }
-
-    // Parse JSON strings if they exist
-    if (typeof req.body.availability === "string") {
-      req.body.availability = JSON.parse(req.body.availability);
-    }
-    if (typeof req.body.allergens === "string") {
-      req.body.allergens = JSON.parse(req.body.allergens);
-    }
-    if (typeof req.body.priceChanges === "string") {
-      req.body.priceChanges = JSON.parse(req.body.priceChanges);
-    }
-    if (typeof req.body.selectedItems === "string") {
-      req.body.selectedItems = JSON.parse(req.body.selectedItems);
-    }
-    if (typeof req.body.itemSettings === "string") {
-      req.body.itemSettings = JSON.parse(req.body.itemSettings);
+    // 🧹 If explicitly sent empty images array, delete existing ones
+    else if (Array.isArray(req.body.images) && req.body.images.length === 0) {
+      if (product.images?.length > 0) {
+        for (const imagePath of product.images) {
+          await deleteFile(imagePath);
+        }
+      }
+      req.body.images = [];
     }
 
-    // Transform availability data to match schema
+    // 🧩 Parse JSON fields (they come as strings in FormData)
+    const jsonFields = [
+      "availability",
+      "allergens",
+      "priceChanges",
+      "selectedItems",
+      "itemSettings",
+    ];
+
+    for (const field of jsonFields) {
+      if (typeof req.body[field] === "string") {
+        try {
+          req.body[field] = JSON.parse(req.body[field]);
+        } catch {
+          req.body[field] = {};
+        }
+      }
+    }
+
+    // 🔁 Transform availability (optional normalization)
     if (req.body.availability) {
-      const transformedAvailability = {};
       const days = [
         "monday",
         "tuesday",
@@ -663,8 +692,9 @@ exports.updateProduct = async (req, res, next) => {
         "saturday",
         "sunday",
       ];
+      const transformedAvailability = {};
 
-      days.forEach((day) => {
+      for (const day of days) {
         if (req.body.availability[day]) {
           transformedAvailability[day] = {
             isAvailable: req.body.availability[day].isAvailable ?? true,
@@ -672,12 +702,11 @@ exports.updateProduct = async (req, res, next) => {
             times: req.body.availability[day].times || [],
           };
         }
-      });
-
+      }
       req.body.availability = transformedAvailability;
     }
 
-    // Convert string boolean values to actual booleans
+    // 🔁 Convert string booleans to actual booleans
     const booleanFields = [
       "hideItem",
       "delivery",
@@ -690,13 +719,15 @@ exports.updateProduct = async (req, res, next) => {
       "allowAddWithoutChoices",
       "isGroupItem",
     ];
-    booleanFields.forEach((field) => {
+
+    for (const field of booleanFields) {
       if (req.body[field] !== undefined) {
         req.body[field] =
           req.body[field] === "true" || req.body[field] === true;
       }
-    });
+    }
 
+    // 💾 Update product
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -705,18 +736,15 @@ exports.updateProduct = async (req, res, next) => {
       .populate("branchId", "name address")
       .populate("selectedItems", "name price category");
 
-    // Transform product data to match frontend structure
+    // 🎯 Transform response for frontend
     const transformedProduct = {
       id: product._id,
       name: product.name,
       price: product.price,
-      // currentEffectivePrice: product.currentEffectivePrice || product.price,
-      // hasActivePriceChanges: product.hasActivePriceChanges || false,
-      // activePriceChangeId: product.activePriceChangeId || null,
       hideItem: product.hideItem ?? false,
-      delivery: product.delivery !== undefined ? product.delivery : true,
-      collection: product.collection !== undefined ? product.collection : true,
-      dineIn: product.dineIn !== undefined ? product.dineIn : true,
+      delivery: product.delivery ?? true,
+      collection: product.collection ?? true,
+      dineIn: product.dineIn ?? true,
       description: product.description,
       displayOrder: product.displayOrder ?? 0,
       weight: product.weight,
