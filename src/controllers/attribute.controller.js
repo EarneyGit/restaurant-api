@@ -116,6 +116,10 @@ exports.createAttribute = async (req, res, next) => {
         req.body?.requiresSelection === undefined
           ? true
           : req.body.requiresSelection,
+      isMultipleTimes:
+        req.body?.isMultipleTimes === undefined
+          ? false
+          : req.body.isMultipleTimes,
       description: req.body?.description || "",
       displayOrder: req.body?.displayOrder || 0,
       minAttribute: req.body?.minAttribute || 0,
