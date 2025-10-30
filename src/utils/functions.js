@@ -1,4 +1,4 @@
-export const getOrderCustomerDetails = (order) => {
+exports.getOrderCustomerDetails = (order) => {
   return {
     firstName: order.orderCustomerDetails?.firstName,
     lastName: order.orderCustomerDetails?.lastName,
@@ -11,7 +11,7 @@ export const getOrderCustomerDetails = (order) => {
 };
 
 // to fixed  decimal places
-export const toFixed = (value, decimalPlaces = 2) => {
+exports.toFixed = (value, decimalPlaces = 2) => {
   if (isNaN(value)) {
     return "0.00";
   }
@@ -19,4 +19,4 @@ export const toFixed = (value, decimalPlaces = 2) => {
 };
 
 // Format currency
-export const formatCurrency = (amount) => `£${toFixed(amount, 2)}`;
+exports.formatCurrency = (amount) => `£${toFixed(amount, 2)}`;
