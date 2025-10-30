@@ -1,6 +1,6 @@
-const { MANAGEMENT_ROLES } = require('../constants/roles');
-const Attribute = require('../models/attribute.model');
-const Branch = require('../models/branch.model');
+const { MANAGEMENT_ROLES } = require("../constants/roles");
+const Attribute = require("../models/attribute.model");
+const Branch = require("../models/branch.model");
 
 // @desc    Get all attributes
 // @route   GET /api/attributes
@@ -9,19 +9,19 @@ exports.getAttributes = async (req, res, next) => {
   try {
     let query = { isActive: true };
     let targetBranchId = null;
-    
+
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAuthenticated = !!req.user;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     // Handle branch determination based on user type
     if (isAdmin) {
       // Admin users: Use their assigned branchId
       if (!req.user.branchId) {
         return res.status(400).json({
           success: false,
-          message: `${userRole} must be assigned to a branch`
+          message: `${userRole} must be assigned to a branch`,
         });
       }
       targetBranchId = req.user.branchId;
@@ -31,7 +31,7 @@ exports.getAttributes = async (req, res, next) => {
       if (!req.query.branchId) {
         return res.status(400).json({
           success: false,
-          message: 'Branch ID is required. Please select a branch.'
+          message: "Branch ID is required. Please select a branch.",
         });
       }
       targetBranchId = req.query.branchId;
@@ -40,18 +40,18 @@ exports.getAttributes = async (req, res, next) => {
 
     // Search by name if specified
     if (req.query.search) {
-      query.name = { $regex: req.query.search, $options: 'i' };
+      query.name = { $regex: req.query.search, $options: "i" };
     }
 
     const attributes = await Attribute.find(query)
-      .populate('branchId', 'name address')
+      .populate("branchId", "name address")
       .sort({ displayOrder: 1, name: 1 });
 
     res.status(200).json({
       success: true,
       count: attributes.length,
       data: attributes,
-      branchId: targetBranchId
+      branchId: targetBranchId,
     });
   } catch (error) {
     next(error);
@@ -63,19 +63,21 @@ exports.getAttributes = async (req, res, next) => {
 // @access  Public
 exports.getAttribute = async (req, res, next) => {
   try {
-    const attribute = await Attribute.findById(req.params.id)
-      .populate('branchId', 'name address');
+    const attribute = await Attribute.findById(req.params.id).populate(
+      "branchId",
+      "name address"
+    );
 
     if (!attribute) {
       return res.status(404).json({
         success: false,
-        message: `Attribute not found with id of ${req.params.id}`
+        message: `Attribute not found with id of ${req.params.id}`,
       });
     }
 
     res.status(200).json({
       success: true,
-      data: attribute
+      data: attribute,
     });
   } catch (error) {
     next(error);
@@ -88,41 +90,46 @@ exports.getAttribute = async (req, res, next) => {
 exports.createAttribute = async (req, res, next) => {
   try {
     // Get branchId from authenticated user
-    console.log('🔄 Request Headers:', req.headers);
-    console.log('🔄 Request Body:', req.body);
-    console.log('🔄 User:', req.user);
+    console.log("🔄 Request Headers:", req.headers);
+    console.log("🔄 Request Body:", req.body);
+    console.log("🔄 User:", req.user);
 
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
     if (!req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: 'User must be associated with a branch'
+        message: "User must be associated with a branch",
       });
     }
 
     // Initialize request body if it doesn't exist
     const attributeData = {
       name: req.body?.name,
-      type: req.body?.type || 'single',
-      requiresSelection: req.body?.requiresSelection === undefined ? true : req.body.requiresSelection,
-      description: req.body?.description || '',
+      type: req.body?.type || "single",
+      requiresSelection:
+        req.body?.requiresSelection === undefined
+          ? true
+          : req.body.requiresSelection,
+      description: req.body?.description || "",
       displayOrder: req.body?.displayOrder || 0,
+      minAttribute: req.body?.minAttribute || 0,
+      maxAttribute: req.body?.maxAttribute || 0,
       branchId: req.user.branchId,
-      isActive: true
+      isActive: true,
     };
 
     // Validate required fields
     if (!attributeData.name) {
-      console.log('❌ Name validation failed:', attributeData);
+      console.log("❌ Name validation failed:", attributeData);
       return res.status(400).json({
         success: false,
-        message: 'Name is required for the attribute'
+        message: "Name is required for the attribute",
       });
     }
 
@@ -131,24 +138,26 @@ exports.createAttribute = async (req, res, next) => {
     if (!branch) {
       return res.status(404).json({
         success: false,
-        message: 'Branch not found'
+        message: "Branch not found",
       });
     }
 
-    console.log('✅ Creating attribute with data:', attributeData);
+    console.log("✅ Creating attribute with data:", attributeData);
     const attribute = await Attribute.create(attributeData);
-    
-    // Fetch the populated attribute to return
-    const populatedAttribute = await Attribute.findById(attribute._id)
-      .populate('branchId', 'name address');
 
-    console.log('✅ Created attribute:', populatedAttribute);
+    // Fetch the populated attribute to return
+    const populatedAttribute = await Attribute.findById(attribute._id).populate(
+      "branchId",
+      "name address"
+    );
+
+    console.log("✅ Created attribute:", populatedAttribute);
     res.status(201).json({
       success: true,
-      data: populatedAttribute
+      data: populatedAttribute,
     });
   } catch (error) {
-    console.error('❌ Error in createAttribute:', error);
+    console.error("❌ Error in createAttribute:", error);
     next(error);
   }
 };
@@ -163,7 +172,7 @@ exports.updateAttribute = async (req, res, next) => {
     if (!attribute) {
       return res.status(404).json({
         success: false,
-        message: `Attribute not found with id of ${req.params.id}`
+        message: `Attribute not found with id of ${req.params.id}`,
       });
     }
 
@@ -171,14 +180,14 @@ exports.updateAttribute = async (req, res, next) => {
     if (!req.user || !req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: 'Admin user must be associated with a branch'
+        message: "Admin user must be associated with a branch",
       });
     }
 
     if (attribute.branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to update attributes from other branches'
+        message: "Not authorized to update attributes from other branches",
       });
     }
 
@@ -189,12 +198,12 @@ exports.updateAttribute = async (req, res, next) => {
 
     attribute = await Attribute.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-      runValidators: true
-    }).populate('branchId', 'name address');
+      runValidators: true,
+    }).populate("branchId", "name address");
 
     res.status(200).json({
       success: true,
-      data: attribute
+      data: attribute,
     });
   } catch (error) {
     next(error);
@@ -211,7 +220,7 @@ exports.deleteAttribute = async (req, res, next) => {
     if (!attribute) {
       return res.status(404).json({
         success: false,
-        message: `Attribute not found with id of ${req.params.id}`
+        message: `Attribute not found with id of ${req.params.id}`,
       });
     }
 
@@ -219,14 +228,14 @@ exports.deleteAttribute = async (req, res, next) => {
     if (!req.user || !req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: 'Admin user must be associated with a branch'
+        message: "Admin user must be associated with a branch",
       });
     }
 
     if (attribute.branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to delete attributes from other branches'
+        message: "Not authorized to delete attributes from other branches",
       });
     }
 
@@ -236,7 +245,7 @@ exports.deleteAttribute = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {},
-      message: 'Attribute deleted successfully'
+      message: "Attribute deleted successfully",
     });
   } catch (error) {
     next(error);
@@ -248,17 +257,17 @@ exports.deleteAttribute = async (req, res, next) => {
 // @access  Public
 exports.getAttributesByBranch = async (req, res, next) => {
   try {
-    const attributes = await Attribute.find({ 
+    const attributes = await Attribute.find({
       branchId: req.params.branchId,
-      isActive: true 
+      isActive: true,
     })
-      .populate('branchId', 'name address')
+      .populate("branchId", "name address")
       .sort({ displayOrder: 1, name: 1 });
 
     res.status(200).json({
       success: true,
       count: attributes.length,
-      data: attributes
+      data: attributes,
     });
   } catch (error) {
     next(error);
@@ -275,7 +284,7 @@ exports.reorderAttributes = async (req, res, next) => {
     if (!attributeOrders || !Array.isArray(attributeOrders)) {
       return res.status(400).json({
         success: false,
-        message: 'attributeOrders array is required'
+        message: "attributeOrders array is required",
       });
     }
 
@@ -283,42 +292,42 @@ exports.reorderAttributes = async (req, res, next) => {
     if (!req.user || !req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: 'Admin user must be associated with a branch'
+        message: "Admin user must be associated with a branch",
       });
     }
 
     // Verify all attributes belong to the admin's branch
-    const attributeIds = attributeOrders.map(item => item.id);
-    const attributes = await Attribute.find({ 
+    const attributeIds = attributeOrders.map((item) => item.id);
+    const attributes = await Attribute.find({
       _id: { $in: attributeIds },
-      branchId: req.user.branchId 
+      branchId: req.user.branchId,
     });
 
     if (attributes.length !== attributeIds.length) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to reorder attributes from other branches'
+        message: "Not authorized to reorder attributes from other branches",
       });
     }
 
-    const updatePromises = attributeOrders.map(({ id, displayOrder }) => 
+    const updatePromises = attributeOrders.map(({ id, displayOrder }) =>
       Attribute.findByIdAndUpdate(id, { displayOrder }, { new: true })
     );
 
     await Promise.all(updatePromises);
 
     // Fetch updated attributes
-    const updatedAttributes = await Attribute.find({ 
+    const updatedAttributes = await Attribute.find({
       branchId: req.user.branchId,
-      isActive: true 
+      isActive: true,
     })
-      .populate('branchId', 'name address')
+      .populate("branchId", "name address")
       .sort({ displayOrder: 1, name: 1 });
 
     res.status(200).json({
       success: true,
       data: updatedAttributes,
-      message: 'Attributes reordered successfully'
+      message: "Attributes reordered successfully",
     });
   } catch (error) {
     next(error);
@@ -333,11 +342,11 @@ exports.getOfflineAttributes = async (req, res, next) => {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
-        message: 'Only admin users can access offline attributes'
+        message: "Only admin users can access offline attributes",
       });
     }
 
@@ -345,36 +354,36 @@ exports.getOfflineAttributes = async (req, res, next) => {
     if (!req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: `${userRole} must be assigned to a branch`
+        message: `${userRole} must be assigned to a branch`,
       });
     }
 
     let query = { branchId: req.user.branchId };
-    
+
     // Search functionality
     if (req.query.searchText) {
-      query.name = { $regex: req.query.searchText, $options: 'i' };
+      query.name = { $regex: req.query.searchText, $options: "i" };
     }
 
     const attributes = await Attribute.find(query)
-      .populate('branchId', 'name address')
-      .sort('name');
+      .populate("branchId", "name address")
+      .sort("name");
 
     // Transform attributes to match frontend structure
-    const transformedAttributes = attributes.map(attribute => ({
+    const transformedAttributes = attributes.map((attribute) => ({
       id: attribute._id,
       name: attribute.name,
       type: attribute.type,
       isRequired: attribute.isRequired,
       isActive: attribute.isActive,
-      isOffline: !attribute.isActive // isActive represents online status
+      isOffline: !attribute.isActive, // isActive represents online status
     }));
 
     res.status(200).json({
       success: true,
       count: transformedAttributes.length,
       data: transformedAttributes,
-      branchId: req.user.branchId
+      branchId: req.user.branchId,
     });
   } catch (error) {
     next(error);
@@ -391,11 +400,11 @@ exports.toggleAttributeOffline = async (req, res, next) => {
     // Determine user role and authentication status
     const userRole = req.user ? req.user.role : null;
     const isAdmin = userRole && MANAGEMENT_ROLES.includes(userRole);
-    
+
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
-        message: 'Only admin users can toggle attribute offline status'
+        message: "Only admin users can toggle attribute offline status",
       });
     }
 
@@ -403,7 +412,7 @@ exports.toggleAttributeOffline = async (req, res, next) => {
     if (!req.user.branchId) {
       return res.status(400).json({
         success: false,
-        message: `${userRole} must be assigned to a branch`
+        message: `${userRole} must be assigned to a branch`,
       });
     }
 
@@ -412,7 +421,7 @@ exports.toggleAttributeOffline = async (req, res, next) => {
     if (!attribute) {
       return res.status(404).json({
         success: false,
-        message: `Attribute not found with id of ${req.params.id}`
+        message: `Attribute not found with id of ${req.params.id}`,
       });
     }
 
@@ -420,16 +429,16 @@ exports.toggleAttributeOffline = async (req, res, next) => {
     if (attribute.branchId.toString() !== req.user.branchId.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to update attributes from other branches'
+        message: "Not authorized to update attributes from other branches",
       });
     }
 
     // Update isActive field (opposite of offline status)
     attribute = await Attribute.findByIdAndUpdate(
-      req.params.id, 
+      req.params.id,
       { isActive: !isOffline },
       { new: true, runValidators: true }
-    ).populate('branchId', 'name address');
+    ).populate("branchId", "name address");
 
     // Transform attribute data to match frontend structure
     const transformedAttribute = {
@@ -438,15 +447,17 @@ exports.toggleAttributeOffline = async (req, res, next) => {
       type: attribute.type,
       isRequired: attribute.isRequired,
       isActive: attribute.isActive,
-      isOffline: !attribute.isActive
+      isOffline: !attribute.isActive,
     };
 
     res.status(200).json({
       success: true,
       data: transformedAttribute,
-      message: `Attribute ${isOffline ? 'taken offline' : 'brought online'} successfully`
+      message: `Attribute ${
+        isOffline ? "taken offline" : "brought online"
+      } successfully`,
     });
   } catch (error) {
     next(error);
   }
-}; 
+};

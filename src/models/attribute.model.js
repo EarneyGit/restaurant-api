@@ -1,66 +1,84 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const attributeSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Please add an attribute name'],
+      required: [true, "Please add an attribute name"],
       trim: true,
-      maxlength: [100, 'Name cannot be more than 100 characters']
+      maxlength: [100, "Name cannot be more than 100 characters"],
     },
     displayOrder: {
       type: Number,
-      required: [true, 'Display order is required'],
-      min: [0, 'Display order must be at least 0']
+      required: [true, "Display order is required"],
+      min: [0, "Display order must be at least 0"],
     },
     type: {
       type: String,
-      enum: ['single', 'multiple', 'multiple-times'],
-      required: [true, 'Attribute type is required'],
-      default: 'single'
+      enum: ["single", "multiple", "multiple-times"],
+      required: [true, "Attribute type is required"],
+      default: "single",
+    },
+    minAttribute: {
+      type: Number,
+      trim: true,
+    },
+    maxAttribute: {
+      type: Number,
+      trim: true,
     },
     requiresSelection: {
       type: Boolean,
-      default: true
+      default: true,
     },
     description: {
       type: String,
-      maxlength: [500, 'Description cannot be more than 500 characters']
+      maxlength: [500, "Description cannot be more than 500 characters"],
     },
-    availableDays: [{
-      type: String,
-      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    }],
+    availableDays: [
+      {
+        type: String,
+        enum: [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday",
+        ],
+      },
+    ],
     branchId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Branch',
-      required: [true, 'Branch is required']
+      ref: "Branch",
+      required: [true, "Branch is required"],
     },
     isActive: {
       type: Boolean,
-      default: true
+      default: true,
     },
     // Audit Log Fields
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: "User",
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: "User",
     },
     deletedAt: {
-      type: Date
+      type: Date,
     },
     deletedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
+      ref: "User",
+    },
   },
   {
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toObject: { virtuals: true },
   }
 );
 
@@ -68,6 +86,6 @@ const attributeSchema = new mongoose.Schema(
 attributeSchema.index({ branchId: 1, displayOrder: 1 });
 attributeSchema.index({ branchId: 1, isActive: 1 });
 
-const Attribute = mongoose.model('Attribute', attributeSchema);
+const Attribute = mongoose.model("Attribute", attributeSchema);
 
-module.exports = Attribute; 
+module.exports = Attribute;
