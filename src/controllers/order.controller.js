@@ -368,6 +368,7 @@ exports.getOrders = async (req, res, next) => {
             currentEffectivePrice: item.price,
             attributes: attributeTotal,
             total: itemTotal,
+            attributesTotal: attributesTotalForQuantity,
           },
           notes: item.notes,
           selectedAttributes: item.selectedAttributes
@@ -557,6 +558,7 @@ exports.getOrder = async (req, res, next) => {
               currentEffectivePrice: p.price,
               attributes: attributeTotal,
               total: itemTotal,
+              attributesTotal: attributesTotalForQuantity,
             },
             product: {
               _id: p.product._id,
@@ -640,7 +642,7 @@ exports.getOrder = async (req, res, next) => {
 
     // Transform the response for authenticated users
     const orderObj = populatedOrder.toObject();
-    orderObj.id = orderObj._id?.toString() || orderObj._id; 
+    orderObj.id = orderObj._id?.toString() || orderObj._id;
     orderObj.products = orderObj.products.map((item) => {
       // Calculate attribute total for this product
       const attributeTotal = (item.selectedAttributes || []).reduce(
@@ -667,6 +669,7 @@ exports.getOrder = async (req, res, next) => {
           currentEffectivePrice: item.price,
           attributes: attributeTotal,
           total: itemTotal,
+          attributesTotal: attributesTotalForQuantity,
         },
         notes: item.notes,
         selectedAttributes: item.selectedAttributes

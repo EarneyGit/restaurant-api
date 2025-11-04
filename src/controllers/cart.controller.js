@@ -131,6 +131,7 @@ const transformCartForResponse = async (cart) => {
 
     // Calculate correct itemTotal with effective price
     const correctItemTotal = (effectivePrice * item.quantity) + (attributePrices * item.quantity);
+    const itemTotal=(effectivePrice * item.quantity)
     recalculatedSubtotal += correctItemTotal;
 
     return {
@@ -142,7 +143,8 @@ const transformCartForResponse = async (cart) => {
         base: item.priceAtTime,
         currentEffectivePrice: effectivePrice,
         attributes: attributePrices,
-        total: correctItemTotal
+        total: correctItemTotal,
+        itemTotal // Product toal (Exclude attribute price)
       },
       quantity: item.quantity,
       selectedOptions: item.selectedOptions ? Object.fromEntries(item.selectedOptions) : {},
